@@ -19,7 +19,7 @@ export class FakeRcon {
       s.on('close', () => this.sockets.delete(s))
       let buf = Buffer.alloc(0)
       let authed = false
-      s.on('data', (d) => {
+      s.on('data', (d: Buffer) => {
         buf = Buffer.concat([buf, d])
         while (buf.length >= 4) {
           const len = buf.readInt32LE(0)

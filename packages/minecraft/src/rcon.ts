@@ -73,7 +73,7 @@ export class RconClient extends EventEmitter {
     })
     const s = this.socket!
     s.setNoDelay(true)
-    s.on('data', (d) => this.onData(d))
+    s.on('data', (d: Buffer) => this.onData(d))
     s.on('close', () => this.onClose())
     s.on('error', (err) => this.emit('error', err))
 
