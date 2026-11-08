@@ -787,3 +787,90 @@ export function TtsOverlay() {
     </div>
   )
 }
+
+/* ------------------------------- Ticker (banda) ------------------------------- */
+
+interface Tick {
+  key: number
+  kind: string
+  name: string
+  avatar?: string
+  gift?: string
+  image?: string
+  count?: number
+  color: string
+}
+
+/** Banda con los últimos eventos del live (regalos, seguidores, likes, compartir). Ideal como barra inferior. */
+export function TickerOverlay() {
+  const [items, setItems] = useState<Tick[]>(
+    DEMO
+      ? [
+          { key: 1, kind: 'gift', name: 'Santos', gift: 'Corgi', count: 3, color: '#ffcc33' },
+          { key: 2, kind: 'follow', name: 'Lucía', color: '#34e0a1' },
+          { key: 3, kind: 'gift', name: 'Zentic', gift: 'Rose', count: 5, color: '#ffcc33' },
+          { key: 4, kind: 'share', name: 'Givi', color: '#38bdf8' },
+        ]
+      : [],
+  )
+  const seq = useRef(0)
+  useOnEvent((ev: LiveEvent) => {
+    if (!ev.user) return
+    let t: Omit<Tick, 'key'> | null = null
+    if (ev.type === 'gift' && (ev.payload.phase === 'single' || ev.payload.streakTotal === ev.payload.count))
+      t = { kind: 'gift', name: ev.user.nickname, avatar: ev.user.avatarUrl, gift: ev.payload.name, image: ev.payload.imageUrl, count: ev.payload.streakTotal, color: '#ffcc33' }
+    else if (ev.type === 'follow') t = { kind: 'follow', name: ev.user.nickname, avatar: ev.user.avatarUrl, color: '#34e0a1' }
+    else if (ev.type === 'share') t = { kind: 'share', name: ev.user.nickname, avatar: ev.user.avatarUrl, color: '#38bdf8' }
+    else if (ev.type === 'subscribe') t = { kind: 'sub', name: ev.user.nickname, avatar: ev.user.avatarUrl, color: '#f472d0' }
+    if (t) setItems((l) => [...l.slice(-30), { ...t!, key: ++seq.current }])
+  })
+  const vertical = params.get('dir') === 'v'
+  const label = (t: Tick) => (t.kind === 'follow' ? 'empezó a seguirte' : t.kind === 'share' ? 'compartió el live' : t.kind === 'sub' ? 'se suscribió' : null)
+  return (
+    <div
+      style={{
+        ...base,
+        display: 'flex',
+        flexDirection: vertical ? 'column' : 'row',
+        gap: 10,
+        padding: 10,
+        alignItems: vertical ? 'stretch' : 'center',
+        overflow: 'hidden',
+        width: vertical ? 'auto' : '100%',
+      }}
+    >
+      <Styles />
+      {items.slice(vertical ? -8 : -12).map((t) => (
+        <div
+          key={t.key}
+          className="la-pop"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '6px 16px 6px 6px',
+            borderRadius: 999,
+            background: `linear-gradient(100deg, ${t.color}33, #0b0b14ee 70%)`,
+            border: `2px solid ${t.color}aa`,
+            boxShadow: `0 6px 18px #0007`,
+            whiteSpace: 'nowrap',
+            flexShrink: 0,
+          }}
+        >
+          <Avatar url={t.avatar} name={t.name} size={34} />
+          <span style={{ fontWeight: 800, fontSize: 17 }}>{t.name}</span>
+          {t.gift ? (
+            <>
+              {t.image && <img src={t.image} alt="" style={{ width: 24, height: 24, objectFit: 'contain' }} />}
+              <span style={{ fontWeight: 700, fontSize: 15, opacity: 0.9 }}>{t.gift}</span>
+              {t.count && t.count > 1 && <b style={{ color: t.color }}>×{t.count}</b>}
+            </>
+          ) : (
+            <span style={{ fontSize: 14, opacity: 0.9 }}>{label(t)}</span>
+          )}
+        </div>
+      ))}
+      {items.length === 0 && <div style={{ opacity: 0.5, fontSize: 14 }}>Esperando eventos del live…</div>}
+    </div>
+  )
+}

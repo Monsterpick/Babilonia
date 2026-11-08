@@ -189,6 +189,7 @@ const SECTIONS: { title: string; hint: string; items: Def[] }[] = [
         ),
       },
       { id: 'tarjetas', name: 'Tarjetas de plugins', desc: 'Todas tus acciones; la que se activa se anima. Se configura más abajo.', w: 1080, h: 400 },
+      { id: 'ticker', name: 'Banda de últimos eventos', desc: 'Feed de regalos, seguidores y compartir. Perfecto como barra inferior (?dir=v para vertical).', w: 1280, h: 90 },
     ],
   },
   {

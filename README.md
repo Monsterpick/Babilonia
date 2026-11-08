@@ -2,7 +2,16 @@
 
 Plataforma de juegos interactivos para **TikTok LIVE**. Los regalos, likes, comentarios, follows y shares de tu live se convierten en acciones dentro de **Minecraft** (mobs con el nombre de quien los envía, truenos, TNT, items, efectos, kit…) y en **overlays** para OBS / TikTok LIVE Studio.
 
-> Estado: **v0.2 · app de escritorio para Windows** (instalador y portable). Minecraft interactivo listo para probar en vivo. El juego web «Batalla de equipos» llega en la siguiente fase.
+> Estado: **v0.4 · app de escritorio para Windows** (instalador y portable). Incluye plugin propio LiveArena (tótems apilables, 80+ efectos survival en español, efectos espectaculares, Akaza y Gojo, retos), overlays completos con vista previa, TTS, estudio de escenas y temas de color.
+
+## Novedades v0.3–0.4
+
+- **Plugin propio LiveArena** (se instala solo al encender el servidor): tótems apilables con contador, paridad total con el s2e (zombies, creepers, telaraña, caja de TNT…), efectos espectaculares (meteorito, agujero negro, súper rayo, juicio arcano, dragones, onda de repulsión, corona de espadas, mil cortes, la parca, genkidama…), personajes **Akaza** y **Gojo**, y un **reto** con barra de progreso (Buscador de diamantes).
+- **Texturas de inventario** sacadas de tu propio Minecraft instalado.
+- **Overlays** con vista previa en vivo: avisos, logros/«¡Te mató!»/Quiéreme, contador, cronómetro, vidas, tótems, mejor regalo/racha, meta de regalo, duelo, reset o salvar, destacados, **8 estilos de top**, MVP, metas con rayas (monedas/likes/seguidores/combinada), **reloj extensible (subathon)** y **banda de últimos eventos**.
+- **TTS**: lee los comentarios con las voces de tu PC (también en OBS), con reglas, filtros, antispam e historial.
+- **Estudio de escenas**: editor de capas (overlays, imágenes, vídeo, texto, regalos, formas) con una sola URL por escena.
+- **Ajustes**: 10 colores de la app y escala de interfaz para 2K/4K.
 
 ## Descargar (Windows)
 
