@@ -8,18 +8,8 @@ import { useOnAction } from '../lib/live'
 import { Check, PageHeader, Seg } from '../components/ui'
 import { toast } from '../components/Toast'
 import { CardGrid, useFired } from '../overlays/Cards'
+import { OverlayCatalog } from './OverlayCatalog'
 
-const OVERLAYS = [
-  { id: 'tarjetas', name: 'Tarjetas de plugins', desc: 'Todas tus acciones; la que se activa se anima. 1080×400 aprox.' },
-  { id: 'avisos', name: 'Avisos', desc: 'Foto y nombre de quien envía + lo que provocó. 500×600' },
-  { id: 'top-donadores', name: 'Top donadores', desc: 'Ranking del live por monedas. ?n=5' },
-  { id: 'top-likes', name: 'Top likes', desc: 'Ranking del live por likes.' },
-  { id: 'meta-likes', name: 'Meta de likes', desc: 'Barra de progreso de likes de la sala.' },
-  { id: 'mejor-regalo', name: 'Mejor regalo', desc: 'Récord del directo (?scope=ever para el histórico).' },
-  { id: 'marcador', name: 'Marcador W | L', desc: 'Victorias y derrotas.' },
-  { id: 'vidas', name: 'Vidas', desc: 'Corazones; baja al morir el jugador.' },
-  { id: 'cronometro', name: 'Cronómetro', desc: 'Tiempo sobreviviendo.' },
-]
 
 export function OverlaysPage() {
   const { profile } = useApp()
@@ -41,33 +31,10 @@ export function OverlaysPage() {
   return (
     <div className="pb-10">
       <PageHeader title="Overlays" subtitle="Pégalos como «Fuente de navegador» en OBS o como «Enlace» en TikTok LIVE Studio." />
-      <div className="grid gap-3 px-8 md:grid-cols-2 xl:grid-cols-3">
-        {OVERLAYS.map((o) => {
-          const url = overlayUrl(o.id)
-          return (
-            <div key={o.id} className="card p-4">
-              <div className="font-semibold">{o.name}</div>
-              <div className="mb-2 text-xs text-muted">{o.desc}</div>
-              <div className="flex gap-1.5">
-                <input readOnly value={url} className="input font-mono text-[11px]" onFocus={(e) => e.target.select()} />
-                <button
-                  className="btn px-2"
-                  title="Copiar"
-                  onClick={() => navigator.clipboard.writeText(url).then(() => toast('URL copiada'), () => toast('No se pudo copiar', 'error'))}
-                >
-                  <Copy size={14} />
-                </button>
-                <a className="btn px-2" href={url} target="_blank" rel="noreferrer" title="Abrir">
-                  <ExternalLink size={14} />
-                </a>
-              </div>
-            </div>
-          )
-        })}
-      </div>
+      <OverlayCatalog />
 
-      <div className="mt-8 flex items-center px-8">
-        <h2 className="mr-auto text-sm font-semibold tracking-widest text-muted">CÓMO SE VEN LAS TARJETAS</h2>
+      <div className="mt-12 flex items-center px-8">
+        <h2 className="mr-auto text-xl font-extrabold tracking-tight">Estilo de las tarjetas de plugins</h2>
         <button className="btn mr-2" onClick={() => set({ cardStyle: 'minimal', glow: 0, border: 0, background: 0, showGift: true })}>
           <Sparkles size={14} /> Diseño minimalista
         </button>
@@ -148,7 +115,7 @@ export function OverlaysPage() {
           </Row>
         </Panel>
       </div>
-      <div className="mx-6 mt-3 rounded-xl border border-line p-4" style={{ background: 'repeating-conic-gradient(#15181e 0 25%, #101216 0 50%) 0 0/24px 24px' }}>
+      <div className="mx-8 mt-3 rounded-2xl border border-white/5 p-4" style={{ background: 'repeating-conic-gradient(#14141f 0 25%, #0e0e17 0 50%) 0 0/22px 22px' }}>
         <CardGrid profile={{ ...profile, overlay: style }} gifts={gifts} fired={fired} />
         <p className="mt-3 text-center text-xs text-muted">Vista previa en vivo: usa ▶ en Plugins o el Simulador para ver la animación.</p>
       </div>

@@ -6,7 +6,7 @@ import fastifyStatic from '@fastify/static'
 import { z } from 'zod'
 import { KitSchema, OverlayStyleSchema } from '@livearena/shared'
 import { ITEMS } from './items.js'
-import { paths } from './config.js'
+import { ConfigSchema, paths } from './config.js'
 import { ASSETS_DIR, DASHBOARD_DIST } from './resources.js'
 import { SimRequestSchema, Simulator } from './simulator.js'
 import { VERSION, type App } from './app.js'
@@ -174,6 +174,33 @@ export async function buildHttp(app: App): Promise<FastifyInstance> {
   })
   f.post('/api/session/new', async () => {
     app.newSession(app.cfg.get().tiktok.username)
+    return { ok: true }
+  })
+
+  /* ------------------------------- overlays ------------------------------- */
+  f.get('/api/overlays/settings', async () => app.cfg.get().overlays)
+  f.put('/api/overlays/settings', async (req) => {
+    const deepMerge = (a: any, b: any): any => {
+      if (typeof a !== 'object' || a === null || typeof b !== 'object' || b === null || Array.isArray(b)) return b
+      const out: any = { ...a }
+      for (const k of Object.keys(b)) out[k] = deepMerge(a[k], b[k])
+      return out
+    }
+    const merged = deepMerge(app.cfg.get().overlays, req.body ?? {})
+    const parsed = ConfigSchema.shape.overlays.safeParse(merged)
+    if (!parsed.success) throw new HttpError(400, parsed.error.issues[0]?.message ?? 'Ajustes no válidos')
+    app.cfg.update((c) => (c.overlays = parsed.data))
+    app.publishOverlayCfg()
+    app.publishScoreboard()
+    return parsed.data
+  })
+  f.post('/api/overlays/reset', async (req) => {
+    const { what } = parse(z.object({ what: z.enum(['ever', 'live', 'streak', 'goals', 'session']) }), req.body)
+    if (what === 'session') app.newSession(app.cfg.get().tiktok.username)
+    else {
+      app.stats.resetBest(what)
+      app.publishStatsNow()
+    }
     return { ok: true }
   })
 

@@ -11,7 +11,7 @@ import { ProfileStore } from './profiles.js'
 import { StatsStore } from './stats.js'
 import { GiftCatalog } from './gifts.js'
 
-export const VERSION = '0.2.2'
+export const VERSION = '0.3.0'
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
@@ -47,7 +47,9 @@ export class App {
   private profile!: Profile
   private activity: ActivityItem[] = []
   private paused = false
-  private timer = { running: false, startedAt: 0, accumulatedMs: 0 }
+  private timer = { running: false, startedAt: 0, accumulatedMs: 0, ended: false }
+  private lastBad: { user: NonNullable<LiveEvent['user']>; gift?: ActionMessage['gift']; actionName: string; color?: string; ts: number } | null = null
+  private resetSave: { state: 'waiting' | 'saved' | 'reset'; by: string; avatar?: string; needed: number; saved: number; endsAt: number; clearAt?: number } | null = null
 
   constructor() {
     this.log.sink = (l) => this.hub.log(l)
@@ -64,7 +66,7 @@ export class App {
     this.tiktok.on('event', (ev: LiveEvent) => this.onEvent(ev))
     this.tiktok.on('status', (s) => {
       this.hub.setState('source', s)
-      if (s.state === 'live' && s.message?.startsWith('Conectado')) this.newSession(s.target)
+      if (s.state === 'live' && s.message?.startsWith('Conectado') && this.cfg.get().overlays.resetOnNewLive) this.newSession(s.target)
     })
     this.tiktok.on('log', (l: { level: 'info' | 'warn' | 'error'; msg: string }) => this.log[l.level]('tiktok', l.msg))
 
@@ -86,8 +88,10 @@ export class App {
     this.setProfile(active)
     this.hub.setState('source', this.tiktok.status())
     this.hub.setState('minecraft', this.mc.status())
+    this.publishOverlayCfg()
     this.publishStats(true)
     this.publishScoreboard()
+    setInterval(() => this.tickOverlays(), 250).unref()
     const c = this.cfg.get()
     if (c.minecraft.autoConnect && c.minecraft.password) this.mc.connect().catch((e) => this.log.warn('minecraft', `Autoconexión: ${e.message}`))
     if (c.tiktok.autoConnect && c.tiktok.username) this.connectTikTok(c.tiktok.username).catch(() => undefined)
@@ -142,6 +146,7 @@ export class App {
       return
     }
     this.hub.event(ev)
+    this.onResetSaveGift(ev)
     const changed = this.stats.record(ev)
     if (changed.leaderboard || changed.best) this.publishStats(true)
     else if (changed.likes) this.publishStats(false)
@@ -279,6 +284,7 @@ export class App {
 
     const mcCfg = this.cfg.get().minecraft
     const player = mcCfg.player
+    if (action.alignment === 'bad' && user) this.lastBad = { user, gift: base.gift, actionName: action.name, color: action.color, ts: Date.now() }
     this.announce(job)
     if (rule.delayMs > 0) await sleep(rule.delayMs)
     for (let i = 0; i < job.repetitions; i++) {
@@ -408,7 +414,8 @@ export class App {
     } else if (op === 'reset') {
       t.accumulatedMs = 0
       t.startedAt = Date.now()
-    } else if (op === 'add') t.accumulatedMs += seconds * 1000
+      t.ended = false
+    } else if (op === 'add') t.accumulatedMs += this.cfg.get().overlays.timer.mode === 'down' ? -seconds * 1000 : seconds * 1000
     this.publishScoreboard()
   }
 
@@ -418,14 +425,96 @@ export class App {
     if (od.loseLife) this.addScore('lives', -1)
     if (od.addLoss) this.addScore('losses', 1)
     if (od.resetTimer) this.timerOp('reset')
+    const td = this.cfg.get().overlays.timer.onDeath
+    if (td === 'reset') this.timerOp('reset')
+    else if (td === 'pause') this.timerOp('pause')
+    // «¡Te mató!»: el último espectador que mandó algo malo en los últimos 2 minutos.
+    const k = this.lastBad
+    if (k && Date.now() - k.ts < 120_000) {
+      this.hub.action({ kind: 'overlay.killed', user: k.user, gift: k.gift, actionName: k.actionName, color: k.color, params: {}, intensity: 1, priority: 900 })
+      this.log.info('minecraft', `Te mató ${k.user.nickname} (${k.actionName})`)
+    }
+  }
+
+  publishOverlayCfg(): void {
+    const o = this.cfg.get().overlays
+    this.stats.countFullStreak = o.best.countFullStreak
+    this.hub.setState('overlaycfg', o)
+  }
+
+  private timerElapsed(): number {
+    const t = this.timer
+    return t.accumulatedMs + (t.running ? Date.now() - t.startedAt : 0)
+  }
+
+  /** Cuenta atrás que llega a 0 y la ventana de «Reset o salvar». */
+  private tickOverlays(): void {
+    const o = this.cfg.get().overlays
+    if (o.timer.mode === 'down' && this.timer.running && !this.timer.ended && this.timerElapsed() >= o.timer.startSec * 1000) {
+      this.timer.accumulatedMs = o.timer.startSec * 1000
+      this.timer.running = false
+      this.timer.ended = true
+      if (o.timer.endSound) this.hub.action({ kind: 'sound', params: { file: o.timer.endSound, volume: o.timer.endVolume }, user: null, intensity: 1, priority: 900 })
+      this.log.info('live', 'La cuenta atrás llegó a 0')
+      this.publishScoreboard()
+    }
+    const r = this.resetSave
+    if (!r) return
+    if (r.state === 'waiting' && Date.now() >= r.endsAt) {
+      r.state = 'reset'
+      r.clearAt = Date.now() + 5000
+      this.executeReset()
+      this.hub.setState('resetsave', r)
+    } else if (r.clearAt && Date.now() >= r.clearAt) {
+      this.resetSave = null
+      this.hub.setState('resetsave', null)
+    }
+  }
+
+  private executeReset(): void {
+    const rs = this.cfg.get().overlays.resetSave
+    if (rs.resetTimer) this.timerOp('reset')
+    if (rs.resetLives) this.setScore({ lives: this.cfg.get().scoreboard.livesStart })
+    if (rs.command.trim()) {
+      const cmd = renderTemplate(rs.command.trim().replace(/^\//, ''), { event: this.testEvent(), player: this.cfg.get().minecraft.player, roomLikes: this.engine.totalRoomLikes })
+      void this.mc.link.enqueue(cmd, 900).catch(() => undefined)
+    }
+    this.log.info('live', '¡RESET! Nadie lo salvó a tiempo')
+  }
+
+  /** Regalo de «reset» abre una ventana; si llegan tantos regalos de «salvar» como los del reset, se salva. */
+  private onResetSaveGift(ev: LiveEvent): void {
+    if (ev.type !== 'gift' || !ev.user) return
+    const rs = this.cfg.get().overlays.resetSave
+    if (!rs.enabled) return
+    const name = ev.payload.name.toLowerCase()
+    const r = this.resetSave
+    if (name === rs.resetGift.toLowerCase()) {
+      if (r && r.state === 'waiting') r.needed += ev.payload.count
+      else this.resetSave = { state: 'waiting', by: ev.user.nickname, avatar: ev.user.avatarUrl, needed: ev.payload.count, saved: 0, endsAt: Date.now() + rs.seconds * 1000 }
+      this.hub.setState('resetsave', this.resetSave)
+    } else if (name === rs.saveGift.toLowerCase() && r && r.state === 'waiting') {
+      r.saved += ev.payload.count
+      if (r.saved >= r.needed) {
+        r.state = 'saved'
+        r.clearAt = Date.now() + 5000
+        this.log.info('live', `¡Salvado! (${r.saved}/${r.needed})`)
+      }
+      this.hub.setState('resetsave', r)
+    }
   }
 
   publishScoreboard(): void {
     const s = this.cfg.get().scoreboard
-    this.hub.setState('scoreboard', { wins: s.wins, losses: s.losses, lives: s.lives, livesStart: s.livesStart, timer: { ...this.timer, now: Date.now() } })
+    const tc = this.cfg.get().overlays.timer
+    this.hub.setState('scoreboard', { wins: s.wins, losses: s.losses, lives: s.lives, livesStart: s.livesStart, timer: { ...this.timer, now: Date.now(), mode: tc.mode, durationMs: tc.startSec * 1000 } })
   }
 
   /* ----------------------------- estadísticas ----------------------------- */
+
+  publishStatsNow(): void {
+    this.publishStats(true)
+  }
 
   private lastLikesPublish = 0
   private publishStats(full: boolean): void {

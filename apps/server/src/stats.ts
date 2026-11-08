@@ -35,6 +35,10 @@ export class StatsStore {
   private roomLikes = 0
   private bestLive: BestGift | null = null
   private bestEver: BestGift | null = null
+  private bestStreak: BestGift | null = null
+  private giftCounts = new Map<string, number>()
+  /** «Contar la racha completa»: 50 rosas seguidas valen 50 (si no, cuenta cada envío suelto). */
+  countFullStreak = true
   private timer: NodeJS.Timeout
 
   constructor(file: string) {
@@ -65,6 +69,17 @@ export class StatsStore {
     this.totals.clear()
     this.roomLikes = 0
     this.bestLive = null
+    this.bestStreak = null
+    this.giftCounts.clear()
+  }
+
+  resetBest(which: 'ever' | 'live' | 'streak' | 'goals'): void {
+    if (which === 'ever') {
+      this.bestEver = null
+      this.db.prepare(`DELETE FROM kv WHERE k='best_ever'`).run()
+    } else if (which === 'live') this.bestLive = null
+    else if (which === 'streak') this.bestStreak = null
+    else this.giftCounts.clear()
   }
 
   /** Devuelve qué cambió (para publicar solo lo necesario). */
@@ -87,14 +102,20 @@ export class StatsStore {
       t.gifts += g.count
       this.giftLog.push([this.sessionId, ev.ts, key, g.name, g.diamonds, g.count])
       out.leaderboard = true
-      // Mejor regalo = mayor valor de una racha completa.
-      const value = g.diamonds * g.streakTotal
-      const cand: BestGift = { user: { uniqueId: u.uniqueId, nickname: u.nickname, avatarUrl: u.avatarUrl }, gift: g.name, diamonds: g.diamonds, count: g.streakTotal, value, imageUrl: g.imageUrl, ts: ev.ts }
-      if (!this.bestLive || value > this.bestLive.value) {
+      this.giftCounts.set(g.name, (this.giftCounts.get(g.name) ?? 0) + g.count)
+      // Mejor regalo = mayor valor (de la racha completa o de cada envío). Con el mismo valor, gana el último.
+      const count = this.countFullStreak ? g.streakTotal : g.count
+      const value = g.diamonds * count
+      const cand: BestGift = { user: { uniqueId: u.uniqueId, nickname: u.nickname, avatarUrl: u.avatarUrl }, gift: g.name, diamonds: g.diamonds, count, value, imageUrl: g.imageUrl, ts: ev.ts }
+      if (!this.bestStreak || g.streakTotal >= this.bestStreak.count) {
+        this.bestStreak = { ...cand, count: g.streakTotal, value: g.diamonds * g.streakTotal }
+        out.best = true
+      }
+      if (!this.bestLive || value >= this.bestLive.value) {
         this.bestLive = cand
         out.best = true
       }
-      if (!this.bestEver || value > this.bestEver.value) {
+      if (!this.bestEver || value >= this.bestEver.value) {
         this.bestEver = cand
         this.db.prepare(`INSERT INTO kv (k, v) VALUES ('best_ever', ?) ON CONFLICT(k) DO UPDATE SET v=excluded.v`).run(JSON.stringify(cand))
         out.best = true
@@ -120,7 +141,7 @@ export class StatsStore {
       diamonds += t.diamonds
       gifts += t.gifts
     }
-    return { sessionId: this.sessionId, roomLikes: this.roomLikes, diamonds, gifts, viewersSeen: this.totals.size, bestLive: this.bestLive, bestEver: this.bestEver }
+    return { sessionId: this.sessionId, roomLikes: this.roomLikes, diamonds, gifts, viewersSeen: this.totals.size, bestLive: this.bestLive, bestEver: this.bestEver, bestStreak: this.bestStreak, giftCounts: Object.fromEntries(this.giftCounts) }
   }
 
   get likes(): number {

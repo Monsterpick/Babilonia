@@ -4,6 +4,7 @@ import { useGifts } from '../lib/catalog'
 import { useLiveState, useOnAction, useTick } from '../lib/live'
 import { Avatar, Media } from '../components/ui'
 import { CardGrid, useFired } from './Cards'
+import { BestV2, CombinedOverlay, DuelOverlay, FeaturedOverlay, GiftGoalOverlay, GoalBar, LivesV2, MvpOverlay, NoticesOverlay, ResetSaveOverlay, ScoreV2, TimerV2, TopV2, TotemsOverlay } from './Pro'
 
 /**
  * Overlays para "fuente de navegador" de OBS / TikTok LIVE Studio. Fondo transparente.
@@ -20,24 +21,64 @@ export function OverlayRouter({ name }: { name: string }) {
       case 'avisos':
         return <AlertsOverlay />
       case 'top-donadores':
-        return <TopOverlay kind="donors" />
+      case 'top-regalos':
+        return <TopV2 kind="donors" />
       case 'top-likes':
-        return <TopOverlay kind="likers" />
+        return <TopV2 kind="likers" />
       case 'meta-likes':
-        return <LikeGoalOverlay />
+        return <GoalBar metric="likes" />
+      case 'meta-monedas':
+        return <GoalBar metric="coins" />
+      case 'meta-combinada':
+        return <GoalBar metric="combined" />
       case 'marcador':
-        return <ScoreOverlay />
+      case 'contador':
+        return <ScoreV2 />
       case 'vidas':
-        return <LivesOverlay />
+        return <LivesV2 />
       case 'cronometro':
-        return <TimerOverlay />
+        return <TimerV2 />
       case 'mejor-regalo':
+        return params.get('scope') === 'live' ? <BestV2 scope="live" /> : <BestV2 scope="ever" />
+      case 'mejor-directo':
+        return <BestV2 scope="live" />
+      case 'mejor-racha':
+        return <BestV2 scope="streak" />
+      case 'logros':
+        return <NoticesOverlay />
+      case 'meta-regalo':
+        return <GiftGoalOverlay />
+      case 'duelo':
+        return <DuelOverlay />
+      case 'reset-salvar':
+        return <ResetSaveOverlay />
+      case 'destacados':
+        return <FeaturedOverlay />
+      case 'mvp-monedas':
+        return <MvpOverlay kind="donors" />
+      case 'mvp-likes':
+        return <MvpOverlay kind="likers" />
+      case 'totems':
+        return <TotemsOverlay />
+      case 'combinado':
+        return <CombinedOverlay />
+      case 'legacy-top':
+        return <TopOverlay kind="donors" />
+      case 'legacy-meta':
+        return <LikeGoalOverlay />
+      case 'legacy-marcador':
+        return <ScoreOverlay />
+      case 'legacy-vidas':
+        return <LivesOverlay />
+      case 'legacy-cronometro':
+        return <TimerOverlay />
+      case 'legacy-mejor':
         return <BestGiftOverlay />
       default:
         return <div style={{ color: '#fff', font: '20px sans-serif' }}>Overlay desconocido: {name}</div>
     }
   })()
-  return <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: `${100 / scale}%` }}>{el}</div>
+  return <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: `${100 / scale}%`, padding: Number(params.get('pad') ?? 14), boxSizing: 'border-box' }}>{el}</div>
 }
 
 function useSounds(): void {
@@ -118,6 +159,8 @@ function AlertsOverlay() {
     if (queue.current.length > 50) queue.current.sort((x, y) => y.priority - x.priority).splice(50)
   })
   useEffect(() => {
+    if (params.get('demo') === '1')
+      queue.current.push({ kind: 'overlay.card', params: { count: 5 }, user: { id: 'demo', uniqueId: 'demo', nickname: 'Espectador' }, actionName: 'CREEPER', color: '#16a34a', gift: { name: 'Rose', diamonds: 1, count: 5 }, intensity: 0.4, priority: 1 } as ActionMessage)
     const i = setInterval(() => {
       const next = queue.current.sort((x, y) => y.priority - x.priority).shift()
       if (!next) return

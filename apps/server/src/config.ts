@@ -70,6 +70,56 @@ export const ConfigSchema = z.object({
       onDeath: z.object({ loseLife: z.boolean().default(true), addLoss: z.boolean().default(false), resetTimer: z.boolean().default(false) }).default({}),
     })
     .default({}),
+  /** Ajustes de los overlays (los lee cada overlay en vivo). */
+  overlays: z
+    .object({
+      timer: z
+        .object({
+          mode: z.enum(['up', 'down']).default('up'),
+          startSec: z.number().int().min(0).max(359999).default(600),
+          onDeath: z.enum(['none', 'reset', 'pause']).default('none'),
+          endSound: z.string().max(500).default(''),
+          endVolume: z.number().min(0).max(1).default(0.8),
+          minimal: z.boolean().default(false),
+        })
+        .default({}),
+      score: z.object({ minimal: z.boolean().default(false) }).default({}),
+      lives: z.object({ title: z.string().max(30).default('VIDAS'), color: z.string().max(20).default('#ff3d6e'), minimal: z.boolean().default(false) }).default({}),
+      best: z.object({ title: z.string().max(40).default('MEJOR REGALO'), color: z.string().max(20).default('#ffb547'), countFullStreak: z.boolean().default(true), minimal: z.boolean().default(false) }).default({}),
+      bestLive: z.object({ title: z.string().max(40).default('TOP REGALO DEL LIVE'), color: z.string().max(20).default('#38bdf8'), minimal: z.boolean().default(false) }).default({}),
+      streak: z.object({ title: z.string().max(40).default('MEJOR RACHA'), color: z.string().max(20).default('#c084fc') }).default({}),
+      giftGoal: z.object({ gift: z.string().max(80).default('Rose'), target: z.number().int().min(1).default(100), title: z.string().max(40).default('META') }).default({}),
+      duel: z
+        .object({
+          a: z.object({ gift: z.string().max(80).default('Rose'), label: z.string().max(30).default('EQUIPO 1') }).default({}),
+          b: z.object({ gift: z.string().max(80).default('Finger Heart'), label: z.string().max(30).default('EQUIPO 2') }).default({}),
+          target: z.number().int().min(1).default(100),
+        })
+        .default({}),
+      resetSave: z
+        .object({
+          enabled: z.boolean().default(false),
+          resetGift: z.string().max(80).default('GG'),
+          saveGift: z.string().max(80).default('Rose'),
+          seconds: z.number().int().min(3).max(120).default(10),
+          /** Qué hace el reset si nadie lo salva. */
+          resetTimer: z.boolean().default(true),
+          resetLives: z.boolean().default(false),
+          command: z.string().max(500).default(''),
+        })
+        .default({}),
+      featured: z.object({ minCoins: z.number().int().min(1).default(100), seconds: z.number().int().min(2).max(600).default(10) }).default({}),
+      goals: z
+        .object({
+          coins: z.object({ target: z.number().int().min(1).default(5000), label: z.string().max(40).default('META DE MONEDAS') }).default({}),
+          combined: z.object({ target: z.number().int().min(1).default(20000), label: z.string().max(40).default('META DEL LIVE') }).default({}),
+        })
+        .default({}),
+      top: z.object({ style: z.enum(['tarjetas', 'barras', 'neon', 'desfile', 'minimo', 'arcade', 'oro']).default('oro'), n: z.number().int().min(1).max(10).default(10) }).default({}),
+      /** Reiniciar regalos y rankings al conectar un live nuevo. */
+      resetOnNewLive: z.boolean().default(true),
+    })
+    .default({}),
   /** Mensajes en el chat de Minecraft cuando un espectador activa algo. */
   chat: z
     .object({
