@@ -53,14 +53,23 @@ final class Effects {
         void run(Player p, String viewer, String[] args);
     }
 
-    record Def(String id, String nombre, TextColor color, boolean bueno, String ayuda, Fx fx) {}
+    record Def(String id, String nombre, TextColor color, boolean bueno, String ayuda, Fx fx, boolean ownTitle) {}
 
     private final Map<String, Def> defs = new LinkedHashMap<>();
+
+    final Vfx vfx;
 
     Effects(LiveArenaPlugin plugin) {
         this.plugin = plugin;
         this.tag = new NamespacedKey(plugin, "efecto");
+        this.vfx = new Vfx(plugin);
         register();
+        new Specials(plugin, this, vfx).register();
+        new Characters(plugin, this, vfx).register();
+    }
+
+    NamespacedKey tag() {
+        return tag;
     }
 
     Map<String, Def> all() {
@@ -69,7 +78,7 @@ final class Effects {
 
     /** Quita todos los mobs invocados por efectos. Devuelve cuántos. */
     int clear() {
-        int n = 0;
+        int n = vfx.cleanup();
         for (World w : Bukkit.getWorlds())
             for (LivingEntity e : w.getLivingEntities())
                 if (e.getPersistentDataContainer().has(tag, PersistentDataType.BYTE)) {
@@ -83,13 +92,26 @@ final class Effects {
 
     private static final ThreadLocalRandom R = ThreadLocalRandom.current();
 
-    private static TextColor hex(String h) {
+    static ThreadLocalRandom rnd() {
+        return ThreadLocalRandom.current();
+    }
+
+    static double rndAngle() {
+        return ThreadLocalRandom.current().nextDouble(Math.PI * 2);
+    }
+
+    static TextColor hex(String h) {
         TextColor c = TextColor.fromHexString(h);
         return c == null ? NamedTextColor.WHITE : c;
     }
 
-    private void add(String id, String nombre, String color, boolean bueno, String ayuda, Fx fx) {
-        defs.put(id, new Def(id, nombre, hex(color), bueno, ayuda, fx));
+    void add(String id, String nombre, String color, boolean bueno, String ayuda, Fx fx) {
+        defs.put(id, new Def(id, nombre, hex(color), bueno, ayuda, fx, false));
+    }
+
+    /** Efecto con títulos propios (no se muestra el título genérico, solo el aviso en el chat). */
+    void addSpecial(String id, String nombre, String color, boolean bueno, String ayuda, Fx fx) {
+        defs.put(id, new Def(id, nombre, hex(color), bueno, ayuda, fx, true));
     }
 
     private int maxMobs() {
@@ -103,7 +125,7 @@ final class Effects {
     }
 
     /** Sitio libre cerca del jugador (en el suelo, a cierta distancia). */
-    private static Location around(Player p, double min, double max) {
+    static Location around(Player p, double min, double max) {
         Location base = p.getLocation();
         World w = base.getWorld();
         for (int i = 0; i < 12; i++) {
@@ -121,12 +143,12 @@ final class Effects {
         return base.clone().add(R.nextDouble(-2, 2), 0, R.nextDouble(-2, 2));
     }
 
-    private Component viewerName(String viewer, TextColor color) {
+    Component viewerName(String viewer, TextColor color) {
         return Component.text(viewer == null || viewer.isBlank() ? "LIVE" : viewer, color).decorate(TextDecoration.BOLD);
     }
 
     /** Invoca un mob con el nombre del espectador que va a por el jugador. */
-    private Entity mob(Player p, EntityType type, String viewer, TextColor color, double min, double max) {
+    Entity mob(Player p, EntityType type, String viewer, TextColor color, double min, double max) {
         if (maxMobs() > 0 && liveMobs() >= maxMobs()) {
             p.sendActionBar(Component.text("Límite de mobs alcanzado (" + maxMobs() + ")", NamedTextColor.RED));
             return null;
@@ -155,7 +177,7 @@ final class Effects {
         return it;
     }
 
-    private static void give(Player p, ItemStack... items) {
+    static void give(Player p, ItemStack... items) {
         for (ItemStack left : p.getInventory().addItem(items).values()) p.getWorld().dropItemNaturally(p.getLocation(), left);
     }
 
@@ -163,7 +185,7 @@ final class Effects {
         return list.get(R.nextInt(list.size()));
     }
 
-    private static int arg(String[] a, int i, int def, int min, int max) {
+    static int arg(String[] a, int i, int def, int min, int max) {
         if (a == null || a.length <= i) return def;
         try {
             return Math.max(min, Math.min(max, Integer.parseInt(a[i])));
@@ -196,7 +218,7 @@ final class Effects {
     void announce(Player p, Def d, String viewer) {
         Component t = Component.text(d.nombre(), d.color()).decorate(TextDecoration.BOLD);
         Component sub = Component.text(d.bueno() ? "regalo de " : "enviado por ", NamedTextColor.WHITE).append(Component.text(viewer.isBlank() ? "el chat" : viewer, NamedTextColor.YELLOW).decorate(TextDecoration.BOLD));
-        p.showTitle(Title.title(t, sub, Title.Times.times(Duration.ofMillis(120), Duration.ofMillis(1400), Duration.ofMillis(350))));
+        if (!d.ownTitle()) p.showTitle(Title.title(t, sub, Title.Times.times(Duration.ofMillis(120), Duration.ofMillis(1400), Duration.ofMillis(350))));
         if (plugin.getConfig().getBoolean("efectos.anunciar-en-chat", true)) {
             Component msg = Component.text("[", NamedTextColor.DARK_GRAY)
                     .append(Component.text("LIVE", d.bueno() ? NamedTextColor.GREEN : NamedTextColor.RED).decorate(TextDecoration.BOLD))
@@ -441,6 +463,51 @@ final class Effects {
         add("noche", "NOCHE", "#1e3a8a", false, "Se hace de noche", (p, v, a) -> p.getWorld().setTime(14000));
         add("dia", "DÍA", "#fde68a", true, "Se hace de día", (p, v, a) -> p.getWorld().setTime(1000));
         add("matar", "MUERTE", "#7f1d1d", false, "Mata al jugador", (p, v, a) -> p.setHealth(0));
+
+        // Paridad con el s2e original
+        add("set", "EQUIPO BÁSICO", "#cbd5e1", true, "Da armadura y espada de hierro por defecto", (p, v, a) -> {
+            EntityEquipment eq = p.getEquipment();
+            eq.setHelmet(new ItemStack(Material.IRON_HELMET));
+            eq.setChestplate(new ItemStack(Material.IRON_CHESTPLATE));
+            eq.setLeggings(new ItemStack(Material.IRON_LEGGINGS));
+            eq.setBoots(new ItemStack(Material.IRON_BOOTS));
+            give(p, item(Material.IRON_SWORD, 1));
+        });
+        add("saciedad", "SACIEDAD", "#86efac", true, "No pierdes hambre [segundos]", (p, v, a) -> {
+            p.setFoodLevel(20);
+            p.setSaturation(20f);
+            p.addPotionEffect(new PotionEffect(PotionEffectType.SATURATION, arg(a, 0, 60, 1, 3600) * 20, 0, false, false));
+        });
+        add("jinetes_esqueleto", "JINETES ESQUELETO", "#a3a3a3", false, "Esqueletos montados en arañas [cantidad]", (p, v, a) -> {
+            int n = arg(a, 0, 3, 1, 10);
+            for (int i = 0; i < n; i++) {
+                Entity spider = mob(p, EntityType.SPIDER, v, hex("#7c3aed"), 5, 9);
+                if (spider == null) break;
+                Entity sk = p.getWorld().spawnEntity(spider.getLocation().add(0, 1, 0), EntityType.SKELETON);
+                sk.customName(viewerName(v, hex("#a3a3a3")));
+                sk.getPersistentDataContainer().set(tag, PersistentDataType.BYTE, (byte) 1);
+                spider.addPassenger(sk);
+                if (sk instanceof Mob m) m.setTarget(p);
+            }
+        });
+        add("armob", "MOB EN RADIO", "#e879f9", false, "Mob al azar (con jefes) en un radio [radio]", (p, v, a) -> {
+            int r = arg(a, 0, 8, 2, 30);
+            mob(p, pick(List.of(EntityType.ZOMBIE, EntityType.SKELETON, EntityType.CREEPER, EntityType.RAVAGER, EntityType.WITHER, EntityType.WARDEN, EntityType.EVOKER, EntityType.VINDICATOR, EntityType.WITCH, EntityType.BLAZE)), v, hex("#e879f9"), r * 0.6, r);
+        });
+        add("rmob", "MOB EN RADIO (SIN JEFES)", "#e879f9", false, "Mob al azar sin jefes en un radio [radio]", (p, v, a) -> {
+            int r = arg(a, 0, 8, 2, 30);
+            mob(p, pick(List.of(EntityType.ZOMBIE, EntityType.SKELETON, EntityType.CREEPER, EntityType.SPIDER, EntityType.HUSK, EntityType.STRAY, EntityType.PILLAGER, EntityType.VINDICATOR)), v, hex("#e879f9"), r * 0.6, r);
+        });
+        add("matar_todos", "MUERTE TOTAL", "#7f1d1d", false, "Mata a TODOS los jugadores", (p, v, a) -> {
+            for (Player pl : Bukkit.getOnlinePlayers()) pl.setHealth(0);
+        });
+        add("vaciar_todos", "VACIAR A TODOS", "#ef4444", false, "Vacía el inventario de TODOS", (p, v, a) -> {
+            for (Player pl : Bukkit.getOnlinePlayers()) pl.getInventory().clear();
+        });
+        add("rayo_todos", "RAYO A TODOS", "#fde047", false, "Un rayo sobre cada jugador", (p, v, a) -> {
+            for (Player pl : Bukkit.getOnlinePlayers()) pl.getWorld().strikeLightning(pl.getLocation());
+        });
+
     }
 
     private void armor(LivingEntity e, String kind) {

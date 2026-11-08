@@ -254,3 +254,61 @@ export function laSurvivalProfile(): Profile {
     ],
   })
 }
+
+/** Perfil «LiveArena Épico»: efectos espectaculares del plugin propio para regalos grandes. */
+export function laEpicProfile(): Profile {
+  const fn = (id: string, name: string, color: string, commands: string[], alignment: 'good' | 'bad' = 'bad'): ActionInput => ({
+    id, name, color, alignment,
+    steps: commands.map((c) => ({ type: 'minecraft.command' as const, commands: [c], mode: 'all' as const })),
+  })
+  const fxc = (efecto: string, extra = '') => `la efecto ${efecto} {player} {nickname}${extra ? ` ${extra}` : ''}`
+  const gift = (id: string, name: string, diamonds: number, action: string) => ({ id, trigger: { type: 'gift' as const, gifts: [{ name, diamonds }] }, actionIds: [action] })
+  return ProfileSchema.parse({
+    id: 'la-epico',
+    name: 'LiveArena Épico',
+    mode: 'supervivencia',
+    actions: [
+      fn('ep-creeper', 'CREEPER', '#22c55e', [fxc('creeper')]),
+      fn('ep-telarana', 'TELARAÑA', '#e5e7eb', [fxc('telarana')]),
+      fn('ep-escudo', 'ESCUDO', '#34e0a1', [fxc('escudo_energia', '15')], 'good'),
+      fn('ep-totem', 'TÓTEM APILABLE', '#ffcc33', ['la totem add {player} {gift.count} {nickname}'], 'good'),
+      fn('ep-onda', 'ONDA DE REPULSIÓN', '#9be7ff', [fxc('onda_repulsion')]),
+      fn('ep-corona', 'CORONA DE ESPADAS', '#e5e7eb', [fxc('corona_espadas', '8')]),
+      fn('ep-rayo', 'SÚPER RAYO', '#5ef2ff', [fxc('super_rayo', '5')]),
+      fn('ep-trueno', 'TRUENO + EXPLOSIÓN', '#ffe066', [fxc('trueno_explosion', '4')]),
+      fn('ep-parca', 'LA PARCA', '#9ca3af', [fxc('parca')]),
+      fn('ep-carrusel', 'CARRUSEL DE CREEPERS', '#22c55e', [fxc('carrusel_creepers')]),
+      fn('ep-ojo', 'OJO DEL VACÍO', '#b15cff', [fxc('ojo_vacio', '6')]),
+      fn('ep-agujero', 'AGUJERO NEGRO', '#9b59ff', [fxc('agujero_negro', '8')]),
+      fn('ep-arcano', 'JUICIO ARCANO', '#ff7b00', [fxc('juicio_arcano', '6')]),
+      fn('ep-dragones', 'DRAGONES', '#7c3aed', [fxc('dragones', '6')]),
+      fn('ep-akaza', 'AKAZA', '#3fa9ff', [fxc('akaza', '8')]),
+      fn('ep-gojo', 'GOJO · HUECO MORADO', '#b15cff', [fxc('gojo_purpura', '10')]),
+      fn('ep-genkidama', 'ESFERA DE ENERGÍA', '#67e8f9', [fxc('genkidama', '8')]),
+      fn('ep-mil', 'MIL CORTES', '#ff3b3b', [fxc('mil_cortes', '12')]),
+      fn('ep-dominio', 'GOJO · VACÍO INFINITO', '#dca0ff', [fxc('gojo_dominio', '14')]),
+      fn('ep-meteorito', 'METEORITO', '#ff6a1a', [fxc('meteorito_gigante', '6')]),
+    ],
+    events: [
+      { id: 'ep-ev-follow', trigger: { type: 'follow', oncePerUser: true }, actionIds: ['ep-escudo'] },
+      { id: 'ep-ev-likes', trigger: { type: 'likes', every: 200 }, actionIds: ['ep-creeper'] },
+      gift('ep-ev-rose', 'Rose', 1, 'ep-telarana'),
+      gift('ep-ev-heartme', 'Heart Me', 1, 'ep-totem'),
+      gift('ep-ev-gg', 'GG', 1, 'ep-onda'),
+      gift('ep-ev-finger', 'Finger Heart', 5, 'ep-corona'),
+      gift('ep-ev-perfume', 'Perfume', 20, 'ep-rayo'),
+      gift('ep-ev-donut', 'Doughnut', 30, 'ep-trueno'),
+      gift('ep-ev-hearts', 'Hand Hearts', 100, 'ep-parca'),
+      gift('ep-ev-confetti', 'Confetti', 100, 'ep-carrusel'),
+      gift('ep-ev-sunglasses', 'Sunglasses', 199, 'ep-ojo'),
+      gift('ep-ev-corgi', 'Corgi', 299, 'ep-agujero'),
+      gift('ep-ev-moneygun', 'Money Gun', 500, 'ep-arcano'),
+      gift('ep-ev-galaxy', 'Galaxy', 1000, 'ep-akaza'),
+      gift('ep-ev-gol', 'Gol', 999, 'ep-gojo'),
+      gift('ep-ev-fireworks', 'Fireworks', 1088, 'ep-genkidama'),
+      gift('ep-ev-lion', 'Lion', 29999, 'ep-dominio'),
+      { id: 'ep-ev-big', trigger: { type: 'diamonds', min: 5000 }, actionIds: ['ep-meteorito'] },
+      { id: 'ep-ev-room', trigger: { type: 'room_likes', goal: 10000, step: 10000 }, actionIds: ['ep-mil'] },
+    ],
+  })
+}

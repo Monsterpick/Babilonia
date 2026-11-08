@@ -3,7 +3,7 @@ import path from 'node:path'
 import zlib from 'node:zlib'
 import { ProfileSchema, type Profile } from '@livearena/shared'
 import { paths } from './config.js'
-import { defaultProfiles, laSurvivalProfile, s2eProfile } from './default-profiles.js'
+import { defaultProfiles, laEpicProfile, laSurvivalProfile, s2eProfile } from './default-profiles.js'
 
 const safeId = (id: string) => id.toLowerCase().replace(/[^a-z0-9_-]/g, '-').slice(0, 64) || 'perfil'
 
@@ -39,6 +39,13 @@ export class ProfileStore {
     } catch {
       if (!this.cache.has('la-survival')) await this.save(laSurvivalProfile(), false)
       await fs.writeFile(marker3, new Date().toISOString())
+    }
+    const marker4 = path.join(paths.profiles, '.ejemplos-v4')
+    try {
+      await fs.access(marker4)
+    } catch {
+      if (!this.cache.has('la-epico')) await this.save(laEpicProfile(), false)
+      await fs.writeFile(marker4, new Date().toISOString())
     }
   }
 
