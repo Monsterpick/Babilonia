@@ -1,3 +1,4 @@
+import { askConfirm } from '../components/Dialog'
 import { useEffect, useRef, useState } from 'react'
 import type { LiveEvent, LogLine } from '@livearena/shared'
 import { useApp } from '../App'
@@ -109,7 +110,7 @@ export function ActivityPage() {
         <div className="space-y-4">
           <Ranking title="Top donadores" rows={(stats?.donors ?? []).map((d: any) => ({ ...d, value: `🪙 ${d.diamonds}` }))} />
           <Ranking title="Top likes" rows={(stats?.likers ?? []).map((d: any) => ({ ...d, value: `❤ ${d.likes}` }))} />
-          <button className="btn w-full justify-center" onClick={() => confirm('¿Empezar una sesión nueva? Se reinician ranking y contadores del live.') && api('POST', '/api/session/new')}>
+          <button className="btn w-full justify-center" onClick={async () => (await askConfirm('¿Empezar una sesión nueva? Se reinician ranking y contadores del live.')) && api('POST', '/api/session/new')}>
             Nueva sesión de estadísticas
           </button>
         </div>

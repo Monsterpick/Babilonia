@@ -7,6 +7,7 @@ import { triggerLabel, ruleSummary, useGifts } from '../lib/catalog'
 import { useOnAction } from '../lib/live'
 import { Media, Modal, PageHeader, Toggle, TriggerChip } from '../components/ui'
 import { toast } from '../components/Toast'
+import { askConfirm, askText } from '../components/Dialog'
 import { newRule } from '../components/RuleEditor'
 import { FunctionEditor } from '../components/FunctionEditor'
 
@@ -41,8 +42,8 @@ export function PluginsPage() {
 
   const patchEvent = (id: string, patch: Partial<EventRule>) => save({ ...profile, events: profile.events.map((e) => (e.id === id ? { ...e, ...patch } : e)) })
 
-  const removeRow = (ev: EventRule) => {
-    if (!confirm('¿Borrar este comando?')) return
+  const removeRow = async (ev: EventRule) => {
+    if (!(await askConfirm('¿Borrar este comando?', { danger: true }))) return
     const stillUsed = new Set(profile.events.filter((e) => e.id !== ev.id).flatMap((e) => e.actionIds))
     void save({ ...profile, events: profile.events.filter((e) => e.id !== ev.id), actions: profile.actions.filter((a) => stillUsed.has(a.id)) })
   }
@@ -86,7 +87,7 @@ export function PluginsPage() {
   }
 
   const newProfile = async () => {
-    const name = prompt('Nombre del nuevo perfil (se copia del actual):', `${profile.name} 2`)
+    const name = await askText('Nombre del nuevo perfil (se copia del actual):', `${profile.name} 2`)
     if (!name) return
     const p = await api<Profile>('POST', `/api/profiles/${profile.id}/duplicate`, { name })
     await switchProfile(p.id)
@@ -251,7 +252,7 @@ function BackupsModal({ open, onClose, profile }: { open: boolean; onClose: () =
             <button
               className="btn"
               onClick={async () => {
-                if (!confirm('¿Restaurar esta copia? (lo actual también queda guardado)')) return
+                if (!(await askConfirm('¿Restaurar esta copia? (lo actual también queda guardado)'))) return
                 await api('POST', `/api/profiles/${profile.id}/restore`, { file: b.file })
                 toast('Copia restaurada')
                 setList(null)

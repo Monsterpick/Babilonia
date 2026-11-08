@@ -28,12 +28,21 @@ async function boot(): Promise<void> {
   process.env.LIVEARENA_RESOURCES = app.isPackaged ? path.join(process.resourcesPath, 'res') : path.join(__dirname, 'res')
   process.env.LIVEARENA_DATA ??= path.join(app.getPath('userData'), 'datos')
 
+  // En Windows, tras un diálogo nativo la página puede quedarse sin foco de teclado: lo devolvemos.
+  const refocus = () => {
+    if (!win || win.isDestroyed()) return
+    win.blur()
+    win.focus()
+    win.webContents.focus()
+  }
   ipcMain.handle('pick-folder', async (_e, title: string) => {
     const r = await dialog.showOpenDialog(win!, { title: title || 'Elegir carpeta', properties: ['openDirectory', 'createDirectory'] })
+    refocus()
     return r.canceled ? null : r.filePaths[0]
   })
   ipcMain.handle('pick-file', async (_e, opts: { title?: string; extensions?: string[] }) => {
     const r = await dialog.showOpenDialog(win!, { title: opts?.title, properties: ['openFile'], filters: opts?.extensions ? [{ name: 'Archivos', extensions: opts.extensions }] : [] })
+    refocus()
     return r.canceled ? null : r.filePaths[0]
   })
   ipcMain.handle('open-path', (_e, p: string) => shell.openPath(p))
@@ -63,6 +72,7 @@ async function boot(): Promise<void> {
     void shell.openExternal(url)
     return { action: 'deny' }
   })
+  win.on("focus", () => win?.webContents.focus())
   await win.loadURL(server.url)
 }
 

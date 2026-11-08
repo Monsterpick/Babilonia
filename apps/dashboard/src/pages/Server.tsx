@@ -9,6 +9,7 @@ import { desktop } from '../lib/desktop'
 import { useLiveState, useOnLog } from '../lib/live'
 import { Check, Field, Modal, PageHeader, Seg, Toggle } from '../components/ui'
 import { toast } from '../components/Toast'
+import { askConfirm } from '../components/Dialog'
 
 type ModalId = 'install' | 'settings' | 'terminal' | 'plugins' | 'rules' | 'chat' | 'properties' | 'adopt' | null
 
@@ -561,6 +562,18 @@ function SettingsModal({ onClose, open }: { onClose: () => void; open: (m: Modal
           <button className="text-xs text-sky-300 hover:underline" onClick={() => open('properties')}>
             Editar server.properties
           </button>
+          <button
+            className="text-xs text-bad hover:underline"
+            onClick={async () => {
+              if (!(await askConfirm('¿Reiniciar el mundo?\nEl mundo actual se guarda en la carpeta «mundos-anteriores» y al encender se crea uno nuevo.\nÚsalo si el servidor no arranca porque el mundo está dañado.', { danger: true }))) return
+              void run(async () => {
+                const r = await api<{ moved: string[] }>('POST', '/api/minecraft/server/reset-world')
+                toast(r.moved.length ? 'Mundo reiniciado: al encender se crea uno nuevo' : 'No había mundo que reiniciar')
+              })
+            }}
+          >
+            Reiniciar mundo
+          </button>
           <span className="mr-auto" />
           <button className="btn bg-sky-600 text-white" onClick={() => open('plugins')}>
             <Puzzle size={14} /> Plugins
@@ -660,7 +673,7 @@ function PluginsModal({ onClose }: { onClose: () => void }) {
               <span className={`mr-auto truncate ${p.enabled ? '' : 'text-muted line-through'}`}>{p.name}</span>
               <span className="text-xs text-muted">{(p.size / 1024).toFixed(0)} KB</span>
               <Toggle on={p.enabled} onChange={(v) => void run(() => api('POST', '/api/minecraft/server/plugins/toggle', { file: p.file, enabled: v }).then(setList))} />
-              <button className="text-muted hover:text-bad" onClick={() => confirm(`¿Quitar ${p.name}?`) && void run(() => api('POST', '/api/minecraft/server/plugins/remove', { file: p.file }).then(setList))}>
+              <button className="text-muted hover:text-bad" onClick={async () => (await askConfirm(`¿Quitar ${p.name}?`, { danger: true })) && void run(() => api('POST', '/api/minecraft/server/plugins/remove', { file: p.file }).then(setList))}>
                 <Trash2 size={15} />
               </button>
             </div>

@@ -10,7 +10,7 @@ import { ProfileStore } from './profiles.js'
 import { StatsStore } from './stats.js'
 import { GiftCatalog } from './gifts.js'
 
-export const VERSION = '0.2.1'
+export const VERSION = '0.2.2'
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 

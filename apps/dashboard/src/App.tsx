@@ -10,6 +10,7 @@ import { SimulatorPage } from './pages/Simulator'
 import { ServerPage } from './pages/Server'
 import { ActivityPage } from './pages/Activity'
 import { SettingsPage } from './pages/Settings'
+import { Dialogs } from './components/Dialog'
 import { Toasts, toast } from './components/Toast'
 
 export interface AppState {
@@ -102,6 +103,7 @@ export function App() {
         </main>
       </div>
       <Toasts />
+      <Dialogs />
     </AppCtx.Provider>
   )
 }
@@ -149,10 +151,7 @@ function TopBar() {
         <span className={`h-2 w-2 rounded-full ${wsOk ? 'bg-ok' : 'bg-bad'}`} /> {wsOk ? 'app conectada' : 'reconectando con la app…'}
         {source?.viewers !== undefined && st === 'live' && <span className="ml-3">👁 {source.viewers}</span>}
       </div>
-      <div className="flex items-center gap-2 rounded-lg border border-line bg-panel px-3 py-1.5 text-sm">
-        <span className="text-muted">Nick</span>
-        <span className="font-semibold">{mc?.player || <span className="text-warn">sin configurar</span>}</span>
-      </div>
+      <NickField current={mc?.player ?? state?.config?.minecraft?.player ?? ''} onSaved={reload} />
       <div className="flex items-center gap-2 rounded-lg border border-line bg-panel px-3 py-1 text-sm">
         <span className="text-muted">TikTok</span>
         <input
@@ -173,6 +172,43 @@ function TopBar() {
         {active ? 'Desconectar' : 'Conectar live'}
       </button>
     </header>
+  )
+}
+
+/** Tu nick de Minecraft, editable desde la barra superior (Enter o salir del campo para guardar). */
+function NickField({ current, onSaved }: { current: string; onSaved: () => Promise<void> | void }) {
+  const [v, setV] = useState(current)
+  useEffect(() => setV(current), [current])
+  const save = async () => {
+    const nick = v.trim()
+    if (nick === current) return
+    if (nick && !/^[A-Za-z0-9_]{3,16}$/.test(nick)) {
+      toast('El nick de Minecraft lleva de 3 a 16 letras, números o _', 'error')
+      setV(current)
+      return
+    }
+    try {
+      await api('PUT', '/api/config', { player: nick })
+      await onSaved()
+      toast(nick ? `Nick guardado: ${nick}` : 'Nick borrado')
+    } catch (e) {
+      toast((e as Error).message, 'error')
+      setV(current)
+    }
+  }
+  return (
+    <label className={`flex cursor-text items-center gap-2 rounded-lg border bg-panel px-3 py-1 text-sm ${current ? 'border-line' : 'border-warn/60'}`} title="Tu nick de Minecraft: a quién le llegan los mobs y regalos">
+      <span className="text-muted">Nick</span>
+      <input
+        value={v}
+        maxLength={16}
+        onChange={(e) => setV(e.target.value.replace(/\s/g, ''))}
+        onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+        onBlur={save}
+        placeholder="sin configurar"
+        className="w-32 bg-transparent font-semibold outline-none placeholder:font-normal placeholder:text-warn"
+      />
+    </label>
   )
 }
 

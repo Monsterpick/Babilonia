@@ -18,6 +18,7 @@ export interface StartOptions {
 export class ServerProcess extends EventEmitter {
   private child: ChildProcess | null = null
   private state: ServerProcState = 'stopped'
+  private warnedWorld = false
   private readonly lines: string[] = []
 
   get status(): { state: ServerProcState; pid?: number } {
@@ -29,6 +30,7 @@ export class ServerProcess extends EventEmitter {
   }
 
   start(o: StartOptions): void {
+    this.warnedWorld = false
     if (this.child) throw new Error('El servidor ya está encendido.')
     const xmx = Math.max(512, Math.round(o.xmxMB))
     const xms = Math.max(256, Math.min(xmx, Math.round(o.xmsMB)))
@@ -62,9 +64,11 @@ export class ServerProcess extends EventEmitter {
     this.child?.stdin?.write(`${command.replace(/[\r\n]/g, ' ')}\n`)
   }
 
-  async stop(timeoutMs = 45_000): Promise<void> {
+  async stop(timeoutMs?: number): Promise<void> {
     const child = this.child
     if (!child) return
+    // Si nunca terminó de arrancar (p. ej. se colgó por un error), no hace falta esperar tanto.
+    timeoutMs ??= this.state === 'starting' ? 10_000 : 45_000
     this.setState('stopping')
     this.console('stop')
     await new Promise<void>((resolve) => {
@@ -95,6 +99,10 @@ export class ServerProcess extends EventEmitter {
     if (/You need to agree to the EULA/i.test(line)) this.pushLine('[LiveArena] Falta aceptar el EULA en eula.txt.')
     if (/UnsupportedClassVersionError|has been compiled by a more recent version/.test(line))
       this.pushLine('[LiveArena] Tu Java es demasiado antiguo para esta versión de Minecraft.')
+    if (/Overworld settings missing|Unable to read or access the world gen settings/i.test(line) && !this.warnedWorld) {
+      this.warnedWorld = true
+      this.pushLine('[LiveArena] El mundo está dañado (seguramente un arranque anterior falló a medias). Apaga y usa Ajustes del servidor → «Reiniciar mundo»: guardo el viejo y se crea uno nuevo.')
+    }
     if (/FAILED TO BIND TO PORT/i.test(line))
       this.pushLine('[LiveArena] El puerto del servidor está ocupado por otro programa (¿otro servidor de Minecraft abierto?). Ciérralo o cambia server-port en Ajustes del servidor.')
   }

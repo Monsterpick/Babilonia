@@ -433,6 +433,35 @@ export class MinecraftService extends EventEmitter {
     return f
   }
 
+  /**
+   * Reinicia el mundo: mueve las carpetas del mundo (no las borra) a «mundos-anteriores/<fecha>».
+   * El servidor genera uno nuevo al encender. Solo con el servidor apagado.
+   */
+  async resetWorld(): Promise<{ movedTo: string; moved: string[] }> {
+    const folder = this.requireFolder()
+    const st = this.proc.status.state
+    if (st === 'running' || st === 'starting' || st === 'stopping') throw new Error('Apaga el servidor antes de reiniciar el mundo.')
+    const props = await readProperties(path.join(folder, 'server.properties'))
+    const level = props.get('level-name') || 'world'
+    const stamp = new Date().toISOString().replace(/[:T]/g, '-').slice(0, 19)
+    const dest = path.join(folder, 'mundos-anteriores', stamp)
+    const moved: string[] = []
+    for (const name of [level, `${level}_nether`, `${level}_the_end`]) {
+      const src = path.join(folder, name)
+      try {
+        await fs.access(src)
+      } catch {
+        continue
+      }
+      await fs.mkdir(dest, { recursive: true })
+      await fs.rename(src, path.join(dest, name))
+      moved.push(name)
+    }
+    this.proc.note(moved.length ? `Mundo reiniciado. El anterior está en mundos-anteriores/${stamp}. Al encender se crea uno nuevo.` : 'No había mundo que reiniciar.')
+    this.log.info('servidor', `Mundo reiniciado (${moved.join(', ') || 'nada'})`)
+    return { movedTo: dest, moved }
+  }
+
   async getSettings() {
     const folder = this.requireFolder()
     const s = this.cfg.get().minecraft.server

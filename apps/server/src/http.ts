@@ -392,6 +392,7 @@ export async function buildHttp(app: App): Promise<FastifyInstance> {
     await fsp.writeFile(path.join(paths.plugins, name), req.body as Buffer).catch(() => undefined)
     return app.mc.listServerPlugins()
   })
+  f.post('/api/minecraft/server/reset-world', async () => app.mc.resetWorld())
   f.get('/api/minecraft/gamerules', async () => app.mc.getGameRules())
   f.post('/api/minecraft/gamerules', async (req) => {
     const { id, value } = parse(z.object({ id: z.string().min(1).max(60), value: z.string().max(10) }), req.body)
