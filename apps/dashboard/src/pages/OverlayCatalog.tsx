@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { Copy, ExternalLink, Minus, Pause, Play, Plus, RotateCcw } from 'lucide-react'
+import { Copy, ExternalLink, Minus, Pause, Play, Plus, RotateCcw, Sparkles } from 'lucide-react'
 import { api, overlayUrl } from '../lib/api'
 import { useLiveState } from '../lib/live'
 import { Check, Modal, Seg } from '../components/ui'
@@ -17,6 +17,10 @@ interface Def {
   h: number
   settings?: (cfg: Cfg, set: (patch: Cfg) => void) => ReactNode
   tools?: () => ReactNode
+  /** Ocupa toda la fila (para overlays altos como los tops, que necesitan una vista previa grande). */
+  wide?: boolean
+  /** Arranca con el ejemplo activado (útil en overlays que de otro modo salen vacíos). */
+  demoFirst?: boolean
 }
 
 const copy = (url: string) => navigator.clipboard.writeText(url).then(() => toast('Enlace copiado'), () => toast('No se pudo copiar', 'error'))
@@ -429,8 +433,8 @@ const SECTIONS: { title: string; hint: string; items: Def[] }[] = [
     title: 'Rankings',
     hint: 'Los que más aportan. Elige el estilo que más te guste.',
     items: [
-      { id: 'top-regalos', name: 'Top regalos', desc: 'Quién más monedas ha regalado. ?align=right para alinearlo a la derecha.', w: 440, h: 760, settings: topSettings },
-      { id: 'top-likes', name: 'Top likes', desc: 'Quién más likes ha dado.', w: 440, h: 760, settings: topSettings },
+      { id: 'top-regalos', name: 'Top regalos', desc: 'Quién más monedas ha regalado. ?align=right para alinearlo a la derecha.', w: 440, h: 800, settings: topSettings, wide: true, demoFirst: true },
+      { id: 'top-likes', name: 'Top likes', desc: 'Quién más likes ha dado.', w: 440, h: 800, settings: topSettings, wide: true, demoFirst: true },
       { id: 'mvp-monedas', name: 'MVP de monedas', desc: 'Solo el número 1, en grande.', w: 480, h: 150 },
       { id: 'mvp-likes', name: 'MVP de likes', desc: 'Solo el número 1 de likes.', w: 480, h: 150 },
     ],
@@ -464,7 +468,7 @@ function topSettings(c: Cfg, set: (p: Cfg) => void) {
 
 /* ------------------------------ tarjeta de overlay ------------------------------ */
 
-function Preview({ id, w, h, nonce }: { id: string; w: number; h: number; nonce: number }) {
+function Preview({ id, w, h, nonce, wide, example }: { id: string; w: number; h: number; nonce: number; wide?: boolean; example: boolean }) {
   const box = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(380)
   useEffect(() => {
@@ -474,12 +478,15 @@ function Preview({ id, w, h, nonce }: { id: string; w: number; h: number; nonce:
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
-  const scale = Math.min(1, width / w, 220 / h)
+  const maxH = wide ? 520 : 236
+  // Escala para que se vea grande: encaja al ancho (permite ampliar un poco) y limita la altura.
+  const scale = Math.min(1.6, (width - 8) / w, maxH / h)
+  const boxH = Math.min(maxH, Math.round(h * scale) + 16)
   return (
-    <div ref={box} className="relative grid h-[236px] place-items-center overflow-hidden rounded-xl border border-white/5" style={{ background: 'repeating-conic-gradient(#14141f 0 25%, #0e0e17 0 50%) 0 0/22px 22px' }}>
-      <span className="absolute top-2 right-2 z-10 rounded-full bg-black/60 px-2 py-0.5 text-[10px] text-muted">vista previa</span>
+    <div ref={box} className="relative grid place-items-center overflow-hidden rounded-xl border border-white/5" style={{ height: boxH, background: 'repeating-conic-gradient(#14141f 0 25%, #0e0e17 0 50%) 0 0/22px 22px' }}>
+      <span className="absolute top-2 right-2 z-10 rounded-full bg-black/60 px-2 py-0.5 text-[10px] text-muted">{example ? 'ejemplo' : 'en vivo'}</span>
       <div style={{ width: w * scale, height: h * scale, position: 'relative' }}>
-        <iframe key={nonce} title={id} src={overlayUrl(id, { demo: '1' })} style={{ position: 'absolute', top: 0, left: 0, width: w, height: h, transform: `scale(${scale})`, transformOrigin: 'top left', border: 0, background: 'transparent', pointerEvents: 'none' }} />
+        <iframe key={`${nonce}-${example}`} title={id} src={overlayUrl(id, example ? { demo: '1' } : {})} style={{ position: 'absolute', top: 0, left: 0, width: w, height: h, transform: `scale(${scale})`, transformOrigin: 'top left', border: 0, background: 'transparent', pointerEvents: 'none' }} />
       </div>
     </div>
   )
@@ -488,19 +495,26 @@ function Preview({ id, w, h, nonce }: { id: string; w: number; h: number; nonce:
 function OverlayCard({ d, cfg, set }: { d: Def; cfg: Cfg; set: (p: Cfg) => void }) {
   const url = overlayUrl(d.id)
   const [nonce, setNonce] = useState(0)
+  const [example, setExample] = useState(!!d.demoFirst)
   const Tools = d.tools
   return (
-    <div className="card flex flex-col gap-3 p-4">
+    <div className={`card flex flex-col gap-3 p-4 ${d.wide ? 'md:col-span-2 2xl:col-span-3' : ''}`}>
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <div className="font-bold tracking-tight">{d.name}</div>
           <div className="text-xs text-muted">{d.desc}</div>
         </div>
+        <button className={`btn !px-2.5 ${example ? 'border-accent/60 text-accent-2' : ''}`} title="Ver con datos de ejemplo" onClick={() => setExample((e) => !e)}>
+          <Sparkles size={13} /> Ejemplo
+        </button>
         <button className="btn !px-2.5" title="Recargar la vista previa" onClick={() => setNonce((n) => n + 1)}>
           <RotateCcw size={13} />
         </button>
       </div>
-      <Preview id={d.id} w={d.w} h={d.h} nonce={nonce} />
+      {!example && <p className="-mt-1 text-[11px] text-muted">Se ve vacío hasta que recibas la donación o lo cambies con los controles. Pulsa «Ejemplo» para ver cómo queda.</p>}
+      <div className={d.wide ? 'mx-auto w-full max-w-3xl' : ''}>
+        <Preview id={d.id} w={d.w} h={d.h} nonce={nonce} wide={d.wide} example={example} />
+      </div>
       {Tools && <Tools />}
       {d.settings && <div className="space-y-2.5 rounded-xl border border-white/5 bg-black/20 p-3">{d.settings(cfg, set)}</div>}
       <div className="mt-auto flex items-center gap-1.5 rounded-full border border-line bg-black/30 p-1 pl-3">
@@ -512,9 +526,7 @@ function OverlayCard({ d, cfg, set }: { d: Def; cfg: Cfg; set: (p: Cfg) => void 
           <ExternalLink size={13} />
         </a>
       </div>
-      <div className="text-[11px] text-muted">
-        Fuente de navegador de {d.w} × {d.h}
-      </div>
+      <div className="text-[11px] text-muted">Fuente de navegador de {d.w} × {d.h}</div>
     </div>
   )
 }
