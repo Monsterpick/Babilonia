@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { KitSchema, OverlayStyleSchema } from '@livearena/shared'
 import { ITEMS } from './items.js'
 import { ConfigSchema, paths } from './config.js'
+import { SceneSchema } from '@livearena/shared'
 import { ASSETS_DIR, DASHBOARD_DIST } from './resources.js'
 import { SimRequestSchema, Simulator } from './simulator.js'
 import { VERSION, type App } from './app.js'
@@ -202,6 +203,16 @@ export async function buildHttp(app: App): Promise<FastifyInstance> {
       app.publishStatsNow()
     }
     return { ok: true }
+  })
+
+  /* -------------------------------- escenas -------------------------------- */
+  f.get('/api/scenes', async () => app.cfg.get().scenes)
+  f.put('/api/scenes', async (req) => {
+    const parsed = SceneSchema.array().safeParse(req.body)
+    if (!parsed.success) throw new HttpError(400, parsed.error.issues[0]?.message ?? 'Escenas no válidas')
+    app.cfg.update((c) => (c.scenes = parsed.data))
+    app.hub.setState('scenes', parsed.data)
+    return parsed.data
   })
 
   /* --------------------------------- TTS --------------------------------- */

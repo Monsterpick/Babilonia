@@ -3,6 +3,7 @@ import fsp from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { z } from 'zod'
+import { SceneSchema } from '@livearena/shared'
 
 /** Carpeta de datos del usuario: config, perfiles, copias, media, plugins, estadísticas. */
 export const DATA_DIR = process.env.LIVEARENA_DATA ?? path.join(os.homedir(), '.livearena')
@@ -158,6 +159,8 @@ export const ConfigSchema = z.object({
       perUser: z.record(z.string(), z.string()).default({}),
     })
     .default({}),
+  /** Escenas del estudio (editor de capas). */
+  scenes: z.array(SceneSchema).default([]),
   /** Mensajes en el chat de Minecraft cuando un espectador activa algo. */
   chat: z
     .object({

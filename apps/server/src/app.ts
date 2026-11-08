@@ -85,6 +85,7 @@ export class App {
   async init(): Promise<void> {
     await this.profiles.init()
     await this.gifts.init()
+    this.hub.setState('scenes', this.cfg.get().scenes)
     this.tts.publishConfig()
     this.hub.setState('ttshistory', this.tts.getHistory())
     this.hub.setState('textures', this.textures.status)
