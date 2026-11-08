@@ -8,3 +8,5 @@ coverage/
 # Escritorio
 apps/desktop/build/
 apps/desktop/release/
+apps/server/assets/plugins/
+plugin/target/

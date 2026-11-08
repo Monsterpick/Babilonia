@@ -48,6 +48,8 @@ export const ConfigSchema = z.object({
           jar: z.string().default(''),
           xmxMB: z.number().int().min(512).max(65536).default(4096),
           xmsMB: z.number().int().min(256).max(65536).default(2048),
+          /** Instalar y mantener actualizado el plugin propio LiveArena (tótems apilables…). */
+          livearenaPlugin: z.boolean().default(true),
           software: z.enum(['paper', 'vanilla']).default('paper'),
           /** Apagar el servidor al cerrar la app. */
           stopOnExit: z.boolean().default(true),

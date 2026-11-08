@@ -377,6 +377,7 @@ export async function buildHttp(app: App): Promise<FastifyInstance> {
         maxPlayers: z.number().int().min(1).max(1000),
         difficulty: z.enum(['peaceful', 'easy', 'normal', 'hard']),
         pvp: z.boolean(),
+        livearenaPlugin: z.boolean(),
       }).partial(),
       req.body,
     )

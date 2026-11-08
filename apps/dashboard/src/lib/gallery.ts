@@ -1,6 +1,6 @@
-/** Galería de comandos: Minecraft estándar + tus plugins (MiniLive, s2e-survival). Generado a partir de sus plugin.yml. */
+/** Galería de comandos: plugin propio LiveArena, Minecraft estándar y tus plugins (MiniLive, s2e-survival). */
 export interface GalleryCommand {
-  group: 'Minecraft' | 'MiniLive' | 's2e-survival'
+  group: 'LiveArena' | 'Minecraft' | 'MiniLive' | 's2e-survival'
   plugin: string
   name: string
   command: string
@@ -8,6 +8,11 @@ export interface GalleryCommand {
 }
 
 export const GALLERY: GalleryCommand[] = [
+ { "group": "LiveArena", "plugin": "LiveArena", "name": "Dar 1 tótem apilable", "command": "la totem add {player} 1 {nickname}", "usage": "Suma tótems al contador (barra en pantalla). Se gastan al morir." },
+ { "group": "LiveArena", "plugin": "LiveArena", "name": "Dar tótems según la cantidad", "command": "la totem add {player} {gift.count} {nickname}", "usage": "Una racha de 5 regalos = 5 tótems." },
+ { "group": "LiveArena", "plugin": "LiveArena", "name": "Dar 5 tótems", "command": "la totem add {player} 5 {nickname}", "usage": "" },
+ { "group": "LiveArena", "plugin": "LiveArena", "name": "Quitar 1 tótem", "command": "la totem remove {player} 1 {nickname}", "usage": "" },
+ { "group": "LiveArena", "plugin": "LiveArena", "name": "Poner tótems a 0", "command": "la totem set {player} 0", "usage": "" },
  {
   "group": "Minecraft",
   "plugin": "Vanilla",

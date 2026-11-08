@@ -23,8 +23,32 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
 
+  plugin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - name: Compilar el plugin LiveArena (Paper)
+        working-directory: plugin
+        run: |
+          META=https://repo.papermc.io/repository/maven-public/io/papermc/paper/paper-api/maven-metadata.xml
+          VERSIONS=$(curl -fsSL "$META" | grep -o '<version>[^<]*</version>' | sed 's/<[^>]*>//g')
+          VER=$(echo "$VERSIONS" | grep '^26\.1\.2' | grep -v SNAPSHOT | tail -1)
+          [ -z "$VER" ] && VER=$(echo "$VERSIONS" | grep '^26\.1\.2' | tail -1)
+          echo "paper-api: $VER"
+          mvn -B -q package -Dpaper.version="$VER"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LiveArena-plugin
+          path: plugin/target/LiveArena.jar
+          if-no-files-found: error
+
   windows:
-    needs: test
+    needs: [test, plugin]
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -34,17 +58,26 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v4
+        with:
+          name: LiveArena-plugin
+          path: apps/server/assets/plugins
       - run: pnpm build
       - name: Empaquetar instalador y portable
         run: pnpm --filter @livearena/desktop dist
+      - name: Añadir el plugin junto a los .exe
+        run: Copy-Item apps/server/assets/plugins/LiveArena.jar apps/desktop/release/
       - uses: actions/upload-artifact@v4
         with:
           name: LiveArena-Windows
           path: |
             apps/desktop/release/*.exe
+            apps/desktop/release/LiveArena.jar
           if-no-files-found: error
       - name: Publicar release (solo en tags v*)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: apps/desktop/release/*.exe
+          files: |
+            apps/desktop/release/*.exe
+            apps/desktop/release/LiveArena.jar

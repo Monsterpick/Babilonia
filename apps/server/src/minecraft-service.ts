@@ -30,6 +30,7 @@ import {
 } from '@livearena/minecraft'
 import type { ConfigStore } from './config.js'
 import { DATA_DIR, paths } from './config.js'
+import { BUNDLED_PLUGIN } from './resources.js'
 import type { Logger } from './logger.js'
 
 export interface CreateRequest extends Omit<CreateServerOptions, 'plugins' | 'javaPath'> {
@@ -107,6 +108,33 @@ export class MinecraftService extends EventEmitter {
     })
     this.proc.on('log', (line: string) => this.emit('serverLog', line))
     this.proc.on('ready', () => void this.onServerReady())
+    // Tótems apilables (plugin LiveArena): consultamos el contador para el overlay.
+    setInterval(() => void this.pollTotems(), 3000).unref()
+  }
+
+  private totems: number | null = null
+  private totemsPausedUntil = 0
+
+  private async pollTotems(): Promise<void> {
+    const player = this.player
+    if (!player || !this.link.isConnected || Date.now() < this.totemsPausedUntil) return
+    try {
+      const r = await this.link.enqueue(`la totem get ${player}`, 1)
+      const m = r.match(/TOTEMS\s+\S+\s+(\d+)/)
+      if (!m) {
+        // Sin el plugin: dejamos de preguntar un rato.
+        this.totemsPausedUntil = Date.now() + 60_000
+        if (this.totems !== null) (this.totems = null), this.emitStatus()
+        return
+      }
+      const n = Number(m[1])
+      if (n !== this.totems) {
+        this.totems = n
+        this.emitStatus()
+      }
+    } catch {
+      /* desconectado */
+    }
   }
 
   setKitProvider(fn: () => Kit | null): void {
@@ -127,6 +155,7 @@ export class MinecraftService extends EventEmitter {
       link: this.link.status(),
       player: mc.player,
       version: mc.version,
+      totems: this.totems,
       server: { ...this.proc.status, folder: mc.server.folder, creating: this.creating, ip: lanIp(), port: this.serverPort },
     }
   }
@@ -335,6 +364,7 @@ export class MinecraftService extends EventEmitter {
     if (props.size > 0) await this.ensurePortsFree(mc.server.folder, props)
     props = await readProperties(propsFile)
     this.serverPort = Number(props.get('server-port') ?? 25565) || 25565
+    await this.syncBundledPlugin(mc.server.folder)
     await this.syncPluginConfigs()
     this.creating = null
     this.proc.start({ folder: mc.server.folder, java, jar, xmxMB: mc.server.xmxMB, xmsMB: mc.server.xmsMB })
@@ -400,6 +430,27 @@ export class MinecraftService extends EventEmitter {
         c.minecraft.port = port
       })
     }
+  }
+
+  /** Copia (o actualiza) el plugin propio LiveArena.jar en plugins/ si viene con la app. */
+  async syncBundledPlugin(folder: string): Promise<'installed' | 'updated' | 'same' | 'missing' | 'off'> {
+    if (!this.cfg.get().minecraft.server.livearenaPlugin) return 'off'
+    let src: Buffer
+    try {
+      src = await fs.readFile(BUNDLED_PLUGIN)
+    } catch {
+      return 'missing'
+    }
+    const dir = path.join(folder, 'plugins')
+    const dest = path.join(dir, 'LiveArena.jar')
+    const cur = await fs.readFile(dest).catch(() => null)
+    if (cur && cur.equals(src)) return 'same'
+    // Si el usuario lo desactivó desde el gestor de plugins (.disabled), lo respetamos.
+    if (await fs.access(dest + '.disabled').then(() => true, () => false)) return 'off'
+    await fs.mkdir(dir, { recursive: true })
+    await fs.writeFile(dest, src)
+    this.log.info('servidor', cur ? 'Plugin LiveArena actualizado' : 'Plugin LiveArena instalado (tótems apilables)')
+    return cur ? 'updated' : 'installed'
   }
 
   async syncPluginConfigs(): Promise<void> {
@@ -480,11 +531,12 @@ export class MinecraftService extends EventEmitter {
       difficulty: props.get('difficulty') ?? 'normal',
       pvp: props.get('pvp') !== 'false',
       serverPort: Number(props.get('server-port') ?? 25565),
+      livearenaPlugin: s.livearenaPlugin,
     }
   }
 
   async saveSettings(
-    v: Partial<{ jar: string; java: string; xmxMB: number; xmsMB: number; levelName: string; onlineMode: boolean; motd: string; maxPlayers: number; difficulty: string; pvp: boolean }>,
+    v: Partial<{ jar: string; java: string; xmxMB: number; xmsMB: number; levelName: string; onlineMode: boolean; motd: string; maxPlayers: number; difficulty: string; pvp: boolean; livearenaPlugin: boolean }>,
   ) {
     const folder = this.requireFolder()
     this.cfg.update((c) => {
@@ -492,6 +544,7 @@ export class MinecraftService extends EventEmitter {
       if (v.java !== undefined) c.minecraft.server.java = v.java
       if (v.xmxMB !== undefined) c.minecraft.server.xmxMB = v.xmxMB
       if (v.xmsMB !== undefined) c.minecraft.server.xmsMB = Math.min(v.xmsMB, v.xmxMB ?? c.minecraft.server.xmxMB)
+      if (v.livearenaPlugin !== undefined) c.minecraft.server.livearenaPlugin = v.livearenaPlugin
     })
     const props: Record<string, string | number | boolean> = {}
     if (v.levelName !== undefined) props['level-name'] = v.levelName.replace(/[\\/:*?"<>|]/g, '_') || 'world'

@@ -474,6 +474,7 @@ interface Settings {
   xmsMB: number
   levelName: string
   onlineMode: boolean
+  livearenaPlugin: boolean
   motd: string
   maxPlayers: number
   difficulty: string
@@ -556,6 +557,9 @@ function SettingsModal({ onClose, open }: { onClose: () => void; open: (m: Modal
           </Check>
           <Check on={s.pvp} onChange={(v) => set({ pvp: v })}>
             PvP
+          </Check>
+          <Check on={s.livearenaPlugin} onChange={(v) => set({ livearenaPlugin: v })}>
+            Plugin <b>LiveArena</b> (tótems apilables): instalarlo y actualizarlo al encender
           </Check>
         </div>
         <div className="flex flex-wrap items-center gap-2 border-t border-line pt-4">

@@ -439,6 +439,7 @@ function GalleryModal({ onClose, onPick, onTest }: { onClose: () => void; onPick
             onChange={setGroup}
             options={[
               { v: 'all', l: 'Todos' },
+              { v: 'LiveArena', l: 'LiveArena' },
               { v: 'Minecraft', l: 'Minecraft' },
               { v: 's2e-survival', l: 's2e-survival' },
               { v: 'MiniLive', l: 'MiniLive' },

@@ -1,0 +1,26 @@
+# ─────────────────────────────────────────────
+#  LiveArena — configuración
+#  Los textos usan MiniMessage: <gold>, <bold>, <gradient:#ffd700:#ff8c00>…</gradient>
+#  Variables: <jugador>, <cantidad>, <total>, <espectador>, <max>
+# ─────────────────────────────────────────────
+
+totems:
+  # Máximo de tótems guardados por jugador. 0 = sin límite.
+  max: 0
+  # Si recoges un tótem del suelo, se suma al contador en vez de ir al inventario.
+  absorber-al-recoger: true
+  # Primero se gasta el tótem que tengas en la mano (comportamiento normal) y después los guardados.
+  barra:
+    mostrar: true
+    mostrar-con-cero: false
+    color: YELLOW        # PINK, BLUE, RED, GREEN, YELLOW, PURPLE, WHITE
+    texto: '<gradient:#ffe259:#ffa751><bold>🛡 TÓTEMS</bold></gradient> <white><bold><total></bold></white><gray><max_texto></gray>'
+  mensajes:
+    recibidos-titulo: '<gradient:#ffe259:#ffa751><bold>+<cantidad> TÓTEM<plural></bold></gradient>'
+    recibidos-subtitulo: '<white>regalo de <yellow><bold><espectador></bold></yellow></white>'
+    recibidos-chat: '<dark_gray>[</dark_gray><gold>LIVE</gold><dark_gray>]</dark_gray> <yellow><espectador></yellow> <gray>le dio</gray> <gold><bold><cantidad> tótem<plural></bold></gold> <gray>a</gray> <white><jugador></white> <dark_gray>(</dark_gray><gold><total></gold><dark_gray>)</dark_gray>'
+    usado-titulo: '<gradient:#f9d423:#ff4e50><bold>¡TÓTEM!</bold></gradient>'
+    usado-subtitulo: '<white>Te quedan <gold><bold><total></bold></gold></white>'
+    usado-chat: '<dark_gray>[</dark_gray><gold>LIVE</gold><dark_gray>]</dark_gray> <white><jugador></white> <gray>se salvó con un tótem. Quedan</gray> <gold><bold><total></bold></gold>'
+    quitados-chat: '<dark_gray>[</dark_gray><red>LIVE</red><dark_gray>]</dark_gray> <yellow><espectador></yellow> <gray>le quitó</gray> <red><bold><cantidad> tótem<plural></bold></red> <gray>a</gray> <white><jugador></white> <dark_gray>(</dark_gray><gold><total></gold><dark_gray>)</dark_gray>'
+    maximo: '<red>Ya tienes el máximo de tótems (<max>).</red>'
