@@ -204,6 +204,34 @@ export async function buildHttp(app: App): Promise<FastifyInstance> {
     return { ok: true }
   })
 
+  /* --------------------------------- TTS --------------------------------- */
+  f.get('/api/tts/settings', async () => app.cfg.get().tts)
+  f.get('/api/tts/history', async () => app.tts.getHistory())
+  f.put('/api/tts/settings', async (req) => {
+    const deepMerge = (a: any, b: any): any => {
+      if (typeof a !== 'object' || a === null || typeof b !== 'object' || b === null || Array.isArray(b)) return b
+      const out: any = { ...a }
+      for (const k of Object.keys(b)) out[k] = deepMerge(a[k], b[k])
+      return out
+    }
+    const merged = deepMerge(app.cfg.get().tts, req.body ?? {})
+    const parsed = ConfigSchema.shape.tts.safeParse(merged)
+    if (!parsed.success) throw new HttpError(400, parsed.error.issues[0]?.message ?? 'Ajustes no válidos')
+    app.cfg.update((c) => (c.tts = parsed.data))
+    app.tts.publishConfig()
+    return parsed.data
+  })
+  f.post('/api/tts/clear', async () => {
+    app.tts.clearHistory()
+    return { ok: true }
+  })
+  f.post('/api/tts/say', async (req) => {
+    const { text, voice } = parse(z.object({ text: z.string().min(1).max(500), voice: z.string().max(120).optional() }), req.body)
+    const t = app.cfg.get().tts
+    app.hub.action({ kind: 'tts.speak', user: null, params: { text, voice: voice ?? t.voice, rate: t.rate, volume: t.volume, maxQueue: 99, id: Date.now() }, intensity: 0, priority: 1 })
+    return { ok: true }
+  })
+
   /* ------------------------------- simulador ------------------------------- */
   f.post('/api/simulate', async (req) => {
     sim.run(parse(SimRequestSchema, req.body))

@@ -738,3 +738,52 @@ export function CombinedOverlay() {
     </div>
   )
 }
+
+/* ----------------------------------- TTS ----------------------------------- */
+
+/** Lee los comentarios en voz alta con las voces del navegador (sin internet). Añádelo como fuente de navegador. */
+export function TtsOverlay() {
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
+  const queue = useRef<{ text: string; voice: string; rate: number; volume: number; max: number }[]>([])
+  const speaking = useRef(false)
+  useEffect(() => {
+    const load = () => setVoices(window.speechSynthesis.getVoices())
+    load()
+    window.speechSynthesis.onvoiceschanged = load
+  }, [])
+  const pump = () => {
+    if (speaking.current) return
+    const job = queue.current.shift()
+    if (!job) return
+    speaking.current = true
+    const u = new SpeechSynthesisUtterance(job.text)
+    const list = window.speechSynthesis.getVoices()
+    const byName = job.voice ? list.find((v) => v.name === job.voice || v.voiceURI === job.voice) : undefined
+    const es = list.filter((v) => v.lang.toLowerCase().startsWith('es'))
+    u.voice = byName ?? (job.voice ? undefined : es.length ? es[Math.floor(Math.random() * es.length)]! : list[0]) ?? null
+    u.rate = job.rate
+    u.volume = job.volume
+    u.onend = u.onerror = () => {
+      speaking.current = false
+      pump()
+    }
+    try {
+      window.speechSynthesis.speak(u)
+    } catch {
+      speaking.current = false
+    }
+  }
+  useOnAction((a) => {
+    if (a.kind !== 'tts.speak') return
+    const max = Number(a.params.maxQueue ?? 25)
+    queue.current.push({ text: String(a.params.text ?? ''), voice: String(a.params.voice ?? ''), rate: Number(a.params.rate ?? 1), volume: Number(a.params.volume ?? 1), max })
+    if (queue.current.length > max) queue.current.splice(0, queue.current.length - max)
+    pump()
+  })
+  // Marca pequeña para saber que la fuente está activa (y permitir el autoplay tras un clic si hace falta).
+  return (
+    <div style={{ ...base, position: 'fixed', bottom: 6, right: 8, fontSize: 11, opacity: 0.35 }} onClick={() => window.speechSynthesis.resume()}>
+      🔊 TTS · {voices.length} voces
+    </div>
+  )
+}

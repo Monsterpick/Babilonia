@@ -1,4 +1,5 @@
 import { TextureService } from './textures.js'
+import { TtsService } from './tts.js'
 import { ComboTracker, Deduper, PriorityWorker, RuleEngine, renderTemplate, type Job } from '@livearena/core'
 import { effect, give, summon, titleCommands } from '@livearena/minecraft'
 import { TikTokSource } from '@livearena/source-tiktok'
@@ -38,6 +39,7 @@ export class App {
   readonly stats = new StatsStore(paths.db)
   readonly gifts = new GiftCatalog()
   readonly textures: TextureService
+  readonly tts: TtsService
   readonly mc: MinecraftService
   readonly tiktok: TikTokSource
   private readonly dedup = new Deduper(10_000)
@@ -71,6 +73,7 @@ export class App {
     this.tiktok.on('log', (l: { level: 'info' | 'warn' | 'error'; msg: string }) => this.log[l.level]('tiktok', l.msg))
 
     this.mc.on('status', (s) => this.hub.setState('minecraft', s))
+    this.tts = new TtsService(this.cfg, this.hub)
     this.textures = new TextureService(this.log)
     this.textures.on('status', (s) => this.hub.setState('textures', s))
     this.mc.on('serverLog', (line: string) => this.hub.log({ level: 'info', scope: 'consola', msg: line, ts: Date.now() }))
@@ -82,6 +85,8 @@ export class App {
   async init(): Promise<void> {
     await this.profiles.init()
     await this.gifts.init()
+    this.tts.publishConfig()
+    this.hub.setState('ttshistory', this.tts.getHistory())
     this.hub.setState('textures', this.textures.status)
     void this.textures.init(this.cfg.get().minecraft.version).catch(() => undefined)
     const active = this.profiles.get(this.cfg.get().activeProfileId) ?? this.profiles.first()
@@ -146,6 +151,7 @@ export class App {
       return
     }
     this.hub.event(ev)
+    if (ev.type === 'chat') this.tts.onChat(ev)
     this.onResetSaveGift(ev)
     if (ev.type === 'follow' && ev.user) {
       this.stats.recordFollow(ev.user.id || ev.user.uniqueId)

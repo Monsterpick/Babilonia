@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
-import { Activity, Boxes, FlaskConical, ListChecks, MonitorPlay, Server, Settings, Loader2, Radio, Power, Zap, Pickaxe } from 'lucide-react'
+import { Activity, Boxes, FlaskConical, ListChecks, Mic, MonitorPlay, Server, Settings, Loader2, Radio, Power, Zap, Pickaxe } from 'lucide-react'
 import type { Profile, SourceStatus } from '@livearena/shared'
 import { api } from './lib/api'
 import { useLiveConnected, useLiveState } from './lib/live'
@@ -8,6 +8,7 @@ import { OverlaysPage } from './pages/Overlays'
 import { KitPage } from './pages/Kit'
 import { SimulatorPage } from './pages/Simulator'
 import { ServerPage } from './pages/Server'
+import { TtsPage } from './pages/Tts'
 import { ActivityPage } from './pages/Activity'
 import { SettingsPage } from './pages/Settings'
 import { Dialogs } from './components/Dialog'
@@ -36,6 +37,7 @@ export const useApp = () => useContext(AppCtx)
 const PAGES: { id: string; label: string; icon: ReactNode; el: () => ReactNode }[] = [
   { id: 'plugins', label: 'Plugins', icon: <ListChecks size={20} />, el: () => <PluginsPage /> },
   { id: 'overlays', label: 'Overlays', icon: <MonitorPlay size={20} />, el: () => <OverlaysPage /> },
+  { id: 'tts', label: 'TTS', icon: <Mic size={20} />, el: () => <TtsPage /> },
   { id: 'kit', label: 'Kit', icon: <Boxes size={20} />, el: () => <KitPage /> },
   { id: 'simulador', label: 'Simulador', icon: <FlaskConical size={20} />, el: () => <SimulatorPage /> },
   { id: 'servidor', label: 'Servidor', icon: <Server size={20} />, el: () => <ServerPage /> },

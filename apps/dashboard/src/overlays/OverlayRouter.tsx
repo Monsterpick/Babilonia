@@ -4,7 +4,7 @@ import { useGifts } from '../lib/catalog'
 import { useLiveState, useOnAction, useTick } from '../lib/live'
 import { Avatar, Media } from '../components/ui'
 import { CardGrid, useFired } from './Cards'
-import { BestV2, CombinedOverlay, DuelOverlay, FeaturedOverlay, GiftGoalOverlay, GoalBar, LivesV2, MvpOverlay, NoticesOverlay, ResetSaveOverlay, ScoreV2, TimerV2, TopV2, TotemsOverlay } from './Pro'
+import { BestV2, CombinedOverlay, TtsOverlay, DuelOverlay, FeaturedOverlay, GiftGoalOverlay, GoalBar, LivesV2, MvpOverlay, NoticesOverlay, ResetSaveOverlay, ScoreV2, TimerV2, TopV2, TotemsOverlay } from './Pro'
 
 /**
  * Overlays para "fuente de navegador" de OBS / TikTok LIVE Studio. Fondo transparente.
@@ -64,6 +64,8 @@ export function OverlayRouter({ name }: { name: string }) {
         return <TotemsOverlay />
       case 'combinado':
         return <CombinedOverlay />
+      case 'tts':
+        return <TtsOverlay />
       case 'legacy-top':
         return <TopOverlay kind="donors" />
       case 'legacy-meta':

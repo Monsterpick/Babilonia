@@ -127,6 +127,37 @@ export const ConfigSchema = z.object({
       resetOnNewLive: z.boolean().default(true),
     })
     .default({}),
+  /** Lectura por voz (TTS) de los comentarios del live. */
+  tts: z
+    .object({
+      enabled: z.boolean().default(false),
+      voice: z.string().default(''),
+      random: z.boolean().default(false),
+      template: z.string().max(200).default('{username} dice: {comment}'),
+      rate: z.number().min(0.5).max(2).default(1),
+      volume: z.number().min(0).max(1).default(0.9),
+      mode: z.enum(['all', 'prefix']).default('all'),
+      prefix: z.string().max(8).default('!'),
+      who: z.object({
+        everyone: z.boolean().default(true),
+        followers: z.boolean().default(false),
+        subscribers: z.boolean().default(false),
+        moderators: z.boolean().default(false),
+      }).default({}),
+      filters: z.object({
+        stripEmojis: z.boolean().default(true),
+        ignoreTiktokEmojis: z.boolean().default(true),
+        ignoredWords: z.array(z.string().max(40)).max(200).default([]),
+      }).default({}),
+      antispam: z.object({
+        noRepeat: z.boolean().default(false),
+        turnSeconds: z.number().int().min(0).max(60).default(5),
+        maxQueue: z.number().int().min(1).max(200).default(25),
+        maxLen: z.number().int().min(20).max(500).default(200),
+      }).default({}),
+      perUser: z.record(z.string(), z.string()).default({}),
+    })
+    .default({}),
   /** Mensajes en el chat de Minecraft cuando un espectador activa algo. */
   chat: z
     .object({
