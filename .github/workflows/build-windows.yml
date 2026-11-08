@@ -30,7 +30,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 21
+          java-version: 25
           cache: maven
       - name: Compilar el plugin LiveArena (Paper)
         working-directory: plugin
@@ -40,7 +40,7 @@ jobs:
           VER=$(echo "$VERSIONS" | grep '^26\.1\.2' | grep -v SNAPSHOT | tail -1)
           [ -z "$VER" ] && VER=$(echo "$VERSIONS" | grep '^26\.1\.2' | tail -1)
           echo "paper-api: $VER"
-          mvn -B -q package -Dpaper.version="$VER"
+          mvn -B package -Dpaper.version="$VER" 2>&1 | grep -E "ERROR|WARN|BUILD|paper-api" | head -60; test -f target/LiveArena.jar
       - uses: actions/upload-artifact@v4
         with:
           name: LiveArena-plugin
