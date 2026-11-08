@@ -99,7 +99,7 @@ export function App() {
         </aside>
         <main className="flex min-w-0 flex-1 flex-col">
           <TopBar />
-          <div className="min-h-0 flex-1 overflow-y-auto">{state ? current.el() : <Loading />}</div>
+          <div className="min-h-0 flex-1 overflow-y-auto"><div className="mx-auto w-full max-w-[1680px]">{state ? current.el() : <Loading />}</div></div>
         </main>
       </div>
       <Toasts />

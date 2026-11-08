@@ -543,11 +543,11 @@ export function OverlayCatalog() {
     api('PUT', '/api/overlays/settings', patch).catch((e) => toast((e as Error).message, 'error'))
   }
   return (
-    <div className="space-y-10 px-8">
-      <label className="card flex items-center gap-3 border-accent/30 px-5 py-3 text-sm">
+    <div className="space-y-8 px-8 pb-10">
+      <label className="flex items-center gap-2.5 rounded-xl border border-white/5 bg-black/20 px-4 py-2.5 text-sm">
         <input type="checkbox" className="h-4 w-4 accent-[var(--color-hot)]" checked={cfg.resetOnNewLive ?? true} onChange={(e) => set({ resetOnNewLive: e.target.checked })} />
         <span>
-          <b>Reiniciar regalos y rankings en cada live nuevo</b> <span className="text-muted">(el «Mejor regalo» histórico no se borra)</span>
+          <b>Reiniciar regalos y rankings en cada live nuevo</b> <span className="text-muted">— el «Mejor regalo» histórico no se borra</span>
         </span>
       </label>
       {SECTIONS.map((s) => (

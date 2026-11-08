@@ -96,7 +96,7 @@ export function PluginsPage() {
   return (
     <div>
       <PageHeader title="Plugins" subtitle="Qué pasa en Minecraft cuando llega cada regalo." />
-      <div className="flex flex-wrap items-center gap-2 px-8 pb-4">
+      <div className="flex flex-wrap items-center gap-2 px-8 pb-5">
         <div className="flex items-center gap-1 rounded-full border border-line bg-black/30 p-1">
           {state?.profiles.map((p) => (
             <button
