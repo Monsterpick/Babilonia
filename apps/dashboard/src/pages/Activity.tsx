@@ -66,13 +66,13 @@ export function ActivityPage() {
   return (
     <div className="pb-10">
       <PageHeader title="Actividad" subtitle="Todo lo que pasa en tu live, en tiempo real." />
-      <div className="mb-4 grid grid-cols-2 gap-3 px-6 md:grid-cols-4">
+      <div className="mb-4 grid grid-cols-2 gap-3 px-8 md:grid-cols-4">
         <Stat label="Monedas" value={s?.diamonds ?? 0} />
         <Stat label="Regalos" value={s?.gifts ?? 0} />
         <Stat label="Likes" value={likes?.roomLikes ?? 0} />
         <Stat label="Mejor regalo" value={s?.bestLive ? `${s.bestLive.gift} ×${s.bestLive.count}` : '—'} />
       </div>
-      <div className="grid gap-4 px-6 xl:grid-cols-[1fr_340px]">
+      <div className="grid gap-4 px-8 xl:grid-cols-[1fr_340px]">
         <div className="card p-4">
           <div className="mb-3 flex flex-wrap items-center gap-3">
             <div className="w-64">

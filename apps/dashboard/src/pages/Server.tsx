@@ -30,7 +30,7 @@ export function ServerPage() {
   return (
     <div className="pb-10">
       <PageHeader title="Servidor" subtitle="Tu servidor de Minecraft: créalo, enciéndelo y deja que el live lo controle." />
-      <div className="grid gap-4 px-6 xl:grid-cols-[440px_1fr]">
+      <div className="grid gap-4 px-8 xl:grid-cols-[440px_1fr]">
         <div className="space-y-4">
           <ServerCard mc={mc} hasServer={hasServer} open={setModal} />
           <PlayerCard />
@@ -126,7 +126,7 @@ function ServerCard({ mc, hasServer, open }: { mc: any; hasServer: boolean; open
           <button
             disabled={busy || proc === 'stopping'}
             onClick={() => go(() => api('POST', '/api/minecraft/server/stop'))}
-            className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 py-3.5 text-lg font-bold text-white transition hover:bg-red-500 disabled:opacity-50"
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-bad to-hot py-3.5 text-lg font-bold text-white transition hover:brightness-110 disabled:opacity-50"
           >
             {busy ? <Loader2 className="animate-spin" /> : <Square size={20} />} Apagar servidor
           </button>
@@ -134,13 +134,13 @@ function ServerCard({ mc, hasServer, open }: { mc: any; hasServer: boolean; open
           <button
             disabled={busy}
             onClick={() => go(() => api('POST', '/api/minecraft/server/start'))}
-            className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 py-3.5 text-lg font-bold text-white shadow-[0_0_24px_-6px_#16a34a] transition hover:bg-green-500 disabled:opacity-50"
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-ok py-3.5 text-lg font-bold text-[#04130c] shadow-[0_10px_30px_-10px_var(--color-ok)] transition hover:bg-green-500 disabled:opacity-50"
           >
             {busy ? <Loader2 className="animate-spin" /> : <Play size={20} />} Encender servidor
           </button>
         )
       ) : (
-        <button onClick={() => open('install')} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 py-3.5 text-lg font-bold text-white hover:bg-green-500">
+        <button onClick={() => open('install')} className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-ok py-3.5 text-lg font-bold text-[#04130c] shadow-[0_10px_30px_-10px_var(--color-ok)] hover:bg-green-500">
           <Box size={20} /> Instalar servidor
         </button>
       )}
@@ -418,7 +418,7 @@ function InstallModal({ onClose }: { onClose: () => void }) {
             <div className={`text-sm ${creating.step === 'error' ? 'text-bad' : creating.step === 'done' ? 'text-ok' : ''}`}>{creating.message}</div>
             {creating.pct !== undefined && creating.step !== 'error' && (
               <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
-                <div className="h-full bg-green-500 transition-all" style={{ width: `${creating.pct}%` }} />
+                <div className="h-full bg-gradient-to-r from-accent via-hot to-coral transition-all" style={{ width: `${creating.pct}%` }} />
               </div>
             )}
           </div>
@@ -429,7 +429,7 @@ function InstallModal({ onClose }: { onClose: () => void }) {
             Cerrar
           </button>
           <button
-            className="btn-accent bg-green-600 shadow-none hover:bg-green-500"
+            className="btn-accent from-emerald-500 via-emerald-400 to-ok text-[#04130c]"
             disabled={!o.eulaAccepted || busy || !folderCheck?.ok || (!javaOk && !o.installJava)}
             onClick={() =>
               run(async () => {
@@ -579,13 +579,13 @@ function SettingsModal({ onClose, open }: { onClose: () => void; open: (m: Modal
             Reiniciar mundo
           </button>
           <span className="mr-auto" />
-          <button className="btn bg-sky-600 text-white" onClick={() => open('plugins')}>
+          <button className="btn border-accent/50 bg-accent/15 text-white" onClick={() => open('plugins')}>
             <Puzzle size={14} /> Plugins
           </button>
           <button className="btn" onClick={() => save(false)}>
             Guardar
           </button>
-          <button className="btn-accent bg-green-600 shadow-none hover:bg-green-500" onClick={() => save(true)}>
+          <button className="btn-accent from-emerald-500 via-emerald-400 to-ok text-[#04130c]" onClick={() => save(true)}>
             <Play size={14} /> Guardar y encender
           </button>
         </div>

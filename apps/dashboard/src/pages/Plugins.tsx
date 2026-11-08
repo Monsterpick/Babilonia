@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { ChevronDown, ChevronUp, Copy, History, Pause, Play, Plus, Trash2, Music, Share2, Download, Layers, Loader2 } from 'lucide-react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { ArrowRight, ChevronDown, ChevronUp, Copy, History, Pause, Pickaxe, Play, Plus, Trash2, Music, Share2, Download, Layers, Loader2 } from 'lucide-react'
 import type { Action, EventRule, Profile } from '@livearena/shared'
 import { useApp } from '../App'
 import { api } from '../lib/api'
@@ -96,18 +96,18 @@ export function PluginsPage() {
   return (
     <div>
       <PageHeader title="Plugins" subtitle="Qué pasa en Minecraft cuando llega cada regalo." />
-      <div className="flex flex-wrap items-center gap-2 px-6 pb-4">
-        <div className="flex items-center gap-1 rounded-lg border border-line bg-panel p-1">
+      <div className="flex flex-wrap items-center gap-2 px-8 pb-4">
+        <div className="flex items-center gap-1 rounded-full border border-line bg-black/30 p-1">
           {state?.profiles.map((p) => (
             <button
               key={p.id}
               onClick={() => switchProfile(p.id)}
-              className={`rounded-md px-3 py-1 text-sm font-medium ${p.id === profile.id ? 'bg-accent/15 text-white ring-1 ring-accent/60' : 'text-muted hover:text-white'}`}
+              className={`rounded-full px-4 py-1 text-sm font-medium transition ${p.id === profile.id ? 'bg-gradient-to-r from-accent to-hot text-white shadow-[0_4px_14px_-6px_var(--color-hot)]' : 'text-muted hover:text-white'}`}
             >
               {p.name}
             </button>
           ))}
-          <button className="rounded-md px-2 py-1 text-muted hover:text-white" title="Nuevo perfil" onClick={newProfile}>
+          <button className="rounded-full px-2 py-1 text-muted hover:text-white" title="Nuevo perfil" onClick={newProfile}>
             <Plus size={16} />
           </button>
         </div>
@@ -134,8 +134,8 @@ export function PluginsPage() {
         </div>
       </div>
 
-      <div className="space-y-2.5 px-6 pb-10">
-        {profile.events.length === 0 && <div className="card p-10 text-center text-muted">Aún no tienes comandos. Crea uno con «Nuevo comando».</div>}
+      <div className="grid gap-4 px-8 pb-12 lg:grid-cols-2 2xl:grid-cols-3">
+        {profile.events.length === 0 && <div className="card col-span-full p-12 text-center text-muted">Aún no tienes comandos. Crea uno con «Nuevo comando».</div>}
         {profile.events.map((ev, i) => {
           const action = profile.actions.find((a) => a.id === ev.actionIds[0])
           if (!action) return null
@@ -145,67 +145,73 @@ export function PluginsPage() {
           const others = action.steps.length - action.steps.filter((s) => s.type === 'minecraft.command').length
           const open = () => setEditing({ event: ev, action, isNew: false })
           const WHO: Record<string, string> = { anyone: 'Cualquiera', followers: 'Seguidores', subscribers: 'Suscriptores', moderators: 'Moderadores', list: 'Lista' }
+          const c = action.color
           return (
             <div
               key={ev.id + (flash ? fired[action.id] : '')}
-              className={`card flex items-stretch gap-0 overflow-hidden transition ${ev.enabled ? '' : 'opacity-50'} ${flash ? 'fx-flash ring-1 ring-accent' : ''}`}
+              className={`card group relative flex flex-col overflow-hidden transition hover:-translate-y-0.5 hover:border-white/15 ${ev.enabled ? '' : 'opacity-45 saturate-50'} ${flash ? 'fx-flash' : ''}`}
+              style={{ boxShadow: flash ? `0 0 0 2px ${c}, 0 0 40px -6px ${c}` : undefined }}
             >
-              <div className="flex flex-col items-center justify-center gap-1 border-r border-line px-2 text-muted">
-                <button onClick={() => move(i, i - 1)} className="rounded p-0.5 hover:bg-white/10 hover:text-white" title="Subir">
-                  <ChevronUp size={16} />
-                </button>
-                <Toggle on={ev.enabled} onChange={(v) => patchEvent(ev.id, { enabled: v })} title="Activar / desactivar" />
-                <button onClick={() => move(i, i + 1)} className="rounded p-0.5 hover:bg-white/10 hover:text-white" title="Bajar">
-                  <ChevronDown size={16} />
-                </button>
-              </div>
-              <button onClick={open} className="flex w-52 shrink-0 items-center gap-3 border-r border-line px-4 py-3 text-left hover:bg-white/5">
-                <TriggerChip t={t} size={46} />
-                <div className="sr-only">editar</div>
-              </button>
-              <div className="flex w-36 shrink-0 flex-col justify-center border-r border-line px-3 text-xs text-muted">
-                <span>{WHO[ev.who]}</span>
-                <span className="truncate">{ruleSummary(ev) || (ev.perUnit ? 'por cada unidad' : 'una vez')}</span>
-              </div>
-              <button onClick={open} className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2 text-left hover:bg-white/5">
-                <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-lg" style={{ background: `linear-gradient(160deg, ${action.color}55, #000)` }}>
-                  {action.media ? <Media media={action.media} className="h-full w-full object-cover" /> : <span className="text-2xl font-black" style={{ color: action.color }}>{action.name.slice(0, 1)}</span>}
+              <div className="pointer-events-none absolute -top-16 -right-16 h-40 w-40 rounded-full opacity-30 blur-3xl" style={{ background: c }} />
+              <div className="relative flex items-center gap-3 px-5 pt-4">
+                <span className="text-[11px] font-bold text-muted/70 tabular-nums">#{String(i + 1).padStart(2, '0')}</span>
+                <span className="chip">{WHO[ev.who]}</span>
+                <span className="chip">{ruleSummary(ev) || (ev.perUnit ? 'por cada unidad' : 'una vez')}</span>
+                <div className="ml-auto">
+                  <Toggle on={ev.enabled} onChange={(v) => patchEvent(ev.id, { enabled: v })} title="Activar / desactivar" />
                 </div>
+              </div>
+              <button onClick={open} className="relative flex items-center gap-3 px-5 pt-4 pb-3 text-left">
                 <div className="min-w-0 flex-1">
-                  <div className="truncate rounded bg-black/30 px-2 py-0.5 font-extrabold tracking-wide" style={{ color: action.color }}>
-                    {action.name}
-                    {!action.showInOverlay && <span className="ml-2 text-[10px] font-normal text-muted">(oculta en overlay)</span>}
+                  <TriggerChip t={t} size={52} />
+                </div>
+                <ArrowRight size={18} className="shrink-0 text-muted/60" />
+                <div className="flex min-w-0 flex-1 items-center justify-end gap-3">
+                  <div className="min-w-0 text-right">
+                    <div className="truncate text-lg leading-tight font-extrabold tracking-tight" style={{ color: c }}>
+                      {action.name}
+                    </div>
+                    <div className="text-[11px] text-muted">{action.showInOverlay ? 'se ve en el overlay' : 'oculta en el overlay'}</div>
                   </div>
-                  <div className="mt-1 grid grid-cols-[auto_1fr] gap-x-4 text-xs">
-                    <span className="text-muted">
-                      Repeticiones: <b className="text-white">{ev.multiplier}</b>
-                      {ev.perUnit ? ' ×cant.' : ''}
-                    </span>
-                    <span className="text-muted">
-                      Comandos: <b className="text-white">{cmds.length}</b>
-                      {others ? ` +${others} pasos` : ''}
-                    </span>
-                    <span className="text-muted">
-                      Intervalo: <b className="text-white">{ev.intervalMs}</b> · Retraso: <b className="text-white">{ev.delayMs}</b>
-                    </span>
-                    <code className="truncate text-accent/90">{cmds[0] ? `/${cmds[0].replace(/^\//, '')}` : others ? '(pasos avanzados)' : '—'}</code>
+                  <div className="grid h-[52px] w-[52px] shrink-0 place-items-center overflow-hidden rounded-2xl ring-1 ring-white/10" style={{ background: `radial-gradient(circle at 30% 20%, ${c}aa, ${c}22 60%, #0000)` }}>
+                    {action.media ? <Media media={action.media} className="h-full w-full object-cover" /> : <span className="text-2xl font-black text-white drop-shadow">{action.name.slice(0, 1)}</span>}
                   </div>
                 </div>
               </button>
-              <SoundCell ev={ev} onEdit={open} />
-              <div className="flex items-center gap-1.5 border-l border-line px-3">
-                <button className="rounded-lg bg-orange-500 p-2 text-white hover:brightness-110" title="Probar completo: tarjeta, aviso, sonido y Minecraft" onClick={() => api('POST', `/api/actions/${action.id}/test`, { full: true, eventId: ev.id }).catch((e) => toast(e.message, 'error'))}>
-                  <Play size={15} />
+              <button onClick={open} className="relative mx-5 rounded-xl border border-white/5 bg-black/40 px-3 py-2 text-left font-mono text-[12px] text-[#c4b5fd] hover:border-accent/40">
+                <div className="truncate">{cmds[0] ? `/${cmds[0].replace(/^\//, '')}` : others ? 'pasos avanzados' : 'sin comandos'}</div>
+                {cmds.length + others > 1 && <div className="mt-0.5 text-[11px] text-muted">+{cmds.length - 1 + others} más</div>}
+              </button>
+              <div className="relative flex flex-wrap items-center gap-1.5 px-5 pt-3">
+                <span className="chip" title="Repeticiones">
+                  ×{ev.multiplier}
+                  {ev.perUnit ? ' por unidad' : ''}
+                </span>
+                <span className="chip" title="Intervalo entre repeticiones">⏱ {ev.intervalMs} ms</span>
+                {ev.delayMs > 0 && <span className="chip" title="Retraso">⌛ {ev.delayMs} ms</span>}
+                <SoundChip ev={ev} onEdit={open} />
+              </div>
+              <div className="relative mt-auto flex items-center gap-1.5 border-t border-white/5 px-4 py-3 pt-3">
+                <button className="btn-accent !px-3" title="Probar completo: tarjeta, aviso, sonido y Minecraft" onClick={() => api('POST', `/api/actions/${action.id}/test`, { full: true, eventId: ev.id }).catch((e) => toast(e.message, 'error'))}>
+                  <Play size={14} /> Probar
                 </button>
-                <button className="rounded-lg bg-sky-600 p-2 text-white hover:brightness-110" title="Ejecutar solo en Minecraft" onClick={() => api('POST', `/api/actions/${action.id}/test`, { full: false, eventId: ev.id }).catch((e) => toast(e.message, 'error'))}>
-                  <Play size={15} />
+                <button className="btn !px-3" title="Ejecutar solo en Minecraft" onClick={() => api('POST', `/api/actions/${action.id}/test`, { full: false, eventId: ev.id }).catch((e) => toast(e.message, 'error'))}>
+                  <Pickaxe size={14} /> Solo Minecraft
                 </button>
-                <button className="rounded-lg bg-white/10 p-2 hover:bg-white/20" title="Duplicar" onClick={() => duplicateRow(ev)}>
-                  <Copy size={15} />
-                </button>
-                <button className="rounded-lg bg-red-500/80 p-2 text-white hover:bg-red-500" title="Borrar" onClick={() => removeRow(ev)}>
-                  <Trash2 size={15} />
-                </button>
+                <div className="ml-auto flex items-center gap-0.5 text-muted">
+                  <IconBtn title="Mover antes" onClick={() => move(i, i - 1)}>
+                    <ChevronUp size={16} className="-rotate-90" />
+                  </IconBtn>
+                  <IconBtn title="Mover después" onClick={() => move(i, i + 1)}>
+                    <ChevronDown size={16} className="-rotate-90" />
+                  </IconBtn>
+                  <IconBtn title="Duplicar" onClick={() => duplicateRow(ev)}>
+                    <Copy size={15} />
+                  </IconBtn>
+                  <IconBtn title="Borrar" danger onClick={() => removeRow(ev)}>
+                    <Trash2 size={15} />
+                  </IconBtn>
+                </div>
               </div>
             </div>
           )
@@ -319,33 +325,33 @@ function ShareModal({ open, onClose, profile, onImported }: { open: boolean; onC
   )
 }
 
-function SoundCell({ ev, onEdit }: { ev: EventRule; onEdit: () => void }) {
-  const [dur, setDur] = useState<number | null>(null)
-  useEffect(() => {
-    if (!ev.sound) return
-    const a = new Audio(ev.sound.file)
-    a.onloadedmetadata = () => setDur(a.duration)
-  }, [ev.sound])
+function IconBtn({ children, title, onClick, danger }: { children: ReactNode; title: string; onClick: () => void; danger?: boolean }) {
+  return (
+    <button title={title} onClick={onClick} className={`grid h-8 w-8 place-items-center rounded-full transition hover:bg-white/10 ${danger ? 'hover:text-bad' : 'hover:text-white'}`}>
+      {children}
+    </button>
+  )
+}
+
+function SoundChip({ ev, onEdit }: { ev: EventRule; onEdit: () => void }) {
   if (!ev.sound)
     return (
-      <button onClick={onEdit} className="flex w-40 shrink-0 items-center justify-center gap-2 border-l border-line text-xs text-muted hover:bg-white/5 hover:text-white">
-        <Plus size={14} /> <Music size={14} /> Sonido
+      <button onClick={onEdit} className="chip hover:border-accent/50 hover:text-white">
+        <Plus size={11} /> <Music size={11} /> sonido
       </button>
     )
   const name = decodeURIComponent(ev.sound.file.split('/').pop() ?? '').replace(/^[a-z0-9]+-/, '')
-  const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.round(s % 60)).padStart(2, '0')}`
   return (
-    <div className="flex w-40 shrink-0 flex-col justify-center gap-1 border-l border-line px-3 text-xs">
-      <span className="truncate font-semibold" title={name}>
-        {name}
-      </span>
-      <div className="flex flex-wrap gap-1 text-[10px] text-muted">
-        <span className="rounded bg-white/10 px-1.5">⏱ {dur ? fmt(dur) : '--:--'}</span>
-        <span className="rounded bg-white/10 px-1.5">🔊 {Math.round(ev.sound.volume * 100)}%</span>
-        <button className="rounded bg-white/10 px-1.5 hover:bg-white/20" onClick={() => { const a = new Audio(ev.sound!.file); a.volume = ev.sound!.volume; void a.play() }}>
-          ▶
-        </button>
-      </div>
-    </div>
+    <button
+      className="chip max-w-48 border-accent/40 text-[#d8ccff] hover:text-white"
+      title={`${name} · ${Math.round(ev.sound.volume * 100)}% — clic para escuchar`}
+      onClick={() => {
+        const a = new Audio(ev.sound!.file)
+        a.volume = ev.sound!.volume
+        void a.play()
+      }}
+    >
+      <Music size={11} /> <span className="truncate">{name}</span>
+    </button>
   )
 }

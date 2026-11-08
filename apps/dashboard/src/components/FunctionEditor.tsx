@@ -328,10 +328,10 @@ export function FunctionEditor({
                 <div key={i} className="rounded-lg border border-line bg-panel">
                   <div className="flex items-center gap-1.5 border-b border-line px-2 py-1">
                     <span className="mr-auto text-xs font-semibold">#{i + 1} Comando</span>
-                    <button className="rounded bg-orange-500 p-1 text-white hover:brightness-110" title="Probar con el espectador «Prueba»" onClick={() => testCommand(c)}>
+                    <button className="rounded-full bg-gradient-to-r from-accent to-hot p-1 text-white hover:brightness-110" title="Probar con el espectador «Prueba»" onClick={() => testCommand(c)}>
                       <Play size={12} />
                     </button>
-                    <button className="rounded bg-red-500/80 p-1 text-white hover:brightness-110" title="Quitar" onClick={() => setCommands(commands.filter((_, k) => k !== i))}>
+                    <button className="rounded-full bg-bad/80 p-1 text-white hover:brightness-110" title="Quitar" onClick={() => setCommands(commands.filter((_, k) => k !== i))}>
                       <X size={12} />
                     </button>
                   </div>
@@ -345,10 +345,10 @@ export function FunctionEditor({
               ))}
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2">
-              <button className="btn justify-center bg-sky-600/80 text-white hover:bg-sky-600" disabled={commands.length >= MAX_COMMANDS} onClick={() => setCommands([...commands, ''])}>
+              <button className="btn justify-center border-accent/50 bg-accent/15 text-white" disabled={commands.length >= MAX_COMMANDS} onClick={() => setCommands([...commands, ''])}>
                 <Plus size={14} /> Comando manual
               </button>
-              <button className="btn justify-center bg-sky-600/80 text-white hover:bg-sky-600" disabled={commands.length >= MAX_COMMANDS} onClick={() => setGallery(true)}>
+              <button className="btn justify-center border-accent/50 bg-accent/15 text-white" disabled={commands.length >= MAX_COMMANDS} onClick={() => setGallery(true)}>
                 <LayoutGrid size={14} /> Elegir de la galería
               </button>
             </div>
@@ -473,7 +473,7 @@ function GalleryModal({ onClose, onPick, onTest }: { onClose: () => void; onPick
                 </div>
               )}
             </div>
-            <button className="rounded bg-orange-500 p-1.5 text-white" title="Probar" onClick={() => onTest(g.command)}>
+            <button className="rounded-full bg-gradient-to-r from-accent to-hot p-1.5 text-white" title="Probar" onClick={() => onTest(g.command)}>
               <Play size={12} />
             </button>
             <button className="btn-accent px-2 py-1 text-xs" onClick={() => onPick(g)}>

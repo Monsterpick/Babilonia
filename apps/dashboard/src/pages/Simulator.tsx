@@ -20,7 +20,7 @@ export function SimulatorPage() {
   return (
     <div className="pb-10">
       <PageHeader title="Simulador" subtitle="Prueba todo antes de salir en vivo. Los eventos falsos pasan por las mismas reglas que los reales." />
-      <div className="grid gap-4 px-6 xl:grid-cols-[1fr_380px]">
+      <div className="grid gap-4 px-8 xl:grid-cols-[1fr_380px]">
         <div className="card p-5">
           <div className="mb-4 flex flex-wrap items-end gap-3">
             <Field label="Espectador (vacío = al azar)">

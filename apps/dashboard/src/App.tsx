@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
-import { Activity, Boxes, FlaskConical, ListChecks, MonitorPlay, Server, Settings, Loader2, Radio, Power, Gamepad2 } from 'lucide-react'
+import { Activity, Boxes, FlaskConical, ListChecks, MonitorPlay, Server, Settings, Loader2, Radio, Power, Zap, Pickaxe } from 'lucide-react'
 import type { Profile, SourceStatus } from '@livearena/shared'
 import { api } from './lib/api'
 import { useLiveConnected, useLiveState } from './lib/live'
@@ -34,13 +34,13 @@ const AppCtx = createContext<Ctx>(null as unknown as Ctx)
 export const useApp = () => useContext(AppCtx)
 
 const PAGES: { id: string; label: string; icon: ReactNode; el: () => ReactNode }[] = [
-  { id: 'plugins', label: 'Plugins', icon: <ListChecks size={18} />, el: () => <PluginsPage /> },
-  { id: 'overlays', label: 'Overlays', icon: <MonitorPlay size={18} />, el: () => <OverlaysPage /> },
-  { id: 'kit', label: 'Kit inicial', icon: <Boxes size={18} />, el: () => <KitPage /> },
-  { id: 'simulador', label: 'Simulador', icon: <FlaskConical size={18} />, el: () => <SimulatorPage /> },
-  { id: 'servidor', label: 'Servidor', icon: <Server size={18} />, el: () => <ServerPage /> },
-  { id: 'actividad', label: 'Actividad', icon: <Activity size={18} />, el: () => <ActivityPage /> },
-  { id: 'ajustes', label: 'Ajustes', icon: <Settings size={18} />, el: () => <SettingsPage /> },
+  { id: 'plugins', label: 'Plugins', icon: <ListChecks size={20} />, el: () => <PluginsPage /> },
+  { id: 'overlays', label: 'Overlays', icon: <MonitorPlay size={20} />, el: () => <OverlaysPage /> },
+  { id: 'kit', label: 'Kit', icon: <Boxes size={20} />, el: () => <KitPage /> },
+  { id: 'simulador', label: 'Simulador', icon: <FlaskConical size={20} />, el: () => <SimulatorPage /> },
+  { id: 'servidor', label: 'Servidor', icon: <Server size={20} />, el: () => <ServerPage /> },
+  { id: 'actividad', label: 'Actividad', icon: <Activity size={20} />, el: () => <ActivityPage /> },
+  { id: 'ajustes', label: 'Ajustes', icon: <Settings size={20} />, el: () => <SettingsPage /> },
 ]
 
 export function App() {
@@ -70,32 +70,28 @@ export function App() {
   return (
     <AppCtx.Provider value={{ state, reload, profile, go }}>
       <div className="flex h-full">
-        <aside className="flex w-60 shrink-0 flex-col border-r border-line bg-panel/60">
-          <div className="flex items-center gap-2.5 px-5 py-5">
-            <div className="grid h-9 w-9 place-items-center rounded-xl bg-accent text-white shadow-[0_0_24px_-4px_var(--color-accent)]">
-              <Gamepad2 size={20} />
-            </div>
-            <div>
-              <div className="font-bold leading-tight">LiveArena</div>
-              <div className="text-xs text-muted">Consola de show</div>
-            </div>
-          </div>
-          <nav className="flex-1 space-y-1 px-3">
-            {PAGES.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => go(p.id)}
-                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                  p.id === current.id ? 'bg-accent/10 text-white ring-1 ring-accent/50' : 'text-muted hover:bg-white/5 hover:text-white'
-                }`}
-              >
-                {p.icon}
-                <span className="flex-1 text-left">{p.label}</span>
-                {p.id === 'plugins' && profile && <span className="rounded-md bg-white/10 px-1.5 text-xs">{profile.events.length}</span>}
-              </button>
-            ))}
+        <aside className="relative z-10 flex w-[92px] shrink-0 flex-col items-center gap-1 border-r border-white/5 bg-black/30 py-5 backdrop-blur-xl">
+          <button onClick={() => go('plugins')} className="mb-5 grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-accent via-hot to-coral text-white shadow-[0_10px_30px_-10px_var(--color-hot)]" title="LiveArena">
+            <Zap size={24} strokeWidth={2.5} />
+          </button>
+          <nav className="flex w-full flex-1 flex-col items-center gap-1 px-2">
+            {PAGES.map((p) => {
+              const on = p.id === current.id
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => go(p.id)}
+                  className={`group relative flex w-full flex-col items-center gap-1 rounded-2xl px-1 py-2.5 text-[11px] font-medium transition ${on ? 'text-white' : 'text-muted hover:text-white'}`}
+                >
+                  {on && <span className="absolute top-1/2 -left-2 h-8 w-1 -translate-y-1/2 rounded-r-full bg-gradient-to-b from-accent to-hot" />}
+                  <span className={`grid h-10 w-10 place-items-center rounded-xl transition ${on ? 'bg-gradient-to-br from-accent/30 to-hot/20 ring-1 ring-accent/60' : 'group-hover:bg-white/5'}`}>{p.icon}</span>
+                  <span className="leading-none">{p.label}</span>
+                  {p.id === 'plugins' && profile && <span className="absolute top-1.5 right-2.5 min-w-4 rounded-full bg-hot px-1 text-[9px] leading-4 font-bold text-white">{profile.events.length}</span>}
+                </button>
+              )
+            })}
           </nav>
-          <ServerBox />
+          <div className="text-[10px] text-muted/60">v{(state as any)?.version ?? ''}</div>
         </aside>
         <main className="flex min-w-0 flex-1 flex-col">
           <TopBar />
@@ -146,31 +142,35 @@ function TopBar() {
   }
 
   return (
-    <header className="flex items-center gap-3 border-b border-line px-6 py-3">
-      <div className="mr-auto flex items-center gap-2 text-xs text-muted">
-        <span className={`h-2 w-2 rounded-full ${wsOk ? 'bg-ok' : 'bg-bad'}`} /> {wsOk ? 'app conectada' : 'reconectando con la app…'}
-        {source?.viewers !== undefined && st === 'live' && <span className="ml-3">👁 {source.viewers}</span>}
+    <header className="flex flex-wrap items-center gap-3 border-b border-white/5 bg-black/20 px-8 py-3 backdrop-blur-xl">
+      <div className="mr-auto flex items-center gap-3">
+        <span className="text-lg font-extrabold tracking-tight">
+          Live<span className="glow-text">Arena</span>
+        </span>
+        <span className="chip" title={wsOk ? 'El panel está conectado con el motor de la app' : 'Reconectando…'}>
+          <span className={`h-1.5 w-1.5 rounded-full ${wsOk ? 'bg-ok shadow-[0_0_8px_var(--color-ok)]' : 'bg-bad'}`} /> {wsOk ? 'en línea' : 'reconectando…'}
+        </span>
+        {source?.viewers !== undefined && st === 'live' && <span className="chip">👁 {source.viewers}</span>}
       </div>
+      <MinecraftPill />
       <NickField current={mc?.player ?? state?.config?.minecraft?.player ?? ''} onSaved={reload} />
-      <div className="flex items-center gap-2 rounded-lg border border-line bg-panel px-3 py-1 text-sm">
-        <span className="text-muted">TikTok</span>
+      <div className={`flex items-center gap-1 rounded-full border p-1 pl-4 text-sm transition ${st === 'live' ? 'border-hot/60 bg-hot/10 shadow-[0_0_24px_-8px_var(--color-hot)]' : 'border-line bg-black/30'}`}>
+        <Radio size={14} className={st === 'live' ? 'animate-pulse text-hot' : st === 'error' ? 'text-bad' : 'text-muted'} />
         <input
           value={user}
           onChange={(e) => setUser(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && !active && toggle()}
-          placeholder="@usuario"
+          placeholder="@usuario de TikTok"
           disabled={active}
-          className="w-36 bg-transparent font-semibold outline-none"
+          className="ml-1 w-40 bg-transparent font-semibold outline-none placeholder:font-normal placeholder:text-muted/70"
+          title={source?.message}
         />
+        <span className="px-2 text-xs text-muted">{SOURCE_TEXT[st]}</span>
+        <button className={active ? 'btn' : 'btn-accent'} onClick={toggle} disabled={busy}>
+          {busy ? <Loader2 size={14} className="animate-spin" /> : null}
+          {active ? 'Desconectar' : 'Conectar'}
+        </button>
       </div>
-      <div className="flex items-center gap-1.5 rounded-full border border-line px-3 py-1 text-xs" title={source?.message}>
-        <Radio size={12} className={st === 'live' ? 'text-ok' : st === 'error' ? 'text-bad' : 'text-muted'} />
-        {SOURCE_TEXT[st]}
-      </div>
-      <button className={active ? 'btn' : 'btn-accent'} onClick={toggle} disabled={busy}>
-        {busy ? <Loader2 size={14} className="animate-spin" /> : null}
-        {active ? 'Desconectar' : 'Conectar live'}
-      </button>
     </header>
   )
 }
@@ -197,8 +197,8 @@ function NickField({ current, onSaved }: { current: string; onSaved: () => Promi
     }
   }
   return (
-    <label className={`flex cursor-text items-center gap-2 rounded-lg border bg-panel px-3 py-1 text-sm ${current ? 'border-line' : 'border-warn/60'}`} title="Tu nick de Minecraft: a quién le llegan los mobs y regalos">
-      <span className="text-muted">Nick</span>
+    <label className={`flex cursor-text items-center gap-2 rounded-full border bg-black/30 px-4 py-1.5 text-sm transition focus-within:border-accent ${current ? 'border-line' : 'border-warn/60'}`} title="Tu nick de Minecraft: a quién le llegan los mobs y regalos">
+      <Pickaxe size={14} className="text-muted" />
       <input
         value={v}
         maxLength={16}
@@ -214,7 +214,7 @@ function NickField({ current, onSaved }: { current: string; onSaved: () => Promi
 
 const LINK_TEXT: Record<string, string> = { disconnected: 'desvinculado', connecting: 'conectando…', connected: 'vinculado', backoff: 'reintentando', error: 'error' }
 
-function ServerBox() {
+function MinecraftPill() {
   const mc = useLiveState<any>('minecraft')
   const { go } = useApp()
   const link = mc?.link?.state ?? 'disconnected'
@@ -231,45 +231,37 @@ function ServerBox() {
     }
   }
   const canStart = !!mc?.server?.folder && proc !== 'running' && proc !== 'starting'
+  const dot = link === 'connected' ? 'bg-ok shadow-[0_0_8px_var(--color-ok)]' : link === 'error' ? 'bg-bad' : proc === 'starting' ? 'bg-warn animate-pulse' : 'bg-muted'
+  const procText = mc?.server?.folder ? { stopped: 'apagado', starting: 'arrancando…', running: 'encendido', stopping: 'apagando…', crashed: 'se cayó' }[proc as string] : 'sin servidor'
+  const on = proc === 'running' || proc === 'starting'
   return (
-    <div className="m-3 rounded-xl border border-line bg-panel p-3">
-      <div className="mb-2 flex items-center justify-between text-[11px] font-semibold tracking-widest text-muted">
-        MINECRAFT
-        <span className="flex items-center gap-1.5 rounded-full border border-line px-2 py-0.5 font-normal tracking-normal" title={mc?.link?.message}>
-          <span className={`h-1.5 w-1.5 rounded-full ${link === 'connected' ? 'bg-ok' : link === 'error' ? 'bg-bad' : 'bg-muted'}`} />
-          {LINK_TEXT[link]}
+    <div className="flex items-center gap-1 rounded-full border border-line bg-black/30 p-1 pl-3 text-sm">
+      <button className="flex items-center gap-2 pr-2 text-left" onClick={() => go('servidor')} title={mc?.link?.message ?? 'Ir a Servidor'}>
+        <span className={`h-2 w-2 rounded-full ${dot}`} />
+        <span className="leading-tight">
+          <span className="block text-[10px] font-semibold tracking-[0.14em] text-muted uppercase">Minecraft</span>
+          <span className="block text-xs font-semibold">
+            {procText} · {LINK_TEXT[link]}
+          </span>
         </span>
-      </div>
-      {mc?.server?.folder && (
-        <div className="mb-2 text-xs text-muted">
-          Servidor: <b className={proc === 'running' ? 'text-ok' : proc === 'crashed' ? 'text-bad' : ''}>{{ stopped: 'apagado', starting: 'arrancando…', running: 'encendido', stopping: 'apagando…', crashed: 'se cayó' }[proc as string]}</b>
-        </div>
-      )}
-      <div className="grid grid-cols-2 gap-2">
-        {canStart ? (
-          <button className="btn-accent justify-center" disabled={busy} onClick={() => run(() => api('POST', '/api/minecraft/server/start'))}>
-            <Power size={14} /> Encender
-          </button>
-        ) : (
-          <button
-            className="btn-accent justify-center"
-            disabled={busy || link === 'connected'}
-            onClick={() => run(() => api('POST', '/api/minecraft/connect'))}
-          >
-            Activar
-          </button>
-        )}
-        <button
-          className="btn justify-center"
-          disabled={busy}
-          onClick={() => run(() => (proc === 'running' || proc === 'starting' ? api('POST', '/api/minecraft/server/stop') : api('POST', '/api/minecraft/disconnect')))}
-        >
-          {proc === 'running' || proc === 'starting' ? 'Apagar' : 'Desactivar'}
-        </button>
-      </div>
-      <button className="mt-2 flex items-center gap-1.5 text-xs text-muted hover:text-white" onClick={() => go('servidor')}>
-        <Settings size={12} /> Ajustes del servidor
       </button>
+      {canStart ? (
+        <button className="btn-accent" disabled={busy} onClick={() => run(() => api('POST', '/api/minecraft/server/start'))}>
+          <Power size={13} /> Encender
+        </button>
+      ) : on ? (
+        <button className="btn" disabled={busy} onClick={() => run(() => api('POST', '/api/minecraft/server/stop'))}>
+          <Power size={13} /> Apagar
+        </button>
+      ) : link === 'connected' ? (
+        <button className="btn" disabled={busy} onClick={() => run(() => api('POST', '/api/minecraft/disconnect'))}>
+          Desvincular
+        </button>
+      ) : (
+        <button className="btn" disabled={busy} onClick={() => run(() => api('POST', '/api/minecraft/connect'))}>
+          Vincular
+        </button>
+      )}
     </div>
   )
 }

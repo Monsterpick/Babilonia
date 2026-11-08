@@ -37,7 +37,7 @@ export function SettingsPage() {
           Guardar
         </button>
       </PageHeader>
-      <div className="grid gap-4 px-6 lg:grid-cols-2">
+      <div className="grid gap-4 px-8 lg:grid-cols-2">
         <div className="card space-y-3 p-5">
           <span className="label">TikTok LIVE</span>
           <Field label="Usuario">

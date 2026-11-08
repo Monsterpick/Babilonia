@@ -100,7 +100,7 @@ export function KitPage() {
           Dar kit ahora
         </button>
       </PageHeader>
-      <div className="space-y-4 px-6">
+      <div className="space-y-4 px-8">
         <TexturesBar />
         <div className="card flex flex-wrap gap-x-8 gap-y-2 p-4">
           <Check on={kit.enabled} onChange={(v) => setKit({ ...kit, enabled: v })}>

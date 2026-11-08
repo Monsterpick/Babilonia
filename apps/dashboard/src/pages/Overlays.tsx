@@ -41,7 +41,7 @@ export function OverlaysPage() {
   return (
     <div className="pb-10">
       <PageHeader title="Overlays" subtitle="Pégalos como «Fuente de navegador» en OBS o como «Enlace» en TikTok LIVE Studio." />
-      <div className="grid gap-3 px-6 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-3 px-8 md:grid-cols-2 xl:grid-cols-3">
         {OVERLAYS.map((o) => {
           const url = overlayUrl(o.id)
           return (
@@ -66,7 +66,7 @@ export function OverlaysPage() {
         })}
       </div>
 
-      <div className="mt-8 flex items-center px-6">
+      <div className="mt-8 flex items-center px-8">
         <h2 className="mr-auto text-sm font-semibold tracking-widest text-muted">CÓMO SE VEN LAS TARJETAS</h2>
         <button className="btn mr-2" onClick={() => set({ cardStyle: 'minimal', glow: 0, border: 0, background: 0, showGift: true })}>
           <Sparkles size={14} /> Diseño minimalista
@@ -75,7 +75,7 @@ export function OverlaysPage() {
           <RotateCcw size={14} /> Valores por defecto
         </button>
       </div>
-      <div className="grid gap-3 px-6 pt-3 md:grid-cols-2 xl:grid-cols-3 min-[1900px]:grid-cols-5">
+      <div className="grid gap-3 px-8 pt-3 md:grid-cols-2 xl:grid-cols-3 min-[1900px]:grid-cols-5">
         <Panel title="Distribución">
           <Row label="Columnas">
             <select className="input" value={String(style.columns)} onChange={(e) => set({ columns: e.target.value === 'auto' ? 'auto' : Number(e.target.value) })}>
