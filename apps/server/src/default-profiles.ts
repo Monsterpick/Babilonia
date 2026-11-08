@@ -193,3 +193,64 @@ export function s2eProfile(): Profile {
     ],
   })
 }
+
+/**
+ * Perfil para el plugin propio LiveArena (/la efecto …): efectos survival en español, con
+ * el nombre del espectador sobre cada mob, y tótems apilables. Se instala solo con la app.
+ */
+export function laSurvivalProfile(): Profile {
+  const fn = (id: string, name: string, color: string, commands: string[], alignment: 'good' | 'bad' = 'bad'): ActionInput => ({
+    id,
+    name,
+    color,
+    alignment,
+    steps: commands.map((c) => ({ type: 'minecraft.command' as const, commands: [c], mode: 'all' as const })),
+  })
+  const fx = (efecto: string, extra = '') => `la efecto ${efecto} {player} {nickname}${extra ? ` ${extra}` : ''}`
+  const gift = (id: string, name: string, diamonds: number, action: string) => ({ id, trigger: { type: 'gift' as const, gifts: [{ name, diamonds }] }, actionIds: [action] })
+  return ProfileSchema.parse({
+    id: 'la-survival',
+    name: 'LiveArena Survival',
+    mode: 'supervivencia',
+    actions: [
+      fn('la-zombie', 'ZOMBIE', '#65a30d', [fx('zombie', 'hierro')]),
+      fn('la-creeper', 'CREEPER', '#22c55e', [fx('creeper')]),
+      fn('la-skeleton', 'ESQUELETO', '#d4d4d8', [fx('esqueleto')]),
+      fn('la-spider', 'ARAÑA', '#7c3aed', [fx('arana')]),
+      fn('la-witch', 'BRUJA', '#a21caf', [fx('bruja')]),
+      fn('la-tnt', 'TNT', '#dc2626', [fx('tnt', '60 3')]),
+      fn('la-food', 'COMIDA', '#f59e0b', [fx('comida')], 'good'),
+      fn('la-totem', 'TÓTEM APILABLE', '#ffcc33', ['la totem add {player} {gift.count} {nickname}'], 'good'),
+      fn('la-web', 'TELARAÑA', '#e5e7eb', [fx('telarana')]),
+      fn('la-ravager', 'DEVASTADOR', '#b45309', [fx('ravager')]),
+      fn('la-chest', 'COFRE ÉPICO', '#fde047', [fx('cofre_epico')], 'good'),
+      fn('la-boss', 'JEFE', '#dc2626', [fx('jefe')]),
+      fn('la-meteors', 'METEORITOS', '#fb923c', [fx('meteoritos', '10')]),
+      fn('la-apple', 'MANZANA DORADA', '#ffd166', [fx('manzana')], 'good'),
+      fn('la-dog', 'PERRO', '#d6d3d1', [fx('perro')], 'good'),
+      fn('la-horde', 'HORDA', '#991b1b', [fx('horda')]),
+      fn('la-freeze', 'CONGELADO', '#a5f3fc', [fx('congelar', '8')]),
+      fn('la-fall', 'CAÍDA LIBRE', '#38bdf8', [fx('caida')]),
+    ],
+    events: [
+      { id: 'la-ev-follow', trigger: { type: 'follow', oncePerUser: true }, actionIds: ['la-dog'] },
+      { id: 'la-ev-likes', trigger: { type: 'likes', every: 150 }, actionIds: ['la-zombie'] },
+      gift('la-ev-rose', 'Rose', 1, 'la-creeper'),
+      gift('la-ev-tiktok', 'TikTok', 1, 'la-skeleton'),
+      gift('la-ev-gg', 'GG', 1, 'la-spider'),
+      gift('la-ev-heartme', 'Heart Me', 1, 'la-totem'),
+      gift('la-ev-finger', 'Finger Heart', 5, 'la-witch'),
+      gift('la-ev-perfume', 'Perfume', 20, 'la-tnt'),
+      gift('la-ev-donut', 'Doughnut', 30, 'la-food'),
+      gift('la-ev-hearts', 'Hand Hearts', 100, 'la-web'),
+      gift('la-ev-confetti', 'Confetti', 100, 'la-freeze'),
+      gift('la-ev-sunglasses', 'Sunglasses', 199, 'la-fall'),
+      gift('la-ev-corgi', 'Corgi', 299, 'la-ravager'),
+      gift('la-ev-moneygun', 'Money Gun', 500, 'la-chest'),
+      gift('la-ev-galaxy', 'Galaxy', 1000, 'la-boss'),
+      { id: 'la-ev-big', trigger: { type: 'diamonds', min: 5000 }, actionIds: ['la-meteors'] },
+      { id: 'la-ev-share', trigger: { type: 'share' }, actionIds: ['la-apple'], cooldown: { perUserMs: 60000 } },
+      { id: 'la-ev-room', trigger: { type: 'room_likes', goal: 10000, step: 10000 }, actionIds: ['la-horde'] },
+    ],
+  })
+}

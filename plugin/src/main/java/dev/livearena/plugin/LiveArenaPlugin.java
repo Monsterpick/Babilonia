@@ -13,13 +13,13 @@ public final class LiveArenaPlugin extends JavaPlugin {
         totems = new TotemManager(this);
         totems.load();
         getServer().getPluginManager().registerEvents(new TotemListener(this, totems), this);
-        LaCommand cmd = new LaCommand(this, totems);
+        LaCommand cmd = new LaCommand(this, totems, new Effects(this));
         PluginCommand la = getCommand("la");
         if (la != null) {
             la.setExecutor(cmd);
             la.setTabCompleter(cmd);
         }
-        getLogger().info("LiveArena activo: tótems apilables listos.");
+        getLogger().info("LiveArena activo: tótems apilables y efectos survival listos.");
     }
 
     @Override

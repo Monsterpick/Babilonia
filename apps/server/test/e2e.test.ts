@@ -115,6 +115,16 @@ describe('LiveArena de punta a punta (simulador → reglas → RCON)', () => {
     expect(fake.commands.filter((c) => c.startsWith('survival creeper'))).toHaveLength(3)
     await api('POST', '/api/profiles/supervivencia/activate')
   })
+  it('incluye el perfil LiveArena Survival con efectos /la en español', async () => {
+    const p = await api('GET', '/api/profiles/la-survival')
+    expect(p.actions.find((a: { id: string }) => a.id === 'la-creeper').steps[0].commands[0]).toBe('la efecto creeper {player} {nickname}')
+    await api('POST', '/api/profiles/la-survival/activate')
+    fake.commands.length = 0
+    await api('POST', '/api/simulate', { type: 'gift', name: 'Rose', count: 1, user: 'Ana María' })
+    await wait(800)
+    expect(fake.commands).toContain('la efecto creeper Steve Ana_María')
+    await api('POST', '/api/profiles/supervivencia/activate')
+  })
   it('ráfaga de 300 eventos en 1 s sin perder el regalo grande', async () => {
     fake.commands.length = 0
     await api('POST', '/api/simulate', { type: 'burst', events: 300, seconds: 1 })
@@ -129,6 +139,7 @@ describe('LiveArena de punta a punta (simulador → reglas → RCON)', () => {
     const r2 = await fetch(base + '/api/minecraft/command', { method: 'POST', headers: { 'content-type': 'text/plain' }, body: 'x' })
     expect(r2.status).toBe(415)
   })
+
 
   it('incluye el perfil s2e Survival con comandos /survival', async () => {
     const p = await api('GET', '/api/profiles/s2e-survival')

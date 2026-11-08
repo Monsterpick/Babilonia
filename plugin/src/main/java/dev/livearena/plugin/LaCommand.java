@@ -17,15 +17,18 @@ import org.bukkit.entity.Player;
  * /la totem remove <jugador> [cantidad] [espectador…]
  * /la totem set <jugador> <cantidad>
  * /la totem get <jugador>          → responde «TOTEMS <jugador> <n>» (lo lee LiveArena por RCON)
+ * /la efecto <nombre> <jugador> [espectador] [parámetros]   (lista: /la efectos; /la limpiar quita los mobs)
  * /la reload | /la version
  */
 final class LaCommand implements TabExecutor {
     private final LiveArenaPlugin plugin;
     private final TotemManager totems;
+    private final Effects effects;
 
-    LaCommand(LiveArenaPlugin plugin, TotemManager totems) {
+    LaCommand(LiveArenaPlugin plugin, TotemManager totems, Effects effects) {
         this.plugin = plugin;
         this.totems = totems;
+        this.effects = effects;
     }
 
     private static void reply(CommandSender s, String text, NamedTextColor color) {
@@ -54,9 +57,36 @@ final class LaCommand implements TabExecutor {
                 reply(sender, "LiveArena: configuración recargada.", NamedTextColor.GREEN);
             }
             case "totem", "totems", "tótem", "tótems" -> totem(sender, Arrays.copyOfRange(args, 1, args.length));
+            case "efecto", "e" -> effect(sender, Arrays.copyOfRange(args, 1, args.length));
+            case "efectos" -> {
+                for (Effects.Def d : effects.all().values())
+                    sender.sendMessage(Component.text(d.id(), d.color()).append(Component.text(" — " + d.nombre() + ": " + d.ayuda(), NamedTextColor.GRAY)));
+            }
+            case "limpiar" -> reply(sender, "LiveArena: quitados " + effects.clear() + " mobs de efectos.", NamedTextColor.GREEN);
             default -> reply(sender, "Subcomando desconocido: " + sub, NamedTextColor.RED);
         }
         return true;
+    }
+
+    /** /la efecto <nombre> <jugador> [espectador|-] [parámetros…] */
+    private void effect(CommandSender sender, String[] a) {
+        if (a.length < 2) {
+            reply(sender, "Uso: /la efecto <nombre> <jugador> [espectador] [parámetros] — lista: /la efectos", NamedTextColor.YELLOW);
+            return;
+        }
+        String id = a[0].toLowerCase(Locale.ROOT);
+        Player p = Bukkit.getPlayerExact(a[1]);
+        if (p == null) {
+            reply(sender, "EFECTO " + id + " jugador " + a[1] + " no está conectado", NamedTextColor.RED);
+            return;
+        }
+        String viewer = a.length >= 3 && !a[2].equals("-") && !a[2].equalsIgnoreCase("null") ? a[2].replace('_', ' ') : "";
+        String[] params = a.length > 3 ? Arrays.copyOfRange(a, 3, a.length) : new String[0];
+        if (!effects.run(id, p, viewer, params)) {
+            reply(sender, "Efecto desconocido: " + id + " (mira /la efectos)", NamedTextColor.RED);
+            return;
+        }
+        reply(sender, "EFECTO " + id + " OK", NamedTextColor.GREEN);
     }
 
     private void totem(CommandSender sender, String[] a) {
@@ -107,7 +137,9 @@ final class LaCommand implements TabExecutor {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> out = new ArrayList<>();
-        if (args.length == 1) out.addAll(List.of("totem", "reload", "version"));
+        if (args.length == 1) out.addAll(List.of("totem", "efecto", "efectos", "limpiar", "reload", "version"));
+        else if (args.length == 2 && args[0].equalsIgnoreCase("efecto")) out.addAll(effects.all().keySet());
+        else if (args.length == 3 && args[0].equalsIgnoreCase("efecto")) for (Player p : Bukkit.getOnlinePlayers()) out.add(p.getName());
         else if (args.length == 2 && args[0].toLowerCase(Locale.ROOT).startsWith("tot")) out.addAll(List.of("add", "remove", "set", "get"));
         else if (args.length == 3 && args[0].toLowerCase(Locale.ROOT).startsWith("tot")) for (Player p : Bukkit.getOnlinePlayers()) out.add(p.getName());
         else if (args.length == 4) out.addAll(List.of("1", "5", "10"));

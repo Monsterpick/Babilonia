@@ -24,3 +24,11 @@ totems:
     usado-chat: '<dark_gray>[</dark_gray><gold>LIVE</gold><dark_gray>]</dark_gray> <white><jugador></white> <gray>se salvó con un tótem. Quedan</gray> <gold><bold><total></bold></gold>'
     quitados-chat: '<dark_gray>[</dark_gray><red>LIVE</red><dark_gray>]</dark_gray> <yellow><espectador></yellow> <gray>le quitó</gray> <red><bold><cantidad> tótem<plural></bold></red> <gray>a</gray> <white><jugador></white> <dark_gray>(</dark_gray><gold><total></gold><dark_gray>)</dark_gray>'
     maximo: '<red>Ya tienes el máximo de tótems (<max>).</red>'
+
+efectos:
+  # Máximo de mobs invocados por efectos vivos a la vez (0 = sin límite).
+  max-mobs: 150
+  # El nombre del espectador se ve siempre encima del mob.
+  nombres-siempre-visibles: true
+  # Anunciar cada efecto en el chat del servidor.
+  anunciar-en-chat: true

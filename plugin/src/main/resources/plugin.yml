@@ -2,12 +2,12 @@ name: LiveArena
 version: '${project.version}'
 main: dev.livearena.plugin.LiveArenaPlugin
 api-version: '26.1.2'
-description: Efectos para lives interactivos de LiveArena (tótems apilables y más).
+description: Efectos para lives interactivos de LiveArena (tótems apilables y efectos survival en español).
 author: LiveArena
 commands:
   la:
     description: Comandos de LiveArena
-    usage: /la totem <add|remove|set|get> <jugador> [cantidad] [espectador]
+    usage: /la totem <add|remove|set|get> <jugador> [cantidad] [espectador] | /la efecto <nombre> <jugador> [espectador] | /la efectos
     permission: livearena.admin
 permissions:
   livearena.admin:
