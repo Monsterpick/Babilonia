@@ -20,7 +20,14 @@ http.server.on('upgrade', (req, socket, head) => {
   app.hub.handleUpgrade(req, socket, head)
 })
 const port = Number(process.env.PORT ?? app.cfg.get().port)
-await http.listen({ host: '127.0.0.1', port })
+try {
+  await http.listen({ host: '127.0.0.1', port })
+} catch (err) {
+  const e = err as NodeJS.ErrnoException
+  app.log.error('servidor', e.code === 'EADDRINUSE' ? `El puerto ${port} ya está en uso: ¿LiveArena ya está abierto?` : `No se pudo iniciar: ${e.message}`)
+  await app.shutdown()
+  process.exit(1)
+}
 app.log.info('servidor', `LiveArena ${VERSION} en http://127.0.0.1:${port}  (datos: ${DATA_DIR})`)
 
 let closing = false

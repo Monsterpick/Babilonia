@@ -1,0 +1,89 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-bg: #0c0e12;
+  --color-panel: #13161c;
+  --color-panel-2: #191d25;
+  --color-line: #252a34;
+  --color-muted: #8a93a3;
+  --color-accent: #ff6a3d;
+  --color-accent-2: #ff8a5c;
+  --color-ok: #22c55e;
+  --color-warn: #f59e0b;
+  --color-bad: #ef4444;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body.dashboard {
+  background: var(--color-bg);
+  color: #e6e9ef;
+  font-family: var(--font-sans);
+}
+
+body.overlay {
+  background: transparent;
+  margin: 0;
+  overflow: hidden;
+}
+
+@layer components {
+.btn {
+  @apply inline-flex items-center gap-2 rounded-lg border border-line bg-panel-2 px-3 py-1.5 text-sm font-medium transition hover:border-white/20 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40;
+}
+.btn-accent {
+  @apply inline-flex items-center gap-2 rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-white shadow-[0_0_20px_-6px_var(--color-accent)] transition hover:bg-accent-2 disabled:cursor-not-allowed disabled:opacity-40;
+}
+.input {
+  @apply w-full rounded-lg border border-line bg-bg px-3 py-1.5 text-sm outline-none focus:border-accent/70;
+}
+.card {
+  @apply rounded-xl border border-line bg-panel;
+}
+.label {
+  @apply mb-1 block text-xs font-medium uppercase tracking-wider text-muted;
+}
+.seg {
+  @apply flex rounded-lg border border-line bg-bg p-0.5 text-sm;
+}
+.seg > button {
+  @apply min-w-0 flex-1 rounded-md px-2 py-1 whitespace-nowrap text-muted transition;
+}
+.seg > button[data-on='true'] {
+  @apply bg-accent/15 text-white ring-1 ring-accent/60;
+}
+}
+
+@keyframes la-shake {
+  0%, 100% { transform: translate(0, 0) rotate(0); }
+  15% { transform: translate(-6px, 2px) rotate(-2deg); }
+  30% { transform: translate(5px, -3px) rotate(2deg); }
+  45% { transform: translate(-4px, 3px) rotate(-1deg); }
+  60% { transform: translate(4px, -2px) rotate(1deg); }
+  75% { transform: translate(-2px, 1px); }
+}
+@keyframes la-pulse {
+  0%, 100% { transform: scale(1); }
+  40% { transform: scale(1.12); }
+}
+@keyframes la-flash {
+  0%, 100% { filter: brightness(1); }
+  30% { filter: brightness(2.2) saturate(1.4); }
+}
+@keyframes la-in {
+  from { opacity: 0; transform: translateY(20px) scale(0.9); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes la-out {
+  to { opacity: 0; transform: translateY(-14px) scale(0.95); }
+}
+.fx-shake { animation: la-shake 0.6s ease-in-out; }
+.fx-pulse { animation: la-pulse 0.6s ease-in-out; }
+.fx-flash { animation: la-flash 0.6s ease-in-out; }
+.fx-in { animation: la-in 0.35s cubic-bezier(.2,1.4,.4,1) both; }
+.fx-out { animation: la-out 0.4s ease-in both; }

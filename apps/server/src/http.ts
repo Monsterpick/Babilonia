@@ -65,7 +65,7 @@ export async function buildHttp(app: App): Promise<FastifyInstance> {
   await f.register(fastifyStatic, { root: path.join(ASSETS_DIR, 'gifts'), prefix: '/gifts/', decorateReply: false, maxAge: '7d' })
   await f.register(fastifyStatic, { root: paths.media, prefix: '/media/', decorateReply: false })
   if (fs.existsSync(DASHBOARD_DIST)) {
-    await f.register(fastifyStatic, { root: DASHBOARD_DIST, prefix: '/', wildcard: false })
+    await f.register(fastifyStatic, { root: DASHBOARD_DIST, prefix: '/' })
     // SPA: cualquier ruta no-API devuelve index.html (overlays incluidos: /overlay/...)
     f.setNotFoundHandler((req, reply) => {
       if (req.url.startsWith('/api/')) return reply.code(404).send({ error: 'No encontrado' })

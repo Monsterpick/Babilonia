@@ -16,7 +16,8 @@ let base = ''
 let app: import('../src/app.js').App
 let http: import('fastify').FastifyInstance
 
-async function api(method: string, url: string, body?: unknown) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function api(method: string, url: string, body?: unknown): Promise<any> {
   const send = method !== 'GET'
   const r = await fetch(base + url, { method, headers: send ? { 'content-type': 'application/json' } : {}, body: send ? JSON.stringify(body ?? {}) : undefined })
   const j = await r.json()
