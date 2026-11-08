@@ -3,6 +3,7 @@ import { ShieldAlert } from 'lucide-react'
 import { useApp } from '../App'
 import { api } from '../lib/api'
 import { Check, Field, PageHeader } from '../components/ui'
+import { AppearanceCard } from '../components/Appearance'
 import { toast } from '../components/Toast'
 
 export function SettingsPage() {
@@ -37,6 +38,9 @@ export function SettingsPage() {
           Guardar
         </button>
       </PageHeader>
+      <div className="px-8 pb-4">
+        <AppearanceCard />
+      </div>
       <div className="grid gap-4 px-8 lg:grid-cols-2">
         <div className="card space-y-3 p-5">
           <span className="label">TikTok LIVE</span>
