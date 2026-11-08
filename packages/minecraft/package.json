@@ -1,0 +1,14 @@
+{
+  "name": "@livearena/minecraft",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@livearena/core": "workspace:*",
+    "@livearena/shared": "workspace:*"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "name": "livearena",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @livearena/server --filter @livearena/dashboard dev",
+    "dev:server": "pnpm --filter @livearena/server dev",
+    "dev:dashboard": "pnpm --filter @livearena/dashboard dev",
+    "build": "pnpm --filter @livearena/dashboard build",
+    "start": "pnpm --filter @livearena/server start",
+    "sim": "pnpm --filter @livearena/server sim",
+    "test": "vitest run",
+    "typecheck": "tsc -b"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vitest": "^5.1.0"
+  }
+}
