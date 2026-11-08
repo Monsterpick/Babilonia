@@ -16,8 +16,9 @@ export interface TemplateContext {
  *
  * Variables:
  *   {player} {nick}                      → jugador de Minecraft del streamer
- *   {user} {nombre} {user.nickname}      → nombre visible del espectador (limpio)
- *   {quien} {usuario} {user.uniqueId}    → @handle del espectador como una sola palabra [A-Za-z0-9_.]
+ *   {user} {nombre} {user.nickname}      → nombre visible del espectador (limpio, puede tener espacios)
+ *   {nickname}                           → nombre visible como UNA palabra (espacios → _), para argumentos de comandos
+ *   {quien} {usuario} {username} {user.uniqueId} → @handle del espectador como una sola palabra [A-Za-z0-9_.]
  *   {gift} {gift.name} {gift.count} {gift.diamonds} {gift.total} {gift.value}
  *   {likes} {comment} {args.0} {random:1-10}
  * Compatibles con tus plugins de MineLive: {nick} y {quien}.
@@ -40,8 +41,11 @@ export function renderTemplate(text: string, ctx: TemplateContext): string {
       case 'nombre':
       case 'user.nickname':
         return display
+      case 'nickname':
+        return display.replace(/\s+/g, '_')
       case 'quien':
       case 'usuario':
+      case 'username':
       case 'user.uniqueId':
         return handle
       case 'gift':

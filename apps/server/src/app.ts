@@ -10,7 +10,7 @@ import { ProfileStore } from './profiles.js'
 import { StatsStore } from './stats.js'
 import { GiftCatalog } from './gifts.js'
 
-export const VERSION = '0.1.0'
+export const VERSION = '0.2.0'
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
@@ -200,13 +200,10 @@ export class App {
     return { jobs: this.jobs.clear(), minecraft: this.mc.link.clearQueue() }
   }
 
-  /** Ejecuta una acción a mano (botón ▶ del panel) como si la enviara un espectador de prueba. */
-  testAction(actionId: string): void {
-    const action = this.profile.actions.find((a) => a.id === actionId)
-    if (!action) throw new Error('Acción no encontrada')
-    const ev: LiveEvent = {
+  private testEvent(): LiveEvent {
+    return {
       v: 1,
-      id: `test-${Date.now()}`,
+      id: `test-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       type: 'custom',
       source: 'panel',
       user: { id: 'test', uniqueId: 'prueba', nickname: 'Prueba' },
@@ -214,8 +211,45 @@ export class App {
       simulated: true,
       payload: {},
     }
-    const rule = { id: 'manual', enabled: true, trigger: { type: 'share' as const }, actionIds: [actionId], perUnit: false, multiplier: 1, maxPerEvent: 1, intervalMs: 0, cooldown: { globalMs: 0, perUserMs: 0 }, who: 'anyone' as const, users: [] }
-    this.jobs.push({ jobId: `manual-${Date.now()}`, rule, action, event: ev, repetitions: 1, priority: 999, intensity: 0.5, playSound: false }, 999)
+  }
+
+  /**
+   * Botones ▶ del panel.
+   *  - full=true (naranja): como si un espectador de prueba lo activara: tarjeta, aviso, sonido y Minecraft.
+   *  - full=false (azul): solo ejecuta la función en Minecraft.
+   */
+  testAction(actionId: string, opts: { full?: boolean; eventId?: string } = {}): void {
+    const action = this.profile.actions.find((a) => a.id === actionId)
+    if (!action) throw new Error('Acción no encontrada')
+    const real = opts.eventId ? this.profile.events.find((e) => e.id === opts.eventId) : undefined
+    const rule = {
+      ...(real ?? {
+        id: 'manual',
+        enabled: true,
+        trigger: { type: 'share' as const },
+        actionIds: [actionId],
+        perUnit: false,
+        multiplier: 1,
+        maxPerEvent: 1,
+        delayMs: 0,
+        intervalMs: 0,
+        cooldown: { globalMs: 0, perUserMs: 0 },
+        who: 'anyone' as const,
+        users: [],
+      }),
+      delayMs: 0,
+      sound: opts.full ? real?.sound : undefined,
+    }
+    const reps = opts.full && real ? Math.min(real.multiplier, real.maxPerEvent) : 1
+    const act = opts.full ? action : { ...action, showInOverlay: false }
+    this.jobs.push({ jobId: `manual-${Date.now()}`, rule, action: act, event: this.testEvent(), repetitions: reps, priority: 999, intensity: 0.5, playSound: !!opts.full && !!rule.sound }, 999)
+  }
+
+  /** Prueba un comando suelto (con las variables rellenadas como si lo enviara «Prueba»). */
+  async testCommand(command: string): Promise<{ command: string; response: string }> {
+    const cmd = renderTemplate(command.trim().replace(/^\//, ''), { event: this.testEvent(), player: this.cfg.get().minecraft.player, roomLikes: this.engine.totalRoomLikes })
+    const response = await this.mc.link.enqueue(cmd, 1000)
+    return { command: cmd, response }
   }
 
   private async runJob(job: Job): Promise<void> {
@@ -238,6 +272,8 @@ export class App {
 
     const mcCfg = this.cfg.get().minecraft
     const player = mcCfg.player
+    this.announce(job)
+    if (rule.delayMs > 0) await sleep(rule.delayMs)
     for (let i = 0; i < job.repetitions; i++) {
       for (const step of action.steps) await this.runStep(step, job, player, mcCfg.maxLiveMobs)
       if (rule.sound?.every === 'each' && i > 0) this.hub.action({ ...base, kind: 'sound', params: { file: rule.sound.file, volume: rule.sound.volume } })
@@ -322,6 +358,22 @@ export class App {
         this.hub.action({ kind: `game.${step.kind}`, params: step.params, user: job.event.user, actionId: job.action.id, intensity: job.intensity, priority: job.priority })
         break
     }
+  }
+
+  /** Mensaje en el chat de Minecraft: «[LIVE] Ana → TRUENO (Rose ×5)». */
+  private announce(job: Job): void {
+    const chat = this.cfg.get().chat
+    if (!chat.announce || !this.mc.link.isConnected || job.event.source === 'panel') return
+    const name = safeDisplayText(job.event.user?.nickname ?? 'Alguien', 32)
+    const g = job.event.type === 'gift' ? job.event.payload : null
+    const parts: object[] = [
+      { text: `[${safeDisplayText(chat.prefix, 20) || 'LIVE'}] `, color: 'light_purple', bold: true },
+      { text: name, color: 'yellow' },
+      { text: ' → ', color: 'gray' },
+      { text: safeDisplayText(job.action.name, 40), color: 'aqua', bold: true },
+    ]
+    if (chat.showGift && g) parts.push({ text: ` (${safeDisplayText(g.name, 30)} ×${g.count})`, color: 'gold' })
+    void this.mc.link.enqueue(`tellraw @a ${JSON.stringify(['', ...parts])}`, job.priority).catch(() => undefined)
   }
 
   /* ------------------------ marcador y cronómetro ------------------------ */

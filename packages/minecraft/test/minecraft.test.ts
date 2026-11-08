@@ -178,3 +178,12 @@ describe('server.properties', () => {
     expect((await readRcon(dir)).port).toBe(25575)
   })
 })
+
+describe('Versiones nuevas (26.x)', () => {
+  it('26.1.2 usa sintaxis moderna y Java 25', () => {
+    const v = parseVersion('26.1.2')
+    expect(summon(v, { player: 'S', entity: 'zombie', name: 'Ana', radius: 0 })).toContain('{CustomName:{"text":"Ana"')
+    expect(itemSpec(v, { item: 'bow', count: 1, enchantments: { power: 5 }, unbreakable: false })).toBe('minecraft:bow[enchantments={levels:{"minecraft:power":5}}]')
+    expect(requiredJava('26.1.2')).toBe(25)
+  })
+})

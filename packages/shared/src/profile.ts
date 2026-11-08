@@ -101,8 +101,10 @@ export const EventRuleSchema = z.object({
   maxPerEvent: z.number().int().min(1).max(1000).default(100),
   /** Prioridad fija 0..1000. Sin valor = automática según diamantes. */
   priority: z.number().int().min(0).max(1000).optional(),
+  /** Espera antes de la primera ejecución (ms). */
+  delayMs: z.number().int().min(0).max(60000).default(0),
   /** Pausa entre repeticiones de la misma regla (ms). */
-  intervalMs: z.number().int().min(0).max(10000).default(0),
+  intervalMs: z.number().int().min(0).max(10000).default(100),
   cooldown: z.object({ globalMs: z.number().int().min(0).default(0), perUserMs: z.number().int().min(0).default(0) }).default({}),
   who: z.enum(['anyone', 'followers', 'subscribers', 'moderators', 'list']).default('anyone'),
   users: z.array(z.string()).default([]),

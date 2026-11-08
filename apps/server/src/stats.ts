@@ -1,4 +1,4 @@
-import Database from 'better-sqlite3'
+import type { DatabaseSync } from 'node:sqlite'
 import type { LiveEvent, LiveUser } from '@livearena/shared'
 
 export interface UserTotals {
@@ -27,7 +27,7 @@ export interface BestGift {
  * (aguanta ráfagas de cientos de eventos por segundo).
  */
 export class StatsStore {
-  private db: Database.Database
+  private db: DatabaseSync
   private sessionId = 0
   private totals = new Map<string, UserTotals>()
   private dirty = new Set<string>()
@@ -38,8 +38,10 @@ export class StatsStore {
   private timer: NodeJS.Timeout
 
   constructor(file: string) {
-    this.db = new Database(file)
-    this.db.pragma('journal_mode = WAL')
+    // Carga perezosa: así el filtro de avisos (quiet-warnings) ya está activo.
+    const { DatabaseSync: DB } = process.getBuiltinModule('node:sqlite') as typeof import('node:sqlite')
+    this.db = new DB(file)
+    this.db.exec('PRAGMA journal_mode = WAL')
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS sessions (id INTEGER PRIMARY KEY AUTOINCREMENT, target TEXT, started_at INTEGER, ended_at INTEGER);
       CREATE TABLE IF NOT EXISTS user_totals (
@@ -131,14 +133,18 @@ export class StatsStore {
       VALUES (@s, @userId, @uniqueId, @nickname, @avatarUrl, @diamonds, @gifts, @likes)
       ON CONFLICT(session_id, user_id) DO UPDATE SET nickname=excluded.nickname, avatar=excluded.avatar, diamonds=excluded.diamonds, gifts=excluded.gifts, likes=excluded.likes`)
     const log = this.db.prepare('INSERT INTO gift_log (session_id, ts, user_id, gift, diamonds, count) VALUES (?, ?, ?, ?, ?, ?)')
-    const tx = this.db.transaction(() => {
+    this.db.exec('BEGIN')
+    try {
       for (const k of this.dirty) {
         const t = this.totals.get(k)
-        if (t) up.run({ s: this.sessionId, ...t, avatarUrl: t.avatarUrl ?? null })
+        if (t) up.run({ s: this.sessionId, userId: t.userId, uniqueId: t.uniqueId, nickname: t.nickname, avatarUrl: t.avatarUrl ?? null, diamonds: t.diamonds, gifts: t.gifts, likes: t.likes })
       }
       for (const row of this.giftLog) log.run(...row)
-    })
-    tx()
+      this.db.exec('COMMIT')
+    } catch (err) {
+      this.db.exec('ROLLBACK')
+      throw err
+    }
     this.dirty.clear()
     this.giftLog = []
   }

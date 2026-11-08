@@ -2,7 +2,28 @@
 
 Plataforma de juegos interactivos para **TikTok LIVE**. Los regalos, likes, comentarios, follows y shares de tu live se convierten en acciones dentro de **Minecraft** (mobs con el nombre de quien los envía, truenos, TNT, items, efectos, kit…) y en **overlays** para OBS / TikTok LIVE Studio.
 
-> Estado: **base funcional (fases 1-3 + panel)**. Minecraft interactivo listo para probar en vivo. El juego web «Batalla de equipos» y el instalador de escritorio llegan en las siguientes fases.
+> Estado: **v0.2 · app de escritorio para Windows** (instalador y portable). Minecraft interactivo listo para probar en vivo. El juego web «Batalla de equipos» llega en la siguiente fase.
+
+## Descargar (Windows)
+
+En GitHub → pestaña **Actions** → último «Build Windows (.exe)» → artefacto **LiveArena-Windows**. Dentro:
+- `LiveArena-Setup-0.2.0.exe` — instalador (crea acceso directo).
+- `LiveArena-Portable-0.2.0.exe` — sin instalar, doble clic y listo.
+
+Al publicar una etiqueta `v0.2.0` los `.exe` salen también en **Releases**.
+
+Windows puede mostrar «Windows protegió su PC» porque el ejecutable no está firmado: *Más información → Ejecutar de todas formas*.
+
+## Probarlo paso a paso
+
+1. Abre **LiveArena**. Arriba escribe tu usuario de TikTok (aún no conectes).
+2. **Servidor** → escribe tu **nick de Minecraft** → Guardar.
+3. **Instalar servidor** → elige versión (PaperMC 1.20.1 para tus plugins MiniLive; la más nueva con ViaVersion si juegas con el cliente nuevo), **Cambiar carpeta** (una vacía), sube tus `.jar` (s2e-survival…) y márcalos, acepta el EULA → **Instalar**. Si falta Java, se descarga solo.
+4. Cuando la terminal diga `Done` y salga **RCON vinculado**, abre Minecraft → Multijugador → `localhost`.
+5. **Plugins** → pestaña **s2e Survival** (o Supervivencia) → pulsa ▶ naranja en ZOMBIE: aparece el zombie con el nombre «Prueba».
+6. **Simulador** → haz clic en una Rosa ×5: sale todo como en el live.
+7. **Overlays** → copia las URL a OBS / TikTok LIVE Studio.
+8. Empieza tu live en TikTok y pulsa **Conectar live**.
 
 ## Qué incluye
 
@@ -25,7 +46,7 @@ Plataforma de juegos interactivos para **TikTok LIVE**. Los regalos, likes, come
 
 ## Instalación y arranque
 
-**Windows:** doble clic en `iniciar.bat` (la primera vez instala todo y prepara el panel). Se abre http://127.0.0.1:7420
+**Desde el código (desarrolladores) — Windows:** doble clic en `iniciar.bat` (la primera vez instala todo y prepara el panel). Se abre http://127.0.0.1:7420
 
 **Manual:**
 ```bash
@@ -35,6 +56,7 @@ pnpm build      # compila el panel
 pnpm start      # app en http://127.0.0.1:7420
 ```
 Desarrollo con recarga en caliente: `pnpm dev` (panel en http://127.0.0.1:5173).
+App de escritorio en desarrollo: `pnpm desktop`. Generar los `.exe`: `pnpm dist:win` (en Linux necesita `wine`).
 
 Opcional: copia `.env.example` a `.env` y pon tu `EULER_API_KEY`.
 
@@ -47,11 +69,15 @@ Opcional: copia `.env.example` a `.env` y pon tu `EULER_API_KEY`.
 5. Escribe tu usuario de TikTok arriba y pulsa **Conectar live**. Listo: a esperar regalos.
 
 ### Tus plugins (.jar)
-Súbelos en **Servidor → 5 · Plugins** (quedan en tu biblioteca `~/.livearena/plugins`). Para usarlos desde un regalo, crea un comando con el paso **Comando** y escribe el comando del plugin. Las variables `{nick}` (tu jugador) y `{quien}` (el @ del espectador) son compatibles con los comandos de MineLive, por ejemplo:
+Súbelos al instalar el servidor o en **Servidor → Plugins** (quedan también en tu biblioteca para próximos servidores). En el editor de cada comando, **Elegir de la galería** trae 112 comandos listos: Minecraft estándar, **s2e-survival** (`/survival …`) y **MiniLive**.
+
+Variables: `{player}`/`{nick}` = tu jugador · `{nickname}` = nombre del espectador en una palabra (el `<name>` de s2e) · `{quien}`/`{username}` = @ del espectador (el `[donador]` de MiniLive) · `{user}` · `{gift}` · `{gift.count}` · `{random:1-10}`.
 ```
+survival zombie null {nickname}
 trueno {nick} {quien}
-minigun {nick} {quien} tipo=electrica balas=100
 ```
+- **s2e-survival:** LiveArena escribe tu nick en `plugins/s2e-survival/config.yml` (`player_name`) al encender el servidor.
+- **MiniLive:** estos plugins validan un «pase» firmado por la nube de MineLive; solo funcionan con una cuenta de MineLive activa. LiveArena no lo falsifica ni lo salta.
 
 ## Overlays en OBS / TikTok LIVE Studio
 
@@ -65,7 +91,7 @@ Parámetros: `?scale=1.3` (tamaño), `?align=right` (avisos), `?n=5` (rankings),
 ## Pruebas
 
 ```bash
-pnpm test        # 49 tests: combos, reglas, colas, carga (5.000+ eventos), RCON, kit, server.properties y e2e
+pnpm test        # 53 tests: combos, reglas, colas, carga (5.000+ eventos), RCON, kit, server.properties y e2e
 pnpm typecheck
 pnpm sim gift Rose 10 Ana     # con la app abierta
 pnpm sim burst 300 3
@@ -77,6 +103,7 @@ Sin Minecraft: `npx tsx apps/server/test/fake-mc.ts` levanta un RCON falso (cont
 ```
 apps/server       Fastify + WebSocket (protocolo v1) + orquestación. Solo escucha en 127.0.0.1
 apps/dashboard    React + Vite + Tailwind: panel y overlays (/overlay/*)
+apps/desktop      Electron: arranca el servidor dentro de la app, ventana del panel, selector de carpetas; empaquetado con electron-builder
 packages/shared   Tipos y esquemas Zod: LiveEvent, perfil (acciones+eventos), protocolo WS
 packages/core     Dedup, ComboTracker, motor de reglas, cola de prioridad, token bucket (sin I/O, 100% testeado)
 packages/minecraft RCON, cola gestionada, constructores de comandos seguros, vigía, Java, creador y proceso del servidor
@@ -84,7 +111,7 @@ packages/source-tiktok  ÚNICO paquete que importa tiktok-live-connector (depend
 ```
 Protocolo para conectar otros motores (Unity, Godot…): [docs/protocol.md](docs/protocol.md).
 
-Datos del usuario en `~/.livearena/`: `config.json`, `perfiles/`, `copias/`, `media/`, `plugins/`, `estadisticas.db` (SQLite).
+Datos del usuario: en la app de escritorio `%APPDATA%/LiveArena/datos/`; desde el código `~/.livearena/`: `config.json`, `perfiles/`, `copias/`, `media/`, `plugins/`, `estadisticas.db` (SQLite).
 
 ## Decisiones
 

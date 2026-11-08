@@ -14,6 +14,7 @@ export const paths = {
   media: path.join(DATA_DIR, 'media'),
   plugins: path.join(DATA_DIR, 'plugins'),
   db: path.join(DATA_DIR, 'estadisticas.db'),
+  java: path.join(DATA_DIR, 'java'),
 }
 
 export const ConfigSchema = z.object({
@@ -42,7 +43,10 @@ export const ConfigSchema = z.object({
         .object({
           folder: z.string().default(''),
           java: z.string().default(''),
-          ramGB: z.number().min(1).max(32).default(3),
+          /** .jar del servidor (nombre dentro de la carpeta o ruta completa). Vacío = autodetectar. */
+          jar: z.string().default(''),
+          xmxMB: z.number().int().min(512).max(65536).default(4096),
+          xmsMB: z.number().int().min(256).max(65536).default(2048),
           software: z.enum(['paper', 'vanilla']).default('paper'),
           /** Apagar el servidor al cerrar la app. */
           stopOnExit: z.boolean().default(true),
@@ -61,6 +65,14 @@ export const ConfigSchema = z.object({
       livesStart: z.number().int().min(0).default(3),
       /** Al morir: restar vida / sumar derrota / reiniciar cronómetro. */
       onDeath: z.object({ loseLife: z.boolean().default(true), addLoss: z.boolean().default(false), resetTimer: z.boolean().default(false) }).default({}),
+    })
+    .default({}),
+  /** Mensajes en el chat de Minecraft cuando un espectador activa algo. */
+  chat: z
+    .object({
+      announce: z.boolean().default(true),
+      prefix: z.string().max(20).default('LIVE'),
+      showGift: z.boolean().default(true),
     })
     .default({}),
   likeGoal: z.object({ target: z.number().int().min(1).default(10000), label: z.string().default('Meta de likes') }).default({}),

@@ -119,3 +119,10 @@ describe('renderTemplate', () => {
     expect(out).toBe('5 12')
   })
 })
+
+describe('variables de comandos de plugins', () => {
+  it('{nickname} es una sola palabra y {username} el @', () => {
+    const ev = gift('Rose', 1, 1, { id: '1', uniqueId: 'ana_01', nickname: 'Ana Pérez' })
+    expect(renderTemplate('survival zombie null {nickname} / {username}', { event: ev, player: 'S' })).toBe('survival zombie null Ana_Pérez / ana_01')
+  })
+})

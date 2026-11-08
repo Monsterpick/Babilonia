@@ -16,7 +16,7 @@ export function newRule(): { event: EventRule; action: Action } {
     color: '#22d3ee',
     alignment: 'neutral',
     showInOverlay: true,
-    steps: [{ type: 'minecraft.summon', entity: 'zombie', count: 1, nameTag: true, radius: 3, heightOffset: 0 }],
+    steps: [{ type: 'minecraft.command', commands: ['execute at {player} run summon zombie ~2 ~ ~2'], mode: 'all' }],
   }
   const event: EventRule = {
     id: uid('ev'),
@@ -26,7 +26,8 @@ export function newRule(): { event: EventRule; action: Action } {
     perUnit: true,
     multiplier: 1,
     maxPerEvent: 100,
-    intervalMs: 0,
+    delayMs: 0,
+    intervalMs: 100,
     cooldown: { globalMs: 0, perUserMs: 0 },
     who: 'anyone',
     users: [],
@@ -34,7 +35,7 @@ export function newRule(): { event: EventRule; action: Action } {
   return { event, action }
 }
 
-const TRIGGERS: { v: Trigger['type']; l: string }[] = [
+export const TRIGGERS: { v: Trigger['type']; l: string }[] = [
   { v: 'gift', l: 'Regalo' },
   { v: 'diamonds', l: 'Monedas' },
   { v: 'likes', l: 'Likes (persona)' },
@@ -47,7 +48,7 @@ const TRIGGERS: { v: Trigger['type']; l: string }[] = [
   { v: 'join', l: 'Entra' },
 ]
 
-function defaultTrigger(t: Trigger['type']): Trigger {
+export function defaultTrigger(t: Trigger['type']): Trigger {
   switch (t) {
     case 'gift':
       return { type: 'gift', gifts: [{ name: 'Rose', diamonds: 1 }] }
@@ -68,7 +69,7 @@ function defaultTrigger(t: Trigger['type']): Trigger {
   }
 }
 
-const STEP_TYPES: { v: Step['type']; l: string }[] = [
+export const STEP_TYPES: { v: Step['type']; l: string }[] = [
   { v: 'minecraft.summon', l: 'Invocar mob' },
   { v: 'minecraft.command', l: 'Comando' },
   { v: 'minecraft.give', l: 'Dar item' },
@@ -82,7 +83,7 @@ const STEP_TYPES: { v: Step['type']; l: string }[] = [
   { v: 'wait', l: 'Esperar' },
 ]
 
-function defaultStep(t: Step['type']): Step {
+export function defaultStep(t: Step['type']): Step {
   switch (t) {
     case 'minecraft.summon':
       return { type: t, entity: 'zombie', count: 1, nameTag: true, radius: 3, heightOffset: 0 }
@@ -457,7 +458,7 @@ function Row({ children }: { children: ReactNode }) {
   return <div className="grid grid-cols-2 gap-2 md:grid-cols-4">{children}</div>
 }
 
-function StepFields({ step: s, onChange }: { step: Step; onChange: (s: Step) => void }) {
+export function StepFields({ step: s, onChange }: { step: Step; onChange: (s: Step) => void }) {
   switch (s.type) {
     case 'minecraft.summon':
       return (

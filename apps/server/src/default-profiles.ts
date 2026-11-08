@@ -138,5 +138,58 @@ export function defaultProfiles(): Profile[] {
       jumpBoost: 0,
     },
   }
-  return [ProfileSchema.parse(supervivencia)]
+  return [ProfileSchema.parse(supervivencia), s2eProfile()]
+}
+
+/** Perfil para el plugin s2e-survival (comando /survival). {nickname} = nombre del espectador sobre el mob. */
+export function s2eProfile(): Profile {
+  const fn = (id: string, name: string, color: string, commands: string[], alignment: 'good' | 'bad' = 'bad'): ActionInput => ({
+    id,
+    name,
+    color,
+    alignment,
+    steps: commands.map((c) => ({ type: 'minecraft.command' as const, commands: [c], mode: 'all' as const })),
+  })
+  const gift = (id: string, name: string, diamonds: number, action: string) => ({ id, trigger: { type: 'gift' as const, gifts: [{ name, diamonds }] }, actionIds: [action] })
+  return ProfileSchema.parse({
+    id: 's2e-survival',
+    name: 's2e Survival',
+    mode: 'supervivencia',
+    actions: [
+      fn('s2e-zombie', 'ZOMBIE', '#65a30d', ['survival zombie null {nickname}']),
+      fn('s2e-creeper', 'CREEPER', '#16a34a', ['survival creeper {nickname}']),
+      fn('s2e-skeleton', 'ESQUELETO', '#a3a3a3', ['survival skeleton {nickname}']),
+      fn('s2e-spider', 'ARAÑA', '#7c3aed', ['survival spider {nickname}']),
+      fn('s2e-witch', 'BRUJA', '#a21caf', ['survival witch {nickname}']),
+      fn('s2e-tnt', 'TNT', '#dc2626', ['survival tnt 60 4 3 {nickname}']),
+      fn('s2e-food', 'COMIDA', '#f59e0b', ['survival random_food {nickname}'], 'good'),
+      fn('s2e-totem', 'TÓTEM', '#eab308', ['survival totem {nickname}'], 'good'),
+      fn('s2e-trap', 'TRAMPA', '#e5e7eb', ['survival trap {nickname}']),
+      fn('s2e-ravager', 'RAVAGER', '#78350f', ['survival ravager {nickname}']),
+      fn('s2e-chest', 'COFRE ÉPICO', '#facc15', ['survival chest_super'], 'good'),
+      fn('s2e-boss', 'JEFE', '#7f1d1d', ['survival random_boss {nickname}']),
+      fn('s2e-meteors', 'METEORITOS', '#ea580c', ['survival meteors 10 {nickname}']),
+      fn('s2e-apple', 'MANZANA', '#fbbf24', ['survival apple_enchanted {nickname}'], 'good'),
+      fn('s2e-dog', 'PERRO', '#d6d3d1', ['survival dog'], 'good'),
+      fn('s2e-raid', 'RAID', '#991b1b', ['survival raid {nickname}']),
+    ],
+    events: [
+      { id: 's2e-ev-follow', trigger: { type: 'follow', oncePerUser: true }, actionIds: ['s2e-dog'] },
+      { id: 's2e-ev-likes', trigger: { type: 'likes', every: 150 }, actionIds: ['s2e-zombie'] },
+      gift('s2e-ev-rose', 'Rose', 1, 's2e-creeper'),
+      gift('s2e-ev-tiktok', 'TikTok', 1, 's2e-skeleton'),
+      gift('s2e-ev-gg', 'GG', 1, 's2e-spider'),
+      gift('s2e-ev-finger', 'Finger Heart', 5, 's2e-witch'),
+      gift('s2e-ev-perfume', 'Perfume', 20, 's2e-tnt'),
+      gift('s2e-ev-donut', 'Doughnut', 30, 's2e-food'),
+      gift('s2e-ev-hearts', 'Hand Hearts', 100, 's2e-totem'),
+      gift('s2e-ev-confetti', 'Confetti', 100, 's2e-trap'),
+      gift('s2e-ev-corgi', 'Corgi', 299, 's2e-ravager'),
+      gift('s2e-ev-moneygun', 'Money Gun', 500, 's2e-chest'),
+      gift('s2e-ev-galaxy', 'Galaxy', 1000, 's2e-boss'),
+      { id: 's2e-ev-big', trigger: { type: 'diamonds', min: 5000 }, actionIds: ['s2e-meteors'] },
+      { id: 's2e-ev-share', trigger: { type: 'share' }, actionIds: ['s2e-apple'], cooldown: { perUserMs: 60000 } },
+      { id: 's2e-ev-room', trigger: { type: 'room_likes', goal: 10000, step: 10000 }, actionIds: ['s2e-raid'] },
+    ],
+  })
 }

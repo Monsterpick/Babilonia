@@ -4,3 +4,7 @@ dist/
 *.log
 .env
 coverage/
+
+# Escritorio
+apps/desktop/build/
+apps/desktop/release/

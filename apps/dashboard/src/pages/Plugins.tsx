@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { ArrowRight, Copy, History, Pause, Play, Plus, Trash2, Music, Share2, Download, Layers, Loader2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { ChevronDown, ChevronUp, Copy, History, Pause, Play, Plus, Trash2, Music, Share2, Download, Layers, Loader2 } from 'lucide-react'
 import type { Action, EventRule, Profile } from '@livearena/shared'
 import { useApp } from '../App'
 import { api } from '../lib/api'
@@ -7,7 +7,8 @@ import { triggerLabel, ruleSummary, useGifts } from '../lib/catalog'
 import { useOnAction } from '../lib/live'
 import { Media, Modal, PageHeader, Toggle, TriggerChip } from '../components/ui'
 import { toast } from '../components/Toast'
-import { RuleEditor, newRule } from '../components/RuleEditor'
+import { newRule } from '../components/RuleEditor'
+import { FunctionEditor } from '../components/FunctionEditor'
 
 const uid = (p: string) => `${p}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`
 
@@ -139,65 +140,79 @@ export function PluginsPage() {
           if (!action) return null
           const t = triggerLabel(ev.trigger, gifts)
           const flash = fired[action.id] && Date.now() - fired[action.id]! < 1200
-          const mcSteps = action.steps.filter((s) => s.type.startsWith('minecraft')).length
+          const cmds = action.steps.flatMap((s) => (s.type === 'minecraft.command' ? s.commands : []))
+          const others = action.steps.length - action.steps.filter((s) => s.type === 'minecraft.command').length
+          const open = () => setEditing({ event: ev, action, isNew: false })
+          const WHO: Record<string, string> = { anyone: 'Cualquiera', followers: 'Seguidores', subscribers: 'Suscriptores', moderators: 'Moderadores', list: 'Lista' }
           return (
             <div
               key={ev.id + (flash ? fired[action.id] : '')}
-              className={`card group flex items-center gap-4 p-2.5 pr-4 transition ${ev.enabled ? '' : 'opacity-50'} ${flash ? 'fx-flash ring-1 ring-accent' : ''}`}
+              className={`card flex items-stretch gap-0 overflow-hidden transition ${ev.enabled ? '' : 'opacity-50'} ${flash ? 'fx-flash ring-1 ring-accent' : ''}`}
             >
-              <div className="flex flex-col text-muted opacity-0 transition group-hover:opacity-100">
-                <button onClick={() => move(i, i - 1)} className="hover:text-white" title="Subir">
-                  ▲
+              <div className="flex flex-col items-center justify-center gap-1 border-r border-line px-2 text-muted">
+                <button onClick={() => move(i, i - 1)} className="rounded p-0.5 hover:bg-white/10 hover:text-white" title="Subir">
+                  <ChevronUp size={16} />
                 </button>
-                <button onClick={() => move(i, i + 1)} className="hover:text-white" title="Bajar">
-                  ▼
+                <Toggle on={ev.enabled} onChange={(v) => patchEvent(ev.id, { enabled: v })} title="Activar / desactivar" />
+                <button onClick={() => move(i, i + 1)} className="rounded p-0.5 hover:bg-white/10 hover:text-white" title="Bajar">
+                  <ChevronDown size={16} />
                 </button>
               </div>
-              <div className="w-48 shrink-0 cursor-pointer" onClick={() => setEditing({ event: ev, action, isNew: false })}>
-                <TriggerChip t={t} />
-                {ruleSummary(ev) && <div className="mt-1 truncate text-[11px] text-muted">{ruleSummary(ev)}</div>}
+              <button onClick={open} className="flex w-52 shrink-0 items-center gap-3 border-r border-line px-4 py-3 text-left hover:bg-white/5">
+                <TriggerChip t={t} size={46} />
+                <div className="sr-only">editar</div>
+              </button>
+              <div className="flex w-36 shrink-0 flex-col justify-center border-r border-line px-3 text-xs text-muted">
+                <span>{WHO[ev.who]}</span>
+                <span className="truncate">{ruleSummary(ev) || (ev.perUnit ? 'por cada unidad' : 'una vez')}</span>
               </div>
-              <ArrowRight size={16} className="shrink-0 text-muted" />
-              <button
-                onClick={() => setEditing({ event: ev, action, isNew: false })}
-                className="relative flex h-20 min-w-0 flex-1 items-center overflow-hidden rounded-lg border text-left"
-                style={{ borderColor: `${action.color}55`, background: `linear-gradient(90deg, ${action.color}30, transparent 70%)` }}
-              >
-                <div className="h-full w-36 shrink-0 bg-black/30">
-                  {action.media ? <Media media={action.media} className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center text-3xl opacity-60">{action.name.slice(0, 1)}</div>}
+              <button onClick={open} className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2 text-left hover:bg-white/5">
+                <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-lg" style={{ background: `linear-gradient(160deg, ${action.color}55, #000)` }}>
+                  {action.media ? <Media media={action.media} className="h-full w-full object-cover" /> : <span className="text-2xl font-black" style={{ color: action.color }}>{action.name.slice(0, 1)}</span>}
                 </div>
-                <div className="min-w-0 px-4">
-                  <div className="truncate text-lg font-extrabold tracking-wide" style={{ color: action.color }}>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate rounded bg-black/30 px-2 py-0.5 font-extrabold tracking-wide" style={{ color: action.color }}>
                     {action.name}
+                    {!action.showInOverlay && <span className="ml-2 text-[10px] font-normal text-muted">(oculta en overlay)</span>}
                   </div>
-                  <div className="truncate text-xs text-muted">
-                    {action.steps.length} paso{action.steps.length === 1 ? '' : 's'}
-                    {ev.actionIds.length > 1 ? ` · +${ev.actionIds.length - 1} acciones` : ''}
-                    {action.alignment !== 'neutral' ? ` · ${action.alignment === 'good' ? 'ayuda' : 'sabotaje'}` : ''}
+                  <div className="mt-1 grid grid-cols-[auto_1fr] gap-x-4 text-xs">
+                    <span className="text-muted">
+                      Repeticiones: <b className="text-white">{ev.multiplier}</b>
+                      {ev.perUnit ? ' ×cant.' : ''}
+                    </span>
+                    <span className="text-muted">
+                      Comandos: <b className="text-white">{cmds.length}</b>
+                      {others ? ` +${others} pasos` : ''}
+                    </span>
+                    <span className="text-muted">
+                      Intervalo: <b className="text-white">{ev.intervalMs}</b> · Retraso: <b className="text-white">{ev.delayMs}</b>
+                    </span>
+                    <code className="truncate text-accent/90">{cmds[0] ? `/${cmds[0].replace(/^\//, '')}` : others ? '(pasos avanzados)' : '—'}</code>
                   </div>
                 </div>
               </button>
-              <Toggle on={ev.enabled} onChange={(v) => patchEvent(ev.id, { enabled: v })} title="Activar / desactivar" />
-              <button className="btn px-2" title="Probar ahora" onClick={() => api('POST', `/api/actions/${action.id}/test`).catch((e) => toast(e.message, 'error'))}>
-                <Play size={15} />
-              </button>
-              <span className={`rounded-md border px-2 py-1 text-[11px] ${mcSteps ? 'border-ok/40 text-ok' : 'border-line text-muted'}`}>Minecraft</span>
-              <span title={ev.sound ? `Sonido: ${ev.sound.file}` : 'Sin sonido'} className={ev.sound ? 'text-accent' : 'text-muted/40'}>
-                <Music size={16} />
-              </span>
-              <button className="text-muted hover:text-white" title="Duplicar" onClick={() => duplicateRow(ev)}>
-                <Copy size={16} />
-              </button>
-              <button className="text-muted hover:text-bad" title="Borrar" onClick={() => removeRow(ev)}>
-                <Trash2 size={16} />
-              </button>
+              <SoundCell ev={ev} onEdit={open} />
+              <div className="flex items-center gap-1.5 border-l border-line px-3">
+                <button className="rounded-lg bg-orange-500 p-2 text-white hover:brightness-110" title="Probar completo: tarjeta, aviso, sonido y Minecraft" onClick={() => api('POST', `/api/actions/${action.id}/test`, { full: true, eventId: ev.id }).catch((e) => toast(e.message, 'error'))}>
+                  <Play size={15} />
+                </button>
+                <button className="rounded-lg bg-sky-600 p-2 text-white hover:brightness-110" title="Ejecutar solo en Minecraft" onClick={() => api('POST', `/api/actions/${action.id}/test`, { full: false }).catch((e) => toast(e.message, 'error'))}>
+                  <Play size={15} />
+                </button>
+                <button className="rounded-lg bg-white/10 p-2 hover:bg-white/20" title="Duplicar" onClick={() => duplicateRow(ev)}>
+                  <Copy size={15} />
+                </button>
+                <button className="rounded-lg bg-red-500/80 p-2 text-white hover:bg-red-500" title="Borrar" onClick={() => removeRow(ev)}>
+                  <Trash2 size={15} />
+                </button>
+              </div>
             </div>
           )
         })}
       </div>
 
       {editing && (
-        <RuleEditor
+        <FunctionEditor
           key={editing.event.id}
           initialEvent={editing.event}
           initialAction={editing.action}
@@ -300,5 +315,36 @@ function ShareModal({ open, onClose, profile, onImported }: { open: boolean; onC
         </div>
       </div>
     </Modal>
+  )
+}
+
+function SoundCell({ ev, onEdit }: { ev: EventRule; onEdit: () => void }) {
+  const [dur, setDur] = useState<number | null>(null)
+  useEffect(() => {
+    if (!ev.sound) return
+    const a = new Audio(ev.sound.file)
+    a.onloadedmetadata = () => setDur(a.duration)
+  }, [ev.sound])
+  if (!ev.sound)
+    return (
+      <button onClick={onEdit} className="flex w-40 shrink-0 items-center justify-center gap-2 border-l border-line text-xs text-muted hover:bg-white/5 hover:text-white">
+        <Plus size={14} /> <Music size={14} /> Sonido
+      </button>
+    )
+  const name = decodeURIComponent(ev.sound.file.split('/').pop() ?? '').replace(/^[a-z0-9]+-/, '')
+  const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.round(s % 60)).padStart(2, '0')}`
+  return (
+    <div className="flex w-40 shrink-0 flex-col justify-center gap-1 border-l border-line px-3 text-xs">
+      <span className="truncate font-semibold" title={name}>
+        {name}
+      </span>
+      <div className="flex flex-wrap gap-1 text-[10px] text-muted">
+        <span className="rounded bg-white/10 px-1.5">⏱ {dur ? fmt(dur) : '--:--'}</span>
+        <span className="rounded bg-white/10 px-1.5">🔊 {Math.round(ev.sound.volume * 100)}%</span>
+        <button className="rounded bg-white/10 px-1.5 hover:bg-white/20" onClick={() => { const a = new Audio(ev.sound!.file); a.volume = ev.sound!.volume; void a.play() }}>
+          ▶
+        </button>
+      </div>
+    </div>
   )
 }

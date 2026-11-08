@@ -7,7 +7,8 @@ export interface StartOptions {
   folder: string
   java: string
   jar: string
-  ramGB: number
+  xmxMB: number
+  xmsMB: number
 }
 
 /**
@@ -29,8 +30,9 @@ export class ServerProcess extends EventEmitter {
 
   start(o: StartOptions): void {
     if (this.child) throw new Error('El servidor ya está encendido.')
-    const ram = Math.max(1, Math.round(o.ramGB))
-    const args = [`-Xms${Math.min(ram, 2)}G`, `-Xmx${ram}G`, '-jar', o.jar, 'nogui']
+    const xmx = Math.max(512, Math.round(o.xmxMB))
+    const xms = Math.max(256, Math.min(xmx, Math.round(o.xmsMB)))
+    const args = [`-Xms${xms}M`, `-Xmx${xmx}M`, '-jar', o.jar, 'nogui']
     this.setState('starting')
     const child = spawn(o.java, args, { cwd: o.folder, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true })
     this.child = child

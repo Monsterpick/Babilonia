@@ -1,0 +1,73 @@
+{
+  "name": "@livearena/desktop",
+  "version": "0.2.0",
+  "private": true,
+  "description": "LiveArena: TikTok LIVE → Minecraft y overlays",
+  "author": "LiveArena",
+  "type": "module",
+  "main": "build/main.cjs",
+  "scripts": {
+    "bundle": "node scripts/bundle.mjs",
+    "start": "pnpm bundle && electron .",
+    "dist": "pnpm bundle && electron-builder --win --x64 --publish never"
+  },
+  "devDependencies": {
+    "electron": "^38.8.6",
+    "electron-builder": "^26.18.0",
+    "esbuild": "^0.28.2"
+  },
+  "build": {
+    "appId": "com.livearena.app",
+    "productName": "LiveArena",
+    "copyright": "LiveArena",
+    "directories": {
+      "output": "release",
+      "buildResources": "build-res"
+    },
+    "files": [
+      "build/**/*",
+      "!build/res/**",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "build/res",
+        "to": "res"
+      }
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build-res/icon.ico",
+      "artifactName": "LiveArena-${version}-${arch}-${target}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "LiveArena",
+      "artifactName": "LiveArena-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "LiveArena-Portable-${version}.${ext}"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Monsterpick/babilonia.git"
+  }
+}

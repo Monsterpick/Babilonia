@@ -114,6 +114,18 @@ describe('LiveArena de punta a punta (simulador → reglas → RCON)', () => {
     expect(r2.status).toBe(415)
   })
 
+  it('incluye el perfil s2e Survival con comandos /survival', async () => {
+    const p = await api('GET', '/api/profiles/s2e-survival')
+    expect(p.actions.find((a: { id: string }) => a.id === 's2e-zombie').steps[0].commands[0]).toBe('survival zombie null {nickname}')
+  })
+
+  it('probar un comando rellena las variables con el espectador «Prueba»', async () => {
+    fake.commands.length = 0
+    const r = await api('POST', '/api/minecraft/test-command', { command: '/survival zombie null {nickname}' })
+    expect(r.command).toBe('survival zombie null Prueba')
+    expect(fake.commands).toContain('survival zombie null Prueba')
+  })
+
   it('perfil: exportar e importar por código', async () => {
     const { code } = await api('GET', '/api/profiles/supervivencia/export')
     expect(code).toMatch(/^LA1:/)

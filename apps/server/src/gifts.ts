@@ -1,9 +1,9 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import type { RawGift } from '@livearena/shared'
 
-export const ASSETS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'assets')
+import { ASSETS_DIR } from './resources.js'
+export { ASSETS_DIR }
 
 export interface GiftInfo {
   id?: number

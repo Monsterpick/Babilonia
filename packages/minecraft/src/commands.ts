@@ -18,7 +18,9 @@ export function parseVersion(v: string): McVersion {
   return { major, minor, patch }
 }
 
-const atLeast = (v: McVersion, minor: number, patch = 0) => v.major > 1 || v.minor > minor || (v.minor === minor && v.patch >= patch)
+/** Desde 2026 Minecraft numera por año (26.1, 26.2…): cualquier major > 1 es más nuevo que toda la serie 1.x. */
+export const isYearVersion = (v: McVersion) => v.major > 1
+const atLeast = (v: McVersion, minor: number, patch = 0) => isYearVersion(v) || v.minor > minor || (v.minor === minor && v.patch >= patch)
 
 export const usesComponents = (v: McVersion) => atLeast(v, 20, 5)
 export const usesSnbtText = (v: McVersion) => atLeast(v, 21, 5)

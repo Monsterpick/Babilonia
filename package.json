@@ -1,7 +1,7 @@
 {
   "name": "livearena",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "packageManager": "pnpm@10.28.0",
   "engines": {
@@ -15,7 +15,9 @@
     "start": "pnpm --filter @livearena/server start",
     "sim": "pnpm --filter @livearena/server sim",
     "test": "vitest run",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -p tsconfig.json && tsc -p apps/dashboard --noEmit",
+    "desktop": "pnpm build && pnpm --filter @livearena/desktop start",
+    "dist:win": "pnpm build && pnpm --filter @livearena/desktop dist"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

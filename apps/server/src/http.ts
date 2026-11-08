@@ -1,18 +1,16 @@
 import fs from 'node:fs'
 import fsp from 'node:fs/promises'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify'
 import fastifyStatic from '@fastify/static'
 import { z } from 'zod'
 import { KitSchema, OverlayStyleSchema } from '@livearena/shared'
 import { ITEMS } from './items.js'
 import { paths } from './config.js'
-import { ASSETS_DIR } from './gifts.js'
+import { ASSETS_DIR, DASHBOARD_DIST } from './resources.js'
 import { SimRequestSchema, Simulator } from './simulator.js'
-import type { App } from './app.js'
+import { VERSION, type App } from './app.js'
 
-const DASHBOARD_DIST = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'dashboard', 'dist')
 
 class HttpError extends Error {
   constructor(
@@ -75,7 +73,7 @@ export async function buildHttp(app: App): Promise<FastifyInstance> {
 
   /* -------------------------------- estado -------------------------------- */
   f.get('/api/state', async () => ({
-    version: app.hub.getState('profile') ? '0.1.0' : '0.1.0',
+    version: VERSION,
     config: app.cfg.publicView(),
     source: app.tiktok.status(),
     minecraft: app.mc.status(),
@@ -102,12 +100,14 @@ export async function buildHttp(app: App): Promise<FastifyInstance> {
         mcHost: z.string().max(200).optional(),
         mcPort: z.number().int().min(1).max(65535).optional(),
         mcPassword: z.string().max(200).optional(),
-        mcVersion: z.string().regex(/^1\.\d+(\.\d+)?$/).optional(),
+        mcVersion: z.string().regex(/^\d+\.\d+(\.\d+)?$/).optional(),
         mcAutoConnect: z.boolean().optional(),
         commandsPerSecond: z.number().min(1).max(100).optional(),
         maxLiveMobs: z.number().int().min(0).max(5000).optional(),
         watchPlayer: z.boolean().optional(),
-        ramGB: z.number().min(1).max(32).optional(),
+        chatAnnounce: z.boolean().optional(),
+        chatPrefix: z.string().max(20).optional(),
+        chatShowGift: z.boolean().optional(),
         java: z.string().max(500).optional(),
         stopOnExit: z.boolean().optional(),
         likeGoal: z.number().int().min(1).optional(),
@@ -129,7 +129,9 @@ export async function buildHttp(app: App): Promise<FastifyInstance> {
       if (body.commandsPerSecond !== undefined) c.minecraft.commandsPerSecond = body.commandsPerSecond
       if (body.maxLiveMobs !== undefined) c.minecraft.maxLiveMobs = body.maxLiveMobs
       if (body.watchPlayer !== undefined) c.minecraft.watchPlayer = body.watchPlayer
-      if (body.ramGB !== undefined) c.minecraft.server.ramGB = body.ramGB
+      if (body.chatAnnounce !== undefined) c.chat.announce = body.chatAnnounce
+      if (body.chatPrefix !== undefined) c.chat.prefix = body.chatPrefix
+      if (body.chatShowGift !== undefined) c.chat.showGift = body.chatShowGift
       if (body.java !== undefined) c.minecraft.server.java = body.java
       if (body.stopOnExit !== undefined) c.minecraft.server.stopOnExit = body.stopOnExit
       if (body.likeGoal !== undefined) c.likeGoal.target = body.likeGoal
@@ -225,8 +227,13 @@ export async function buildHttp(app: App): Promise<FastifyInstance> {
 
   /* -------------------------------- acciones -------------------------------- */
   f.post<{ Params: { id: string } }>('/api/actions/:id/test', async (req) => {
-    app.testAction(req.params.id)
+    const o = parse(z.object({ full: z.boolean().default(false), eventId: z.string().optional() }), req.body)
+    app.testAction(req.params.id, o)
     return { ok: true }
+  })
+  f.post('/api/minecraft/test-command', async (req) => {
+    const { command } = parse(z.object({ command: z.string().min(1).max(32000) }), req.body)
+    return app.testCommand(command)
   })
   f.post('/api/actions/pause', async (req) => {
     const { paused } = parse(z.object({ paused: z.boolean() }), req.body)
@@ -283,7 +290,7 @@ export async function buildHttp(app: App): Promise<FastifyInstance> {
       z.object({
         folder: z.string().min(3),
         software: z.enum(['paper', 'vanilla']).default('paper'),
-        mcVersion: z.string().regex(/^1\.\d+(\.\d+)?$/).default('1.20.1'),
+        mcVersion: z.string().regex(/^\d+\.\d+(\.\d+)?$/).default('1.20.1'),
         eulaAccepted: z.literal(true, { errorMap: () => ({ message: 'Debes aceptar el EULA de Minecraft' }) }),
         name: z.string().min(1).max(59).default('Servidor LiveArena'),
         difficulty: z.enum(['peaceful', 'easy', 'normal', 'hard']).default('normal'),
@@ -291,7 +298,10 @@ export async function buildHttp(app: App): Promise<FastifyInstance> {
         levelType: z.enum(['normal', 'flat', 'large_biomes', 'amplified']).default('normal'),
         seed: z.string().max(64).optional(),
         maxPlayers: z.number().int().min(1).max(500).default(10),
-        ramGB: z.number().min(1).max(32).default(3),
+        xmxMB: z.number().int().min(512).max(65536).default(4096),
+        xmsMB: z.number().int().min(256).max(65536).default(2048),
+        viaVersion: z.boolean().default(false),
+        installJava: z.boolean().default(true),
         plugins: z.array(z.string()).default([]),
         onlineMode: z.boolean().default(true),
         autoStart: z.boolean().default(true),
@@ -325,6 +335,71 @@ export async function buildHttp(app: App): Promise<FastifyInstance> {
     const { command } = parse(z.object({ command: z.string().min(1).max(1000) }), req.body)
     app.mc.proc.console(command)
     return { ok: true }
+  })
+
+  f.get('/api/minecraft/versions', async () => app.mc.versions())
+  f.get<{ Querystring: { version?: string } }>('/api/minecraft/java/check', async (req) => app.mc.javaInfo(req.query.version))
+  f.post('/api/minecraft/java/install', async (req) => {
+    const { version } = parse(z.object({ version: z.string().regex(/^\d+\.\d+(\.\d+)?$/) }), req.body)
+    app.mc.installJava(version).catch((e) => app.log.error('servidor', e.message))
+    return { ok: true }
+  })
+  f.get('/api/minecraft/server/settings', async () => app.mc.getSettings())
+  f.put('/api/minecraft/server/settings', async (req) => {
+    const v = parse(
+      z.object({
+        jar: z.string().max(500),
+        java: z.string().max(500),
+        xmxMB: z.number().int().min(512).max(65536),
+        xmsMB: z.number().int().min(256).max(65536),
+        levelName: z.string().min(1).max(60),
+        onlineMode: z.boolean(),
+        motd: z.string().max(59),
+        maxPlayers: z.number().int().min(1).max(1000),
+        difficulty: z.enum(['peaceful', 'easy', 'normal', 'hard']),
+        pvp: z.boolean(),
+      }).partial(),
+      req.body,
+    )
+    return app.mc.saveSettings(v)
+  })
+  f.get('/api/minecraft/server/properties', async () => ({ text: await app.mc.readPropertiesText() }))
+  f.put('/api/minecraft/server/properties', async (req) => {
+    const { text } = parse(z.object({ text: z.string().max(100000) }), req.body)
+    await app.mc.writePropertiesText(text)
+    return { ok: true }
+  })
+  f.get('/api/minecraft/server/plugins', async () => app.mc.listServerPlugins())
+  f.post('/api/minecraft/server/plugins/toggle', async (req) => {
+    const { file, enabled } = parse(z.object({ file: z.string().min(1), enabled: z.boolean() }), req.body)
+    await app.mc.togglePlugin(file, enabled)
+    return app.mc.listServerPlugins()
+  })
+  f.post('/api/minecraft/server/plugins/remove', async (req) => {
+    const { file } = parse(z.object({ file: z.string().min(1) }), req.body)
+    await app.mc.removePlugin(file)
+    return app.mc.listServerPlugins()
+  })
+  f.post('/api/minecraft/server/plugins/install', async (req) => {
+    const { files } = parse(z.object({ files: z.array(z.string().min(1)).min(1) }), req.body)
+    for (const file of files) await app.mc.installFromLibrary(file)
+    return app.mc.listServerPlugins()
+  })
+  f.post('/api/minecraft/server/plugins/upload', async (req: FastifyRequest) => {
+    const name = path.basename(String(req.headers['x-filename'] ?? ''))
+    if (!/\.jar$/i.test(name)) throw new HttpError(400, 'Solo archivos .jar')
+    await app.mc.savePluginToServer(name, req.body as Buffer)
+    await fsp.writeFile(path.join(paths.plugins, name), req.body as Buffer).catch(() => undefined)
+    return app.mc.listServerPlugins()
+  })
+  f.get('/api/minecraft/gamerules', async () => app.mc.getGameRules())
+  f.post('/api/minecraft/gamerules', async (req) => {
+    const { id, value } = parse(z.object({ id: z.string().min(1).max(60), value: z.string().max(10) }), req.body)
+    return { response: await app.mc.setGameRule(id, value) }
+  })
+  f.post('/api/system/open', async (req) => {
+    const { target } = parse(z.object({ target: z.enum(['server', 'plugins', 'data', 'media']) }), req.body)
+    return { path: await app.mc.openFolder(target) }
   })
 
   /* ---------------------------------- media ---------------------------------- */

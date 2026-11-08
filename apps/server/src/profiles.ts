@@ -3,7 +3,7 @@ import path from 'node:path'
 import zlib from 'node:zlib'
 import { ProfileSchema, type Profile } from '@livearena/shared'
 import { paths } from './config.js'
-import { defaultProfiles } from './default-profiles.js'
+import { defaultProfiles, s2eProfile } from './default-profiles.js'
 
 const safeId = (id: string) => id.toLowerCase().replace(/[^a-z0-9_-]/g, '-').slice(0, 64) || 'perfil'
 
@@ -25,6 +25,14 @@ export class ProfileStore {
       }
     }
     if (this.cache.size === 0) for (const p of defaultProfiles()) await this.save(p, false)
+    // Perfiles de ejemplo añadidos en versiones nuevas (una sola vez, aunque luego lo borres).
+    const marker = path.join(paths.profiles, '.ejemplos-v2')
+    try {
+      await fs.access(marker)
+    } catch {
+      if (!this.cache.has('s2e-survival')) await this.save(s2eProfile(), false)
+      await fs.writeFile(marker, new Date().toISOString())
+    }
   }
 
   list(): { id: string; name: string; mode: string; actions: number; events: number }[] {

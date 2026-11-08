@@ -20,7 +20,13 @@ export interface CreateServerOptions {
   levelType: 'normal' | 'flat' | 'large_biomes' | 'amplified'
   seed?: string
   maxPlayers: number
-  ramGB: number
+  /** Memoria máxima y mínima en MB (-Xmx / -Xms). */
+  xmxMB: number
+  xmsMB: number
+  /** Java a usar en iniciar.bat (vacío = "java" del sistema). */
+  javaPath?: string
+  /** Descargar ViaVersion (deja entrar con versiones de Minecraft más nuevas). */
+  viaVersion?: boolean
   /** Rutas de .jar de plugins que copiar a /plugins (solo Paper). */
   plugins: string[]
   onlineMode: boolean
@@ -36,7 +42,8 @@ export interface CreatedServer {
   serverPort: number
   software: ServerSoftware
   mcVersion: string
-  ramGB: number
+  xmxMB: number
+  xmsMB: number
 }
 
 export type Progress = (p: { step: string; pct?: number; message: string }) => void
@@ -188,12 +195,24 @@ export async function createServer(o: CreateServerOptions, progress: Progress = 
     for (const p of o.plugins) await fs.copyFile(p, path.join(dir, path.basename(p)))
   }
 
-  const ram = Math.max(1, Math.min(32, Math.round(o.ramGB)))
-  const args = `-Xms${Math.min(ram, 2)}G -Xmx${ram}G -jar ${jar} nogui`
-  await fs.writeFile(path.join(o.folder, 'iniciar.bat'), `@echo off\r\ncd /d "%~dp0"\r\njava ${args}\r\npause\r\n`, 'utf8')
-  await fs.writeFile(path.join(o.folder, 'iniciar.sh'), `#!/bin/sh\ncd "$(dirname "$0")"\nexec java ${args}\n`, { encoding: 'utf8', mode: 0o755 })
+  if (o.viaVersion && o.software === 'paper') {
+    progress({ step: 'plugins', message: 'Descargando ViaVersion…' })
+    try {
+      const { downloadViaVersion } = await import('./downloads.js')
+      await downloadViaVersion(path.join(o.folder, 'plugins'))
+    } catch (err) {
+      progress({ step: 'plugins', message: `ViaVersion no se pudo descargar (${(err as Error).message}); sigo sin él.` })
+    }
+  }
 
-  const created: CreatedServer = { folder: o.folder, jar, rconPort, rconPassword, serverPort, software: o.software, mcVersion: o.mcVersion, ramGB: ram }
+  const xmx = Math.max(512, Math.round(o.xmxMB))
+  const xms = Math.max(256, Math.min(xmx, Math.round(o.xmsMB)))
+  const java = o.javaPath ? `"${o.javaPath}"` : 'java'
+  const args = `-Xms${xms}M -Xmx${xmx}M -jar ${jar} nogui`
+  await fs.writeFile(path.join(o.folder, 'iniciar.bat'), `@echo off\r\ncd /d "%~dp0"\r\n${java} ${args}\r\npause\r\n`, 'utf8')
+  await fs.writeFile(path.join(o.folder, 'iniciar.sh'), `#!/bin/sh\ncd "$(dirname "$0")"\nexec ${java} ${args}\n`, { encoding: 'utf8', mode: 0o755 })
+
+  const created: CreatedServer = { folder: o.folder, jar, rconPort, rconPassword, serverPort, software: o.software, mcVersion: o.mcVersion, xmxMB: xmx, xmsMB: xms }
   await fs.writeFile(path.join(o.folder, SERVER_META_FILE), JSON.stringify({ ...created, rconPassword: undefined, createdAt: Date.now() }, null, 2))
   progress({ step: 'done', pct: 100, message: 'Servidor creado.' })
   return created

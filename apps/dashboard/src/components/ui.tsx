@@ -54,8 +54,8 @@ export function Toggle({ on, onChange, title }: { on: boolean; onChange: (v: boo
 export function Check({ on, onChange, children }: { on: boolean; onChange: (v: boolean) => void; children: ReactNode }) {
   return (
     <label className="flex cursor-pointer items-center gap-2 text-sm select-none">
-      <input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} className="h-4 w-4 accent-[var(--color-accent)]" />
-      {children}
+      <input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} className="h-4 w-4 shrink-0 accent-[var(--color-accent)]" />
+      <span>{children}</span>
     </label>
   )
 }

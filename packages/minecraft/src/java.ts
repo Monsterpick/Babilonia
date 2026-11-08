@@ -12,6 +12,7 @@ export interface JavaInfo {
 /** Java mínimo para cada versión de Minecraft. */
 export function requiredJava(mcVersion: string): number {
   const v = parseVersion(mcVersion)
+  if (v.major > 1) return 25
   if (v.minor >= 21 || (v.minor === 20 && v.patch >= 5)) return 21
   if (v.minor >= 18) return 17
   if (v.minor === 17) return 16
@@ -40,10 +41,17 @@ async function listDirs(base: string): Promise<string[]> {
   }
 }
 
+/** Carpetas extra donde buscar JDKs (p. ej. los que instala LiveArena). */
+const extraJavaRoots: string[] = []
+export function addJavaRoot(dir: string): void {
+  if (!extraJavaRoots.includes(dir)) extraJavaRoots.push(dir)
+}
+
 /** Busca todas las instalaciones de Java (PATH, JAVA_HOME y carpetas típicas de Windows/macOS/Linux). */
 export async function findJavas(): Promise<JavaInfo[]> {
   const exe = process.platform === 'win32' ? 'java.exe' : 'java'
   const candidates = new Set<string>(['java'])
+  for (const extra of extraJavaRoots) for (const d of await listDirs(extra)) candidates.add(path.join(d, 'bin', exe))
   if (process.env.JAVA_HOME) candidates.add(path.join(process.env.JAVA_HOME, 'bin', exe))
   const roots =
     process.platform === 'win32'
