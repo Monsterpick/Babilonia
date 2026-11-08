@@ -12,7 +12,9 @@ import {
   addJavaRoot,
   createServer,
   enableRcon,
+  findFreePort,
   findJavaFor,
+  isPortFree,
   installJdk,
   kitCommands,
   paperVersions,
@@ -22,6 +24,7 @@ import {
   requiredJava,
   updateProperties,
   validateFolder,
+  whoUsesPort,
   type CreateServerOptions,
   type McVersion,
 } from '@livearena/minecraft'
@@ -323,9 +326,15 @@ export class MinecraftService extends EventEmitter {
       if (!j.java) throw new Error(`Necesitas Java ${j.required} o superior. Pulsa «Instalar Java» en Servidor y lo descargo por ti.`)
       java = j.java.path
     }
-    const props = await readProperties(path.join(mc.server.folder, 'server.properties'))
+    const propsFile = path.join(mc.server.folder, 'server.properties')
+    let props = await readProperties(propsFile)
+    if (props.size > 0 && props.get('enable-rcon') !== 'true') {
+      await enableRcon(mc.server.folder)
+      props = await readProperties(propsFile)
+    }
+    if (props.size > 0) await this.ensurePortsFree(mc.server.folder, props)
+    props = await readProperties(propsFile)
     this.serverPort = Number(props.get('server-port') ?? 25565) || 25565
-    if (props.size > 0 && props.get('enable-rcon') !== 'true') await enableRcon(mc.server.folder)
     await this.syncPluginConfigs()
     this.creating = null
     this.proc.start({ folder: mc.server.folder, java, jar, xmxMB: mc.server.xmxMB, xmsMB: mc.server.xmsMB })
@@ -352,6 +361,47 @@ export class MinecraftService extends EventEmitter {
   }
 
   /** Escribe tu nick en la config de plugins que lo necesitan (s2e-survival: player_name). */
+  /**
+   * Antes de encender: si otro programa ocupa el puerto del juego o el de RCON, busca uno libre,
+   * lo escribe en server.properties y explica en la consola qué pasó (y quién lo ocupa en Windows).
+   */
+  private async ensurePortsFree(folder: string, props: Map<string, string>): Promise<void> {
+    const file = path.join(folder, 'server.properties')
+    const game = Number(props.get('server-port') ?? 25565) || 25565
+    const rcon = Number(props.get('rcon.port') ?? 25575) || 25575
+    const changes: Record<string, number> = {}
+    const who = async (port: number) => {
+      const w = await whoUsesPort(port)
+      return w ? ` (lo usa ${w.name}, PID ${w.pid})` : ''
+    }
+    let newGame = game
+    if (!(await isPortFree(game))) {
+      const free = await findFreePort(game + 1, [rcon])
+      const by = await who(game)
+      if (!free) throw new Error(`El puerto ${game} está ocupado${by} y no encontré otro libre. Cierra el otro servidor de Minecraft.`)
+      newGame = free
+      changes['server-port'] = free
+      this.proc.note(`El puerto ${game} está ocupado por otro programa${by}. Uso el ${free}: en Minecraft entra con localhost:${free}`)
+      this.log.warn('servidor', `Puerto ${game} ocupado${by}; uso ${free}`)
+    }
+    if (!(await isPortFree(rcon))) {
+      const free = await findFreePort(rcon + 1, [newGame])
+      const by = await who(rcon)
+      if (!free) throw new Error(`El puerto RCON ${rcon} está ocupado${by}.`)
+      changes['rcon.port'] = free
+      this.proc.note(`El puerto RCON ${rcon} está ocupado${by}. Uso el ${free} (no tienes que hacer nada).`)
+      this.log.warn('servidor', `Puerto RCON ${rcon} ocupado${by}; uso ${free}`)
+    }
+    if (Object.keys(changes).length === 0) return
+    await updateProperties(file, changes)
+    if (changes['rcon.port']) {
+      const port = changes['rcon.port']
+      this.cfg.update((c) => {
+        c.minecraft.port = port
+      })
+    }
+  }
+
   async syncPluginConfigs(): Promise<void> {
     const { folder } = this.cfg.get().minecraft.server
     const player = this.player
@@ -365,7 +415,13 @@ export class MinecraftService extends EventEmitter {
         this.log.info('servidor', `s2e-survival: player_name = ${player}`)
       }
     } catch {
-      /* plugin no instalado o sin config todavía */
+      // Sin config todavía: si el plugin está instalado, la creamos ya con tu nick para que el
+      // primer arranque funcione (el plugin no sobrescribe un config.yml existente).
+      const jars = await fs.readdir(path.join(folder, 'plugins')).catch(() => [] as string[])
+      if (!jars.some((f) => /^s2e-survival.*\.jar$/i.test(f))) return
+      await fs.mkdir(path.dirname(file), { recursive: true })
+      await fs.writeFile(file, `player_name: '${player}'\npermanently_visible_mob_names: true\n`, 'utf8')
+      this.log.info('servidor', `s2e-survival: config creada con player_name = ${player}`)
     }
   }
 

@@ -187,3 +187,18 @@ describe('Versiones nuevas (26.x)', () => {
     expect(requiredJava('26.1.2')).toBe(25)
   })
 })
+
+describe('puertos', () => {
+  it('detecta un puerto ocupado y encuentra otro libre', async () => {
+    const { isPortFree, findFreePort } = await import('../src/ports.js')
+    const net = await import('node:net')
+    const srv = net.createServer()
+    await new Promise<void>((r) => srv.listen(0, '0.0.0.0', () => r()))
+    const port = (srv.address() as { port: number }).port
+    expect(await isPortFree(port)).toBe(false)
+    const free = await findFreePort(port)
+    expect(free).not.toBe(port)
+    expect(free && (await isPortFree(free))).toBe(true)
+    srv.close()
+  })
+})

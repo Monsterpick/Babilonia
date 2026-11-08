@@ -79,6 +79,11 @@ export class ServerProcess extends EventEmitter {
     })
   }
 
+  /** Añade un aviso de LiveArena a la consola del servidor. */
+  note(text: string): void {
+    this.pushLine(`[LiveArena] ${text}`)
+  }
+
   private pushLine(line: string): void {
     this.lines.push(line)
     if (this.lines.length > 2000) this.lines.splice(0, this.lines.length - 2000)
@@ -90,6 +95,8 @@ export class ServerProcess extends EventEmitter {
     if (/You need to agree to the EULA/i.test(line)) this.pushLine('[LiveArena] Falta aceptar el EULA en eula.txt.')
     if (/UnsupportedClassVersionError|has been compiled by a more recent version/.test(line))
       this.pushLine('[LiveArena] Tu Java es demasiado antiguo para esta versión de Minecraft.')
+    if (/FAILED TO BIND TO PORT/i.test(line))
+      this.pushLine('[LiveArena] El puerto del servidor está ocupado por otro programa (¿otro servidor de Minecraft abierto?). Ciérralo o cambia server-port en Ajustes del servidor.')
   }
 
   private setState(s: ServerProcState): void {
