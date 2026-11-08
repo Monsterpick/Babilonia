@@ -197,7 +197,7 @@ export function PluginsPage() {
                 <button className="rounded-lg bg-orange-500 p-2 text-white hover:brightness-110" title="Probar completo: tarjeta, aviso, sonido y Minecraft" onClick={() => api('POST', `/api/actions/${action.id}/test`, { full: true, eventId: ev.id }).catch((e) => toast(e.message, 'error'))}>
                   <Play size={15} />
                 </button>
-                <button className="rounded-lg bg-sky-600 p-2 text-white hover:brightness-110" title="Ejecutar solo en Minecraft" onClick={() => api('POST', `/api/actions/${action.id}/test`, { full: false }).catch((e) => toast(e.message, 'error'))}>
+                <button className="rounded-lg bg-sky-600 p-2 text-white hover:brightness-110" title="Ejecutar solo en Minecraft" onClick={() => api('POST', `/api/actions/${action.id}/test`, { full: false, eventId: ev.id }).catch((e) => toast(e.message, 'error'))}>
                   <Play size={15} />
                 </button>
                 <button className="rounded-lg bg-white/10 p-2 hover:bg-white/20" title="Duplicar" onClick={() => duplicateRow(ev)}>

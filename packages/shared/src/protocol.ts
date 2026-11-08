@@ -45,7 +45,7 @@ export interface ActionMessage {
   priority: number
 }
 
-export type StateKey = 'source' | 'minecraft' | 'server' | 'leaderboard' | 'likes' | 'scoreboard' | 'profile' | 'queue' | 'goal'
+export type StateKey = 'source' | 'minecraft' | 'server' | 'leaderboard' | 'likes' | 'scoreboard' | 'profile' | 'queue' | 'goal' | 'textures'
 
 export type ServerMessage =
   | Envelope<'welcome', { protocol: number; serverVersion: string; sessionId: string; state: Record<string, unknown> }>

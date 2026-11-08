@@ -1,3 +1,4 @@
+import { TextureService } from './textures.js'
 import { ComboTracker, Deduper, PriorityWorker, RuleEngine, renderTemplate, type Job } from '@livearena/core'
 import { effect, give, summon, titleCommands } from '@livearena/minecraft'
 import { TikTokSource } from '@livearena/source-tiktok'
@@ -36,6 +37,7 @@ export class App {
   readonly profiles = new ProfileStore()
   readonly stats = new StatsStore(paths.db)
   readonly gifts = new GiftCatalog()
+  readonly textures: TextureService
   readonly mc: MinecraftService
   readonly tiktok: TikTokSource
   private readonly dedup = new Deduper(10_000)
@@ -67,6 +69,8 @@ export class App {
     this.tiktok.on('log', (l: { level: 'info' | 'warn' | 'error'; msg: string }) => this.log[l.level]('tiktok', l.msg))
 
     this.mc.on('status', (s) => this.hub.setState('minecraft', s))
+    this.textures = new TextureService(this.log)
+    this.textures.on('status', (s) => this.hub.setState('textures', s))
     this.mc.on('serverLog', (line: string) => this.hub.log({ level: 'info', scope: 'consola', msg: line, ts: Date.now() }))
     this.mc.on('death', () => this.onPlayerDeath())
     this.mc.setKitProvider(() => this.profile?.kit ?? null)
@@ -76,6 +80,8 @@ export class App {
   async init(): Promise<void> {
     await this.profiles.init()
     await this.gifts.init()
+    this.hub.setState('textures', this.textures.status)
+    void this.textures.init(this.cfg.get().minecraft.version).catch(() => undefined)
     const active = this.profiles.get(this.cfg.get().activeProfileId) ?? this.profiles.first()
     this.setProfile(active)
     this.hub.setState('source', this.tiktok.status())
@@ -240,7 +246,8 @@ export class App {
       delayMs: 0,
       sound: opts.full ? real?.sound : undefined,
     }
-    const reps = opts.full && real ? Math.min(real.multiplier, real.maxPerEvent) : 1
+    // Ambos botones respetan Repeticiones e Intervalo de la fila (el azul solo omite tarjeta, aviso y sonido).
+    const reps = real ? Math.min(real.multiplier, real.maxPerEvent) : 1
     const act = opts.full ? action : { ...action, showInOverlay: false }
     this.jobs.push({ jobId: `manual-${Date.now()}`, rule, action: act, event: this.testEvent(), repetitions: reps, priority: 999, intensity: 0.5, playSound: !!opts.full && !!rule.sound }, 999)
   }

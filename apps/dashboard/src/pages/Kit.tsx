@@ -5,6 +5,7 @@ import { useApp } from '../App'
 import { api } from '../lib/api'
 import { Check, Field, Modal, PageHeader } from '../components/ui'
 import { toast } from '../components/Toast'
+import { ItemIcon, TexturesBar } from '../components/ItemIcon'
 
 type Slot = { area: 'armor'; key: 'head' | 'chest' | 'legs' | 'feet' | 'offhand' } | { area: 'hotbar' | 'inventory'; index: number }
 
@@ -64,7 +65,7 @@ export function KitPage() {
       >
         {it ? (
           <>
-            <span className="line-clamp-2 px-1 text-[10px] leading-tight capitalize">{pretty(it.item)}</span>
+            <ItemIcon id={it.item} size={36} />
             {it.count > 1 && <span className="absolute right-1 bottom-0.5 text-[11px] font-bold">{it.count}</span>}
             {it.unbreakable && <InfinityIcon size={11} className="absolute top-1 left-1 text-warn" />}
           </>
@@ -100,6 +101,7 @@ export function KitPage() {
         </button>
       </PageHeader>
       <div className="space-y-4 px-6">
+        <TexturesBar />
         <div className="card flex flex-wrap gap-x-8 gap-y-2 p-4">
           <Check on={kit.enabled} onChange={(v) => setKit({ ...kit, enabled: v })}>
             <b>Kit activado</b>
@@ -207,7 +209,8 @@ function ItemModal({ item, onClose, onSave }: { item: KitItem | null; onClose: (
       </div>
       <div className="mb-4 flex max-h-48 flex-wrap gap-1.5 overflow-y-auto">
         {list.map((x) => (
-          <button key={x.id} onClick={() => setIt({ ...it, item: x.id, count: Math.min(it.count, x.max) })} className={`rounded-md border px-2 py-1 text-xs capitalize ${it.item === x.id ? 'border-accent bg-accent/15' : 'border-line hover:border-white/30'}`}>
+          <button key={x.id} onClick={() => setIt({ ...it, item: x.id, count: Math.min(it.count, x.max) })} className={`flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs capitalize ${it.item === x.id ? 'border-accent bg-accent/15' : 'border-line hover:border-white/30'}`}>
+            <ItemIcon id={x.id} size={18} label={false} />
             {pretty(x.id)}
           </button>
         ))}

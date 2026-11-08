@@ -202,3 +202,57 @@ describe('puertos', () => {
     srv.close()
   })
 })
+
+describe('texturas', () => {
+  it('extrae item/ y block/ de un jar y resuelve ids', async () => {
+    const { extractTextures, textureCandidates, ZipReader } = await import('../src/index.js')
+    const zlib = await import('node:zlib')
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'la-tex-'))
+    // jar mínimo hecho a mano: 2 entradas deflate + 1 store
+    const files: [string, Buffer, boolean][] = [
+      ['assets/minecraft/textures/item/diamond_sword.png', Buffer.from('PNGsword'), true],
+      ['assets/minecraft/textures/block/tnt_side.png', Buffer.from('PNGtnt'), false],
+      ['assets/minecraft/textures/entity/x.png', Buffer.from('no'), true],
+    ]
+    const locals: Buffer[] = []
+    const centrals: Buffer[] = []
+    let off = 0
+    for (const [name, data, deflate] of files) {
+      const body = deflate ? zlib.deflateRawSync(data) : data
+      const n = Buffer.from(name)
+      const lh = Buffer.alloc(30)
+      lh.writeUInt32LE(0x04034b50, 0)
+      lh.writeUInt16LE(deflate ? 8 : 0, 8)
+      lh.writeUInt32LE(body.length, 18)
+      lh.writeUInt32LE(data.length, 22)
+      lh.writeUInt16LE(n.length, 26)
+      const ch = Buffer.alloc(46)
+      ch.writeUInt32LE(0x02014b50, 0)
+      ch.writeUInt16LE(deflate ? 8 : 0, 10)
+      ch.writeUInt32LE(body.length, 20)
+      ch.writeUInt32LE(data.length, 24)
+      ch.writeUInt16LE(n.length, 28)
+      ch.writeUInt32LE(off, 42)
+      locals.push(lh, n, body)
+      centrals.push(ch, n)
+      off += 30 + n.length + body.length
+    }
+    const cd = Buffer.concat(centrals)
+    const end = Buffer.alloc(22)
+    end.writeUInt32LE(0x06054b50, 0)
+    end.writeUInt16LE(files.length, 8)
+    end.writeUInt16LE(files.length, 10)
+    end.writeUInt32LE(cd.length, 12)
+    end.writeUInt32LE(off, 16)
+    const jar = path.join(dir, '26.1.2.jar')
+    await fs.writeFile(jar, Buffer.concat([...locals, cd, end]))
+    const z = await ZipReader.open(jar)
+    expect(z.entries).toHaveLength(3)
+    await z.close()
+    const n = await extractTextures(jar, path.join(dir, 'out'))
+    expect(n).toBe(2)
+    expect(await fs.readFile(path.join(dir, 'out', 'item', 'diamond_sword.png'), 'utf8')).toBe('PNGsword')
+    expect(await fs.readFile(path.join(dir, 'out', 'block', 'tnt_side.png'), 'utf8')).toBe('PNGtnt')
+    expect(textureCandidates('minecraft:tnt')[0]).toBe('block/tnt_side.png')
+  })
+})

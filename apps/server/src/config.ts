@@ -15,6 +15,7 @@ export const paths = {
   plugins: path.join(DATA_DIR, 'plugins'),
   db: path.join(DATA_DIR, 'estadisticas.db'),
   java: path.join(DATA_DIR, 'java'),
+  textures: path.join(DATA_DIR, 'texturas'),
 }
 
 export const ConfigSchema = z.object({

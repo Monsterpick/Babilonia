@@ -99,6 +99,22 @@ describe('LiveArena de punta a punta (simulador → reglas → RCON)', () => {
     expect(s.stats.bestLive.gift).toBe('Galaxy')
   })
 
+  it('repeticiones: Rose con Repeticiones = 3 lanza 3 creepers (perfil s2e)', async () => {
+    const p = await api('GET', '/api/profiles/s2e-survival')
+    p.events = p.events.map((e: { id: string }) => (e.id === 's2e-ev-rose' ? { ...e, multiplier: 3, intervalMs: 50 } : e))
+    await api('PUT', '/api/profiles/s2e-survival', p)
+    await api('POST', '/api/profiles/s2e-survival/activate')
+    fake.commands.length = 0
+    await api('POST', '/api/simulate', { type: 'gift', name: 'Rose', count: 1, user: 'Rep' })
+    for (let i = 0; i < 40 && fake.commands.filter((c) => c.startsWith('survival creeper')).length < 3; i++) await wait(250)
+    await wait(400)
+    expect(fake.commands.filter((c) => c.startsWith('survival creeper'))).toHaveLength(3)
+    fake.commands.length = 0
+    await api('POST', '/api/actions/s2e-creeper/test', { full: false, eventId: 's2e-ev-rose' })
+    await wait(1500)
+    expect(fake.commands.filter((c) => c.startsWith('survival creeper'))).toHaveLength(3)
+    await api('POST', '/api/profiles/supervivencia/activate')
+  })
   it('ráfaga de 300 eventos en 1 s sin perder el regalo grande', async () => {
     fake.commands.length = 0
     await api('POST', '/api/simulate', { type: 'burst', events: 300, seconds: 1 })
@@ -133,4 +149,5 @@ describe('LiveArena de punta a punta (simulador → reglas → RCON)', () => {
     expect(p.id).toBe('copia')
     expect(p.actions.length).toBeGreaterThan(5)
   })
+
 })

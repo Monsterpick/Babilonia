@@ -89,6 +89,25 @@ export async function buildHttp(app: App): Promise<FastifyInstance> {
   f.get('/api/activity', async () => app.recentActivity())
   f.get('/api/gifts', async () => app.gifts.list())
   f.get('/api/items', async () => ITEMS)
+  f.get('/api/textures', async () => ({ ...app.textures.status, jars: await app.textures.jars() }))
+  f.post('/api/textures/import', async (req) => {
+    const { jar } = parse(z.object({ jar: z.string().min(1).max(1000).optional() }), req.body)
+    if (jar) {
+      if (!/\.jar$/i.test(jar)) throw new HttpError(400, 'Elige un archivo .jar')
+      return app.textures.import(jar)
+    }
+    const found = (await app.textures.jars())[0]
+    if (!found) throw new HttpError(404, 'No encontré Minecraft instalado. Abre el juego una vez o elige el .jar a mano.')
+    return app.textures.import(found.file, found.version)
+  })
+  f.get<{ Params: { id: string } }>('/textures/:id', async (req, reply) => {
+    const id = req.params.id.replace(/\.png$/, '')
+    if (!/^[a-z0-9_:]{1,80}$/.test(id)) return reply.code(400).send()
+    const file = await app.textures.file(id)
+    if (!file) return reply.code(404).send()
+    reply.header('cache-control', 'public, max-age=86400').type('image/png')
+    return fsp.readFile(file)
+  })
 
   f.put('/api/config', async (req) => {
     const body = parse(
