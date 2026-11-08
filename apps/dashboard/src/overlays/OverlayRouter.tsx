@@ -31,6 +31,8 @@ export function OverlayRouter({ name }: { name: string }) {
         return <GoalBar metric="coins" />
       case 'meta-combinada':
         return <GoalBar metric="combined" />
+      case 'meta-seguidores':
+        return <GoalBar metric="followers" />
       case 'marcador':
       case 'contador':
         return <ScoreV2 />

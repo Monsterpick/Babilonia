@@ -117,23 +117,45 @@ function LivesTools() {
 function TimerTools() {
   const s = useLiveState<any>('scoreboard')
   const running = !!s?.timer?.running
+  const [exact, setExact] = useState(5)
+  const add = (min: number) => post('/api/scoreboard', { timer: { op: 'add', seconds: min * 60 } })
   return (
-    <div className="flex flex-wrap gap-2">
-      <button className="btn-accent" onClick={() => post('/api/scoreboard', { timer: { op: running ? 'pause' : 'start' } })}>
-        {running ? <Pause size={14} /> : <Play size={14} />} {running ? 'Pausar' : 'Iniciar'}
-      </button>
-      <button className="btn" onClick={() => post('/api/scoreboard', { timer: { op: 'reset' } })}>
-        <RotateCcw size={14} /> Reiniciar
-      </button>
-      <button className="btn" onClick={() => post('/api/scoreboard', { timer: { op: 'add', seconds: 60 } })}>
-        +1 min
-      </button>
-      <button className="btn" onClick={() => post('/api/scoreboard', { timer: { op: 'add', seconds: -60 } })}>
-        −1 min
-      </button>
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-2">
+        <button className="btn-accent" onClick={() => post('/api/scoreboard', { timer: { op: running ? 'pause' : 'start' } })}>
+          {running ? <Pause size={14} /> : <Play size={14} />} {running ? 'Pausar' : 'Iniciar'}
+        </button>
+        <button className="btn" onClick={() => post('/api/scoreboard', { timer: { op: 'reset' } })}>
+          <RotateCcw size={14} /> Reiniciar
+        </button>
+      </div>
+      <div className="flex flex-wrap items-center gap-1">
+        {[-30, -10, -5, -1].map((m) => (
+          <button key={m} className="rounded-lg border border-bad/50 px-2.5 py-1 text-xs font-bold text-bad hover:bg-bad/10" onClick={() => add(m)}>
+            {m}
+          </button>
+        ))}
+        <span className="px-1 text-xs text-muted">min</span>
+        {[1, 5, 10, 30].map((m) => (
+          <button key={m} className="rounded-lg border border-ok/50 px-2.5 py-1 text-xs font-bold text-ok hover:bg-ok/10" onClick={() => add(m)}>
+            +{m}
+          </button>
+        ))}
+      </div>
+      <div className="flex items-center gap-2">
+        <button className="rounded-lg border border-bad/50 px-3 py-1 text-xs font-bold text-bad hover:bg-bad/10" onClick={() => add(-exact)}>
+          − Quitar
+        </button>
+        <input type="number" className="input !w-20 !py-1 text-center" value={exact} onChange={(e) => setExact(Math.max(1, Number(e.target.value) || 1))} />
+        <span className="text-xs text-muted">min</span>
+        <button className="rounded-lg border border-ok/50 px-3 py-1 text-xs font-bold text-ok hover:bg-ok/10" onClick={() => add(exact)}>
+          Añadir +
+        </button>
+      </div>
     </div>
   )
 }
+
 const resetBtn = (what: string, label: string) => () => (
   <button className="btn" onClick={() => post('/api/overlays/reset', { what })}>
     <RotateCcw size={14} /> {label}
@@ -206,6 +228,15 @@ const SECTIONS: { title: string; hint: string; items: Def[] }[] = [
               </select>
             </label>
             {c.timer?.mode === 'down' && <Txt label="Sonido al terminar (URL)" value={c.timer?.endSound ?? ''} onChange={(v) => set({ timer: { endSound: v } })} />}
+            <div className="border-t border-white/5 pt-2">
+              <Num label="Reloj extensible: segundos por moneda" suffix="s/🪙" min={0} value={c.timer?.coinSeconds} onChange={(v) => set({ timer: { coinSeconds: v } })} />
+              <p className="mt-1 text-[11px] text-muted">0 = apagado. Con un valor, cada moneda/diamante recibido alarga el reloj (subathon).</p>
+            </div>
+            {Number(c.timer?.coinSeconds ?? 0) > 0 && <Num label="Tope de horas (0 = sin tope)" suffix="h" min={0} value={c.timer?.maxHours} onChange={(v) => set({ timer: { maxHours: v } })} />}
+            <Num label="Tamaño del reloj" suffix="px" min={40} value={c.timer?.size} onChange={(v) => set({ timer: { size: v } })} />
+            <Check on={c.timer?.showProgress ?? true} onChange={(v) => set({ timer: { showProgress: v } })}>
+              Barra de progreso del minuto
+            </Check>
             <Check on={!!c.timer?.minimal} onChange={(v) => set({ timer: { minimal: v } })}>
               Diseño minimalista
             </Check>
@@ -363,13 +394,27 @@ const SECTIONS: { title: string; hint: string; items: Def[] }[] = [
           </>
         ),
       },
-      { id: 'meta-likes', name: 'Meta de likes', desc: 'Barra con los likes de la sala (la meta se cambia en Ajustes).', w: 600, h: 120 },
+      { id: 'meta-likes', name: 'Meta de likes', desc: 'Barra con los likes de la sala (la meta se cambia en Ajustes).', w: 640, h: 90 },
+      {
+        id: 'meta-seguidores',
+        name: 'Meta de seguidores',
+        desc: 'Barra de progreso de los seguidores que consigues en el live.',
+        w: 640,
+        h: 90,
+        tools: resetBtn('session', 'Poner a cero'),
+        settings: (c, set) => (
+          <>
+            <Num label="Meta" min={1} value={c.goals?.followers?.target} onChange={(v) => set({ goals: { followers: { target: v } } })} />
+            <Txt label="Texto" value={c.goals?.followers?.label} onChange={(v) => set({ goals: { followers: { label: v } } })} />
+          </>
+        ),
+      },
       {
         id: 'meta-combinada',
         name: 'Meta combinada',
         desc: 'Monedas + likes juntos en una sola barra.',
-        w: 600,
-        h: 120,
+        w: 640,
+        h: 90,
         settings: (c, set) => (
           <>
             <Num label="Meta" min={1} value={c.goals?.combined?.target} onChange={(v) => set({ goals: { combined: { target: v } } })} />
@@ -393,6 +438,7 @@ const SECTIONS: { title: string; hint: string; items: Def[] }[] = [
 
 function topSettings(c: Cfg, set: (p: Cfg) => void) {
   const styles = [
+    ['clasico', 'Clásico'],
     ['tarjetas', 'Tarjetas'],
     ['barras', 'Barras'],
     ['neon', 'Neón'],

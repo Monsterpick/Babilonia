@@ -36,6 +36,8 @@ export class StatsStore {
   private bestLive: BestGift | null = null
   private bestEver: BestGift | null = null
   private bestStreak: BestGift | null = null
+  private follows = 0
+  private followUsers = new Set<string>()
   private giftCounts = new Map<string, number>()
   /** «Contar la racha completa»: 50 rosas seguidas valen 50 (si no, cuenta cada envío suelto). */
   countFullStreak = true
@@ -71,6 +73,15 @@ export class StatsStore {
     this.bestLive = null
     this.bestStreak = null
     this.giftCounts.clear()
+    this.follows = 0
+    this.followUsers.clear()
+  }
+
+  recordFollow(userId: string): number {
+    if (userId && this.followUsers.has(userId)) return this.follows
+    if (userId) this.followUsers.add(userId)
+    this.follows += 1
+    return this.follows
   }
 
   resetBest(which: 'ever' | 'live' | 'streak' | 'goals'): void {
@@ -141,7 +152,7 @@ export class StatsStore {
       diamonds += t.diamonds
       gifts += t.gifts
     }
-    return { sessionId: this.sessionId, roomLikes: this.roomLikes, diamonds, gifts, viewersSeen: this.totals.size, bestLive: this.bestLive, bestEver: this.bestEver, bestStreak: this.bestStreak, giftCounts: Object.fromEntries(this.giftCounts) }
+    return { sessionId: this.sessionId, roomLikes: this.roomLikes, diamonds, gifts, viewersSeen: this.totals.size, bestLive: this.bestLive, bestEver: this.bestEver, bestStreak: this.bestStreak, giftCounts: Object.fromEntries(this.giftCounts), follows: this.follows }
   }
 
   get likes(): number {

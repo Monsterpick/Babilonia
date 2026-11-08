@@ -106,19 +106,46 @@ export function TimerV2() {
   const t = s?.timer
   const elapsed = t ? t.accumulatedMs + (t.running ? Date.now() - t.startedAt : 0) : 0
   const down = (t?.mode ?? cfg.timer?.mode) === 'down'
-  const ms = DEMO ? 754_000 : down ? Math.max(0, (t?.durationMs ?? 0) - elapsed) : elapsed
+  const ms = DEMO ? 4_179_000 : down ? Math.max(0, (t?.durationMs ?? 0) - elapsed) : elapsed
   const sec = Math.ceil(ms / 1000 - (down ? 0 : 0.999))
   const hh = Math.floor(sec / 3600)
   const mm = String(Math.floor((sec % 3600) / 60)).padStart(2, '0')
   const ss = String(sec % 60).padStart(2, '0')
-  const txt = `${hh ? `${hh}:` : ''}${mm}:${ss}`
+  const txt = `${hh ? `${String(hh).padStart(2, '0')}:` : ''}${mm}:${ss}`
   const urgent = down && sec <= 10 && t?.running
   const color = urgent ? '#ff4d6d' : '#ffd166'
-  if (MINI || cfg.timer?.minimal) return <div style={{ ...base, fontWeight: 900, fontSize: 52, fontVariantNumeric: 'tabular-nums', color, textShadow: shadow }}>{txt}</div>
+  const coinSeconds = Number(cfg.timer?.coinSeconds ?? 0)
+  const size = Number(params.get('size') ?? cfg.timer?.size ?? 120)
+  const showRule = (cfg.timer?.showRule ?? true) && coinSeconds > 0
+  if (MINI || cfg.timer?.minimal) return <div style={{ ...base, fontWeight: 900, fontSize: size * 0.42, fontVariantNumeric: 'tabular-nums', color, textShadow: shadow }}>{txt}</div>
+  // Añade un «flash» cuando el tiempo sube (subathon).
+  const prev = useRef(ms)
+  const [bump, setBump] = useState(0)
+  useEffect(() => {
+    if (ms > prev.current + 1500) setBump(Date.now())
+    prev.current = ms
+  }, [ms])
   return (
-    <div style={{ ...base, display: 'inline-flex', alignItems: 'center', gap: 14, padding: '10px 28px 12px', borderRadius: 26, background: 'linear-gradient(180deg,#1d1a10,#0b0a06)', border: `2px solid ${color}55`, borderBottom: `5px solid ${color}`, boxShadow: `0 12px 30px #0008, 0 0 30px ${color}33` }}>
-      <span style={{ width: 10, height: 10, borderRadius: '50%', background: t?.running || DEMO ? color : '#666', boxShadow: t?.running ? `0 0 10px ${color}` : undefined }} />
-      <span style={{ fontSize: 72, lineHeight: 1, fontWeight: 900, fontVariantNumeric: 'tabular-nums', letterSpacing: 1, textShadow: shadow }}>{txt}</span>
+    <div style={{ ...base, display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+      <Styles />
+      <div
+        key={bump}
+        className={bump ? 'la-pop' : undefined}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 14, padding: `${size * 0.08}px ${size * 0.22}px`, borderRadius: 26, background: 'linear-gradient(180deg,#1d1a10,#0b0a06)', border: `2px solid ${color}55`, borderBottom: `5px solid ${color}`, boxShadow: `0 12px 30px #0008, 0 0 30px ${color}33` }}
+      >
+        <span style={{ width: 10, height: 10, borderRadius: '50%', background: t?.running || DEMO ? color : '#666', boxShadow: t?.running ? `0 0 10px ${color}` : undefined }} />
+        <span style={{ fontSize: size, lineHeight: 1, fontWeight: 900, fontVariantNumeric: 'tabular-nums', letterSpacing: 1, textShadow: shadow }}>{txt}</span>
+      </div>
+      {(cfg.timer?.showProgress ?? true) && (
+        <div style={{ width: size * 4, height: 5, borderRadius: 999, background: '#ffffff18', overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${((sec % 60) / 60) * 100}%`, background: color, boxShadow: `0 0 8px ${color}` }} />
+        </div>
+      )}
+      {showRule && (
+        <div style={{ fontSize: size * 0.12, fontWeight: 900, letterSpacing: 2, color: '#ffcc33', textShadow: shadow }}>
+          🪙 1 MONEDA = {coinSeconds} SEGUNDO{coinSeconds === 1 ? '' : 'S'}
+        </div>
+      )}
     </div>
   )
 }
@@ -494,12 +521,12 @@ export function FeaturedOverlay() {
 
 const DEMO_ROWS = ['Santos', 'Lucía', 'Givi', 'Zentic', 'Gaspar', 'Jeshua', 'César', 'Deylor', 'Max', 'Carlos'].map((n, i) => ({ userId: n, nickname: n, diamonds: [500, 101, 49, 39, 15, 13, 6, 5, 5, 4][i]!, likes: [20785, 10953, 10028, 7628, 7419, 4989, 2173, 2048, 1814, 1798][i]! }))
 
-type TopStyle = 'tarjetas' | 'barras' | 'neon' | 'desfile' | 'minimo' | 'arcade' | 'oro'
+type TopStyle = 'clasico' | 'tarjetas' | 'barras' | 'neon' | 'desfile' | 'minimo' | 'arcade' | 'oro'
 
 export function TopV2({ kind }: { kind: 'donors' | 'likers' }) {
   const lb = useLiveState<any>('leaderboard')
   const cfg = useCfg()
-  const style = (params.get('style') ?? cfg.top?.style ?? 'oro') as TopStyle
+  const style = (params.get('style') ?? cfg.top?.style ?? 'clasico') as TopStyle
   const n = Number(params.get('n') ?? cfg.top?.n ?? 10)
   const rows = (DEMO ? DEMO_ROWS : (lb?.[kind] ?? [])).slice(0, n)
   const right = params.get('align') === 'right'
@@ -533,6 +560,14 @@ export function TopV2({ kind }: { kind: 'donors' | 'likers' }) {
 
 const gold = '#ffcc4d'
 const TOP_STYLES: Record<TopStyle, { gap: number; avatar: number; title: CSSProperties; row: (i: number) => CSSProperties; name: (i: number) => CSSProperties; value: (i: number) => CSSProperties; rank?: (i: number) => CSSProperties }> = {
+  clasico: {
+    gap: 8,
+    avatar: 50,
+    title: { fontSize: 34, fontWeight: 900, color: gold, textShadow: '0 2px 0 #7a4b00, 0 0 16px #ffb30055' },
+    row: (i) => ({ display: 'flex', alignItems: 'center', gap: 12, width: 380, padding: '7px 14px', borderRadius: 16, background: '#0c0c12ee', border: `2px solid ${i === 0 ? gold : '#2a2a40'}`, boxShadow: i === 0 ? `0 0 16px ${gold}55` : '0 6px 16px #0006' }),
+    name: (i) => ({ fontSize: 23, fontWeight: 900, color: i === 0 ? gold : '#f0f0ff', textShadow: '0 2px 0 #0008' }),
+    value: () => ({ fontSize: 17, fontWeight: 800, color: '#ffe8a3' }),
+  },
   oro: {
     gap: 10,
     avatar: 56,
@@ -622,31 +657,41 @@ export function MvpOverlay({ kind }: { kind: 'donors' | 'likers' }) {
 
 /* --------------------------------- Metas --------------------------------- */
 
-export function GoalBar({ metric }: { metric: 'coins' | 'likes' | 'combined' }) {
+export function GoalBar({ metric }: { metric: 'coins' | 'likes' | 'combined' | 'followers' }) {
   const lb = useLiveState<any>('leaderboard')
   const likes = useLiveState<any>('likes')
   const cfg = useCfg()
-  const coins = DEMO ? 3200 : (lb?.summary?.diamonds ?? 0)
-  const l = DEMO ? 7400 : (likes?.roomLikes ?? 0)
-  const value = metric === 'coins' ? coins : metric === 'likes' ? l : coins + l
-  const target = Number(params.get('goal') ?? (metric === 'coins' ? cfg.goals?.coins?.target : metric === 'likes' ? likes?.goal : cfg.goals?.combined?.target) ?? 10000) || 1
-  const label = params.get('title') ?? (metric === 'coins' ? cfg.goals?.coins?.label : metric === 'likes' ? likes?.label : cfg.goals?.combined?.label) ?? 'META'
+  const coins = DEMO ? 1787 : (lb?.summary?.diamonds ?? 0)
+  const l = DEMO ? 116222 : (likes?.roomLikes ?? 0)
+  const fol = DEMO ? 5693 : (lb?.summary?.follows ?? 0)
+  const value = metric === 'coins' ? coins : metric === 'likes' ? l : metric === 'followers' ? fol : coins + l
+  const dft = metric === 'coins' ? cfg.goals?.coins : metric === 'followers' ? cfg.goals?.followers : metric === 'combined' ? cfg.goals?.combined : null
+  const target = Number(params.get('goal') ?? (metric === 'likes' ? likes?.goal : dft?.target) ?? (metric === 'likes' ? 10000 : 5000)) || 1
+  const label = params.get('title') ?? (metric === 'likes' ? likes?.label : dft?.label) ?? (metric === 'coins' ? 'DIAMANTES' : metric === 'followers' ? 'SEGUIDORES' : metric === 'combined' ? 'META DEL LIVE' : 'LIKES')
   const pct = Math.min(100, (value / target) * 100)
-  const grad = metric === 'coins' ? 'linear-gradient(90deg,#f5b301,#ffe066)' : metric === 'likes' ? 'linear-gradient(90deg,#ff2d6f,#ff8a5c)' : 'linear-gradient(90deg,#8b5cf6,#f43f9e,#ff7a59)'
-  const icon = metric === 'coins' ? '🪙' : metric === 'likes' ? '❤️' : '⚡'
+  // Colores por métrica (como en la referencia): diamantes oro, likes cian, seguidores violeta.
+  const theme = metric === 'coins' ? { a: '#f5b301', b: '#b8860b', pill: '#3a2d00', text: '#fff' } : metric === 'likes' ? { a: '#38e1ff', b: '#17b6d8', pill: '#063442', text: '#00323f' } : metric === 'followers' ? { a: '#c084fc', b: '#9a4dff', pill: '#2a0a4a', text: '#1a0533' } : { a: '#f43f9e', b: '#8b5cf6', pill: '#2a0a2a', text: '#fff' }
+  const stripes = `repeating-linear-gradient(115deg, ${theme.a} 0 14px, ${theme.b} 14px 28px)`
+  const w = Number(params.get('w') ?? 640)
   return (
-    <div style={{ ...base, width: 560 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', marginBottom: 6, fontWeight: 900, textShadow: shadow }}>
-        <span style={{ fontSize: 22 }}>
-          {icon} {label}
-        </span>
-        <span style={{ fontSize: 22 }}>
-          {fmt(value)} / {fmt(target)}
-        </span>
-      </div>
-      <div style={{ position: 'relative', height: 34, borderRadius: 999, background: '#0b0b14dd', border: '2px solid #ffffff2a', overflow: 'hidden', boxShadow: '0 8px 20px #0007' }}>
-        <div style={{ width: `${pct}%`, height: '100%', background: grad, borderRadius: 999, transition: 'width .5s cubic-bezier(.2,1,.3,1)', boxShadow: '0 0 20px #fff3 inset' }} />
-        <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontWeight: 900, fontSize: 18, textShadow: shadow }}>{Math.floor(pct)}%</div>
+    <div style={{ ...base, width: w }}>
+      <Styles />
+      <div
+        key={pct}
+        className="la-pop"
+        style={{ position: 'relative', display: 'flex', alignItems: 'center', height: 68, borderRadius: 16, overflow: 'hidden', background: '#0b0b14', border: '2px solid #ffffff22', boxShadow: `0 10px 30px #0008, 0 0 24px ${theme.a}44` }}
+      >
+        {/* relleno con rayas */}
+        <div style={{ position: 'absolute', inset: 0, width: `${Math.max(pct, 12)}%`, background: stripes, backgroundSize: '200% 100%', animation: 'la-shine 6s linear infinite', transition: 'width .6s cubic-bezier(.2,1,.3,1)' }} />
+        {/* pastilla con el título */}
+        <div style={{ position: 'relative', margin: '0 14px', padding: '8px 22px', borderRadius: 999, background: `${theme.pill}cc`, border: `2px solid ${theme.a}`, fontSize: 24, fontWeight: 900, letterSpacing: 1, color: theme.text === '#fff' ? '#fff' : '#fff', textShadow: '0 2px 4px #0009', zIndex: 1 }}>
+          {label}
+        </div>
+        {/* números a la derecha */}
+        <div style={{ position: 'relative', marginLeft: 'auto', padding: '6px 18px', borderRadius: 12, background: '#0b0b14cc', border: '1px solid #ffffff22', marginRight: 14, fontSize: 26, fontWeight: 900, zIndex: 1 }}>
+          <span>{fmt(value)}</span>
+          <span style={{ opacity: 0.5 }}> / {fmt(target)}</span>
+        </div>
       </div>
     </div>
   )

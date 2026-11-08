@@ -147,6 +147,11 @@ export class App {
     }
     this.hub.event(ev)
     this.onResetSaveGift(ev)
+    if (ev.type === 'follow' && ev.user) {
+      this.stats.recordFollow(ev.user.id || ev.user.uniqueId)
+      this.publishStats(true)
+    }
+    if (ev.type === 'gift') this.subathonAdd(ev.payload.diamonds * ev.payload.count)
     const changed = this.stats.record(ev)
     if (changed.leaderboard || changed.best) this.publishStats(true)
     else if (changed.likes) this.publishStats(false)
@@ -416,6 +421,21 @@ export class App {
       t.startedAt = Date.now()
       t.ended = false
     } else if (op === 'add') t.accumulatedMs += this.cfg.get().overlays.timer.mode === 'down' ? -seconds * 1000 : seconds * 1000
+    this.publishScoreboard()
+  }
+
+  /** Reloj extensible: suma segundos al cronómetro según las monedas recibidas. */
+  private subathonAdd(coins: number): void {
+    const tc = this.cfg.get().overlays.timer
+    if (!tc.coinSeconds || coins <= 0) return
+    const addSec = coins * tc.coinSeconds
+    const maxMs = tc.maxHours > 0 ? tc.maxHours * 3600_000 : Infinity
+    this.timer.ended = false
+    if (!this.timer.running) {
+      this.timer.running = true
+      this.timer.startedAt = Date.now()
+    }
+    this.timer.accumulatedMs = Math.min(maxMs, this.timerElapsed() + addSec * 1000) - (Date.now() - this.timer.startedAt)
     this.publishScoreboard()
   }
 

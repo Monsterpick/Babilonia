@@ -81,6 +81,12 @@ export const ConfigSchema = z.object({
           endSound: z.string().max(500).default(''),
           endVolume: z.number().min(0).max(1).default(0.8),
           minimal: z.boolean().default(false),
+          /** Reloj extensible (subathon): cada moneda/diamante suma segundos; 0 = desactivado. */
+          coinSeconds: z.number().min(0).max(60).default(0),
+          maxHours: z.number().int().min(0).max(999).default(0),
+          showRule: z.boolean().default(true),
+          showProgress: z.boolean().default(true),
+          size: z.number().int().min(40).max(400).default(120),
         })
         .default({}),
       score: z.object({ minimal: z.boolean().default(false) }).default({}),
@@ -113,9 +119,10 @@ export const ConfigSchema = z.object({
         .object({
           coins: z.object({ target: z.number().int().min(1).default(5000), label: z.string().max(40).default('META DE MONEDAS') }).default({}),
           combined: z.object({ target: z.number().int().min(1).default(20000), label: z.string().max(40).default('META DEL LIVE') }).default({}),
+          followers: z.object({ target: z.number().int().min(1).default(6000), label: z.string().max(40).default('SEGUIDORES') }).default({}),
         })
         .default({}),
-      top: z.object({ style: z.enum(['tarjetas', 'barras', 'neon', 'desfile', 'minimo', 'arcade', 'oro']).default('oro'), n: z.number().int().min(1).max(10).default(10) }).default({}),
+      top: z.object({ style: z.enum(['clasico', 'tarjetas', 'barras', 'neon', 'desfile', 'minimo', 'arcade', 'oro']).default('clasico'), n: z.number().int().min(1).max(10).default(10) }).default({}),
       /** Reiniciar regalos y rankings al conectar un live nuevo. */
       resetOnNewLive: z.boolean().default(true),
     })
