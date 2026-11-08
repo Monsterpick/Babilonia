@@ -13,7 +13,10 @@ public final class LiveArenaPlugin extends JavaPlugin {
         totems = new TotemManager(this);
         totems.load();
         getServer().getPluginManager().registerEvents(new TotemListener(this, totems), this);
-        LaCommand cmd = new LaCommand(this, totems, new Effects(this));
+        Effects effects = new Effects(this);
+        Goals goals = new Goals(this, effects.vfx);
+        getServer().getPluginManager().registerEvents(goals, this);
+        LaCommand cmd = new LaCommand(this, totems, effects, goals);
         PluginCommand la = getCommand("la");
         if (la != null) {
             la.setExecutor(cmd);

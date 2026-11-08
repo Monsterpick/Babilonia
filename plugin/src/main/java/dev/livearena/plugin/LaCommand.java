@@ -24,11 +24,13 @@ final class LaCommand implements TabExecutor {
     private final LiveArenaPlugin plugin;
     private final TotemManager totems;
     private final Effects effects;
+    private final Goals goals;
 
-    LaCommand(LiveArenaPlugin plugin, TotemManager totems, Effects effects) {
+    LaCommand(LiveArenaPlugin plugin, TotemManager totems, Effects effects, Goals goals) {
         this.plugin = plugin;
         this.totems = totems;
         this.effects = effects;
+        this.goals = goals;
     }
 
     private static void reply(CommandSender s, String text, NamedTextColor color) {
@@ -63,6 +65,7 @@ final class LaCommand implements TabExecutor {
                     sender.sendMessage(Component.text(d.id(), d.color()).append(Component.text(" — " + d.nombre() + ": " + d.ayuda(), NamedTextColor.GRAY)));
             }
             case "limpiar" -> reply(sender, "LiveArena: quitados " + effects.clear() + " mobs de efectos.", NamedTextColor.GREEN);
+            case "reto", "goal" -> reto(sender, Arrays.copyOfRange(args, 1, args.length));
             default -> reply(sender, "Subcomando desconocido: " + sub, NamedTextColor.RED);
         }
         return true;
@@ -87,6 +90,39 @@ final class LaCommand implements TabExecutor {
             return;
         }
         reply(sender, "EFECTO " + id + " OK", NamedTextColor.GREEN);
+    }
+
+    /** /la reto crear|meta|sumarmeta|quitarmeta|sumar|quitar|poner|recurso|mineral|pico|ganar|perder|fin|estado */
+    private void reto(CommandSender sender, String[] a) {
+        if (a.length == 0) {
+            reply(sender, "Uso: /la reto <crear|meta|sumar|quitar|mineral|pico|ganar|perder|fin|estado> …", NamedTextColor.YELLOW);
+            return;
+        }
+        String op = a[0].toLowerCase(Locale.ROOT);
+        int n = a.length >= 2 ? parseInt(a[1], 1) : 1;
+        Player any = Bukkit.getOnlinePlayers().stream().findFirst().orElse(null);
+        switch (op) {
+            case "crear", "create", "start" -> goals.start(a.length >= 2 ? Math.max(1, n) : 10);
+            case "meta", "goal" -> goals.setGoal(n);
+            case "sumarmeta", "addgoal" -> goals.addGoal(n);
+            case "quitarmeta", "removegoal" -> goals.addGoal(-n);
+            case "sumar", "add" -> goals.addProgress(n);
+            case "quitar", "remove" -> goals.addProgress(-n);
+            case "poner", "set" -> goals.setProgress(n);
+            case "recurso", "resource" -> goals.setResource(a.length >= 2 ? a[1] : "diamante");
+            case "mineral", "ore" -> {
+                if (any != null) goals.oreWave(any, a.length >= 2 ? Math.max(0, n) : 0);
+            }
+            case "pico", "pickaxe" -> {
+                if (any != null) goals.pickaxe(any, a.length >= 2 ? Math.max(1, n) : 30);
+            }
+            case "ganar", "win" -> goals.win();
+            case "perder", "lose" -> goals.lose();
+            case "fin", "stop", "delete" -> goals.stop();
+            case "estado", "status" -> {}
+            default -> reply(sender, "Opción de reto desconocida: " + op, NamedTextColor.RED);
+        }
+        reply(sender, "RETO " + goals.progress() + " " + goals.goal() + " " + (goals.active() ? "activo" : "parado"), NamedTextColor.GREEN);
     }
 
     private void totem(CommandSender sender, String[] a) {
@@ -137,7 +173,8 @@ final class LaCommand implements TabExecutor {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> out = new ArrayList<>();
-        if (args.length == 1) out.addAll(List.of("totem", "efecto", "efectos", "limpiar", "reload", "version"));
+        if (args.length == 1) out.addAll(List.of("totem", "efecto", "efectos", "reto", "limpiar", "reload", "version"));
+        else if (args.length == 2 && args[0].equalsIgnoreCase("reto")) out.addAll(List.of("crear", "meta", "sumar", "quitar", "mineral", "pico", "ganar", "perder", "fin"));
         else if (args.length == 2 && args[0].equalsIgnoreCase("efecto")) out.addAll(effects.all().keySet());
         else if (args.length == 3 && args[0].equalsIgnoreCase("efecto")) for (Player p : Bukkit.getOnlinePlayers()) out.add(p.getName());
         else if (args.length == 2 && args[0].toLowerCase(Locale.ROOT).startsWith("tot")) out.addAll(List.of("add", "remove", "set", "get"));

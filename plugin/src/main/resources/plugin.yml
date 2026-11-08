@@ -7,7 +7,7 @@ author: LiveArena
 commands:
   la:
     description: Comandos de LiveArena
-    usage: /la totem <add|remove|set|get> <jugador> [cantidad] [espectador] | /la efecto <nombre> <jugador> [espectador] | /la efectos
+    usage: /la totem <add|remove|set|get> <jugador> [cantidad] [espectador] | /la efecto <nombre> <jugador> [espectador] | /la efectos | /la reto <crear|sumar|mineral|pico|ganar>
     permission: livearena.admin
 permissions:
   livearena.admin:
