@@ -1,0 +1,33 @@
+modLoader = "javafml"
+loaderVersion = "[1,)"
+license = "All rights reserved"
+
+[[mods]]
+modId = "${mod_id}"
+version = "${mod_version}"
+displayName = "LiveArena Cinemáticas"
+description = '''Cámara cinemática, efectos de render y modelos animados para las habilidades de LiveArena. Funciona en servidores Paper con el plugin LiveArena.'''
+
+[[dependencies.${mod_id}]]
+modId = "neoforge"
+type = "required"
+versionRange = "[${neo_version},)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.${mod_id}]]
+modId = "minecraft"
+type = "required"
+versionRange = "[${minecraft_version}]"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.${mod_id}]]
+modId = "geckolib"
+type = "required"
+versionRange = "[5.5,)"
+ordering = "NONE"
+side = "CLIENT"
+
+[[mixins]]
+config = "livearena.mixins.json"

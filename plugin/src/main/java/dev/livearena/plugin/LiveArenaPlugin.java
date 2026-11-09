@@ -6,6 +6,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 /** Plugin propio de LiveArena. Primer módulo: tótems apilables. */
 public final class LiveArenaPlugin extends JavaPlugin {
     private TotemManager totems;
+    private CineEngine cine;
 
     @Override
     public void onEnable() {
@@ -16,17 +17,32 @@ public final class LiveArenaPlugin extends JavaPlugin {
         Effects effects = new Effects(this);
         Goals goals = new Goals(this, effects.vfx);
         getServer().getPluginManager().registerEvents(goals, this);
+        cine = new CineEngine(this);
+        CineAbilities abilities = new CineAbilities(cine);
+        abilities.register();
+        getServer().getPluginManager().registerEvents(abilities, this);
+        cine.enable();
+        for (CineEngine.Ability a : cine.all().values()) {
+            if (a.id.equals("test")) continue;
+            effects.addSpecial("cine_" + a.id, a.nombre, a.colorHex, false, a.ayuda + " (cinemática)", (p, viewer, args) -> cine.request(a.id, p, null, viewer, false));
+        }
+        PluginCommand hab = getCommand("habilidad");
+        if (hab != null) {
+            hab.setExecutor(cine);
+            hab.setTabCompleter(cine);
+        }
         LaCommand cmd = new LaCommand(this, totems, effects, goals);
         PluginCommand la = getCommand("la");
         if (la != null) {
             la.setExecutor(cmd);
             la.setTabCompleter(cmd);
         }
-        getLogger().info("LiveArena activo: tótems apilables y efectos survival listos.");
+        getLogger().info("LiveArena activo: tótems apilables, efectos survival y " + (cine.all().size() - 1) + " habilidades cinemáticas.");
     }
 
     @Override
     public void onDisable() {
+        if (cine != null) cine.disable();
         if (totems != null) {
             totems.hideAll();
             totems.save();
@@ -36,5 +52,6 @@ public final class LiveArenaPlugin extends JavaPlugin {
     public void reload() {
         reloadConfig();
         totems.refreshAll();
+        if (cine != null) cine.reloadConfig();
     }
 }

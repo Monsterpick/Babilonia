@@ -1,0 +1,66 @@
+# ─────────────────────────────────────────────
+#  LiveArena — habilidades cinemáticas (/habilidad <id> <objetivo> [lanzador|-] [espectador])
+#  Todos los números de las fichas están aquí. Recarga con /habilidad recargar.
+#  Con el mod «LiveArena Cinemáticas» (NeoForge + GeckoLib) en tu PC se ven también la cámara,
+#  el FOV, los destellos, el cielo y los modelos animados. Sin el mod, todo lo demás funciona igual.
+# ─────────────────────────────────────────────
+
+general:
+  camaraCinematica: true       # tomar la cámara del objetivo (solo si tiene el mod)
+  bloquesPorTick: 400          # presupuesto de destrucción por tick
+  maxBloquesVoladores: 200     # límite global de bloques voladores visuales
+  romperBloques: true
+  restaurarBloques: true
+  segundosRestauracion: 60
+  colaMax: 10                  # habilidades en espera por jugador mientras está en otra
+  bloquesProtegidos: []        # ej: [DIAMOND_BLOCK, BEACON]
+
+escudo:            { radio: 4.0, duracionTicks: 600, durabilidad: 60.0, reflejarProyectiles: true, empujarMobs: true }
+onda_repulsion:    { radio: 20.0, fuerzaMax: 3.0, danio: 8.0, ticksExpansion: 15, romperFragiles: true, bloquesVoladoresVisuales: true }
+corona_espadas:    { numeroEspadas: 12, danioPorEspada: 5.0, intervaloDisparoTicks: 3, velocidad: 1.8, romperBloqueAlImpactar: true }
+super_rayo:        { danio: 25.0, radioArea: 4.0, radioCrater: 3, ignorarArmadura: false, crearFulguritas: true, grosor: 0.9 }
+trueno_explosion:  { danioRayoMenor: 6.0, danioRayo: 15.0, danioExplosion: 30.0, radioCrater: 8, inmovilizar: true }
+carrusel_creepers: { numeroCreepers: 8, radioOrbita: 6.0, velocidadMax: 3.0, danioPorCreeper: 5.0, romperBloques: true }
+ojo_vacio:         { radio: 15.0, alturaLevitacion: 6.0, maxBloquesFlotantes: 120, danio: 24.0, radioCrater: 6 }
+agujero_negro:     { radioAtraccion: 25.0, radioArranque: 10.0, radioHorizonte: 2.0, fuerzaMax: 0.25, danioTick: 2.0, danioColapso: 20.0, maxBloquesAbsorbidos: 600, destruirItems: true }
+juicio_arcano:     { radioZona: 15.0, numeroRayos: 33, danioRayo: 8.0, danioFinal: 40.0, radioCraterFinal: 5 }
+esfera_energia:    { radioMax: 12.0, velocidad: 0.4, danio: 50.0, radioCrater: 14, profundidadCrater: 8, energiaDeJugadores: true }
+meteorito:         { radioCrater: 18, profundidadCrater: 10, radioLetal: 6.0, radioDanio: 30.0, danioMax: 100.0, bloquesEyeccion: 80, radioSacudida: 150 }
+mil_cortes:        { radio: 10.0, cortesPorTick: 3, danioCorte: 1.0, danioFinal: 30.0, romperBloques: true }
+
+# Sonidos de cada habilidad. Si tienes un resource pack con sonidos propios, pon aquí su id
+# (p. ej. "livearena:cortes.tajo"). Mientras tanto se usan sonidos vanilla parecidos.
+sonidos:
+  escudo.activar: block.beacon.activate
+  escudo.impacto: block.amethyst_block.hit
+  escudo.romper: block.glass.break
+  onda.carga: block.beacon.power_select
+  onda.liberar: entity.warden.sonic_boom
+  corona.aparecer: item.trident.return
+  corona.disparo: item.trident.throw
+  corona.impacto: item.trident.hit
+  rayo.trueno_lejano: entity.lightning_bolt.thunder
+  rayo.impacto: entity.lightning_bolt.impact
+  trueno.menor: entity.lightning_bolt.impact
+  trueno.mayor: entity.lightning_bolt.thunder
+  trueno.explosion_grande: entity.generic.explode
+  carrusel.musica: block.note_block.bell
+  carrusel.siseo: entity.creeper.primed
+  carrusel.explosion: entity.generic.explode
+  ojo.abrir: entity.elder_guardian.curse
+  ojo.latido: entity.warden.heartbeat
+  ojo.zumbido: block.beacon.ambient
+  agujero.formacion: block.portal.trigger
+  agujero.zumbido: block.beacon.ambient
+  agujero.colapso: entity.warden.sonic_boom
+  juicio.carga: block.beacon.power_select
+  juicio.rayo: entity.lightning_bolt.impact
+  juicio.final: entity.wither.spawn
+  esfera.carga: block.beacon.ambient
+  esfera.lanzar: entity.wither.shoot
+  esfera.detonar: entity.generic.explode
+  meteorito.entrada: item.firecharge.use
+  meteorito.estampido: entity.lightning_bolt.thunder
+  meteorito.impacto: entity.generic.explode
+  cortes.tajo: entity.player.attack.sweep
+  cortes.final: entity.wither.break_block

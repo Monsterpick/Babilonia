@@ -32,3 +32,10 @@ efectos:
   nombres-siempre-visibles: true
   # Anunciar cada efecto en el chat del servidor.
   anunciar-en-chat: true
+
+cinematicas:
+  # El golpe final de cada habilidad cinemática es letal (gasta un tótem si tienes, como el resto de efectos).
+  # Si lo pones a false, se usa el daño de la ficha (habilidades.yml).
+  golpe-letal-final: true
+  # Nunca matar con el daño de las habilidades (deja al jugador a 1 corazón). No afecta al golpe letal final.
+  danio-no-letal: false

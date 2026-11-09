@@ -1,0 +1,50 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.148'
+}
+
+version = mod_version
+group = 'dev.livearena'
+base { archivesName = 'LiveArena-Cinematicas' }
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(25)
+
+repositories {
+    maven {
+        url = 'https://api.modrinth.com/maven'
+        content { includeGroup 'maven.modrinth' }
+    }
+}
+
+neoForge {
+    version = project.neo_version
+    runs {
+        client {
+            client()
+            // Pruebas locales: entra directo al servidor de pruebas con un nick fijo.
+            if (project.hasProperty('testServer')) {
+                programArguments.addAll('--quickPlayMultiplayer', project.property('testServer').toString(), '--username', 'Streamer')
+            }
+        }
+        server { server() }
+    }
+    mods {
+        "${mod_id}" { sourceSet(sourceSets.main) }
+    }
+}
+
+dependencies {
+    implementation "maven.modrinth:geckolib:${geckolib_modrinth}"
+}
+
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
+
+var generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {
+    var replaceProperties = [mod_id: mod_id, mod_version: mod_version, minecraft_version: minecraft_version, neo_version: neo_version]
+    inputs.properties replaceProperties
+    expand replaceProperties
+    from 'src/main/templates'
+    into 'build/generated/sources/modMetadata'
+}
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata

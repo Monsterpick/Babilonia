@@ -10,3 +10,8 @@ apps/desktop/build/
 apps/desktop/release/
 apps/server/assets/plugins/
 plugin/target/
+
+# mod NeoForge
+mod/build/
+mod/run/
+mod/.gradle/
