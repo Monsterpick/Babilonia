@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
+import { inflateRawSync } from 'node:zlib'
 import { downloadFile, findJavaFor, minecraftDirs } from '@livearena/minecraft'
 import type { MinecraftService } from './minecraft-service.js'
 import type { ConfigStore } from './config.js'
@@ -99,6 +100,52 @@ export async function ensureNeoForgeProfile(dir: string): Promise<string[]> {
 }
 
 /** ¿Está abierto el launcher de Minecraft? (si lo está, al cerrarse puede borrar el perfil nuevo). */
+/** Carpeta y archivo de la versión de NeoForge dentro de .minecraft. */
+export const neoforgeJson = (dir: string) => path.join(dir, 'versions', `neoforge-${CINE.neoforge}`, `neoforge-${CINE.neoforge}.json`)
+
+/**
+ * ¿La versión de NeoForge está bien? Si una instalación se cortó, el .json queda vacío o roto y el launcher
+ * falla con «Unable to prepare assets for download» (no ve las librerías ni los recursos de 26.1.2).
+ */
+export async function neoforgeValid(dir: string): Promise<boolean> {
+  try {
+    const raw = (await fs.readFile(neoforgeJson(dir), 'utf8')).replace(/^\uFEFF/, '')
+    const j = JSON.parse(raw) as { id?: string; inheritsFrom?: string; libraries?: unknown[] }
+    return j.id === `neoforge-${CINE.neoforge}` && j.inheritsFrom === CINE.minecraft && Array.isArray(j.libraries) && j.libraries.length > 0
+  } catch {
+    return false
+  }
+}
+
+/** Lee un archivo de dentro de un .jar/.zip (sin dependencias). */
+export function readZipEntry(zip: Buffer, name: string): Buffer | null {
+  let eocd = -1
+  for (let i = zip.length - 22; i >= Math.max(0, zip.length - 65557); i--) {
+    if (zip.readUInt32LE(i) === 0x06054b50) {
+      eocd = i
+      break
+    }
+  }
+  if (eocd < 0) return null
+  const count = zip.readUInt16LE(eocd + 10)
+  let p = zip.readUInt32LE(eocd + 16)
+  for (let n = 0; n < count && zip.readUInt32LE(p) === 0x02014b50; n++) {
+    const method = zip.readUInt16LE(p + 10)
+    const size = zip.readUInt32LE(p + 20)
+    const nameLen = zip.readUInt16LE(p + 28)
+    const extraLen = zip.readUInt16LE(p + 30)
+    const commentLen = zip.readUInt16LE(p + 32)
+    const local = zip.readUInt32LE(p + 42)
+    if (zip.toString('utf8', p + 46, p + 46 + nameLen) === name) {
+      const start = local + 30 + zip.readUInt16LE(local + 26) + zip.readUInt16LE(local + 28)
+      const data = zip.subarray(start, start + size)
+      return method === 0 ? Buffer.from(data) : method === 8 ? inflateRawSync(data) : null
+    }
+    p += 46 + nameLen + extraLen + commentLen
+  }
+  return null
+}
+
 /**
  * El launcher nuevo falla con «Unable to prepare assets for download» si el perfil de NeoForge se abre antes
  * de haber jugado una vez la versión normal: comprobamos que el índice de recursos ya esté descargado.
@@ -181,7 +228,7 @@ export class CineModService {
       profile: !!dir && (await hasNeoForgeProfile(dir)),
       launcherOpen: await launcherRunning(),
       vanilla: !!dir && (await vanillaReady(dir)),
-      neoforge: !!dir && (await exists(path.join(dir, 'versions', `neoforge-${CINE.neoforge}`))),
+      neoforge: !!dir && (await neoforgeValid(dir)),
       mod,
       geckolib: !!mods && (await exists(path.join(mods, CINE.geckolib.fileName))),
       bundled,
@@ -231,7 +278,9 @@ export class CineModService {
       const cache = paths.cache
       await fs.mkdir(cache, { recursive: true })
 
-      if (!(await exists(path.join(dir, 'versions', `neoforge-${CINE.neoforge}`)))) {
+      if (!(await neoforgeValid(dir))) {
+        // Instalación anterior cortada: se borra la versión rota y se vuelve a instalar entera.
+        await fs.rm(path.dirname(neoforgeJson(dir)), { recursive: true, force: true })
         const java = await this.java()
         const inst = path.join(cache, CINE.installer.fileName)
         if (!(await exists(inst))) await downloadFile(CINE.installer, inst, (pct) => this.step('neoforge', `Descargando NeoForge ${CINE.neoforge}… ${pct}%`, pct))
@@ -239,7 +288,17 @@ export class CineModService {
         await this.run(java, ['-jar', inst, '--install-client', dir], cache)
         this.log.info('cinematicas', `NeoForge ${CINE.neoforge} instalado en ${dir}`)
       }
-      if (!(await exists(path.join(dir, 'versions', `neoforge-${CINE.neoforge}`)))) throw new Error('El instalador de NeoForge no terminó bien. Vuelve a pulsar «Instalar».')
+      if (!(await neoforgeValid(dir))) {
+        // Último recurso: el .json de la versión va dentro del instalador; lo escribimos nosotros.
+        const inst = path.join(cache, CINE.installer.fileName)
+        const v = (await exists(inst)) ? readZipEntry(await fs.readFile(inst), 'version.json') : null
+        if (v) {
+          await fs.mkdir(path.dirname(neoforgeJson(dir)), { recursive: true })
+          await fs.writeFile(neoforgeJson(dir), v)
+          this.log.info('cinematicas', 'Archivo de versión de NeoForge reparado desde el instalador')
+        }
+      }
+      if (!(await neoforgeValid(dir))) throw new Error('El instalador de NeoForge no terminó bien (el archivo de la versión está roto). Cierra el launcher y vuelve a pulsar «Instalar».')
       this.step('perfil', 'Creando el perfil «LiveArena · NeoForge» en el launcher…')
       const files = await ensureNeoForgeProfile(dir)
       this.log.info('cinematicas', `Perfil del launcher añadido en: ${files.join(', ')}`)
