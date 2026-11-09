@@ -280,6 +280,20 @@ final class CineEngine implements Listener, TabExecutor {
                 if (CineNet.hasMod(p)) net.send(p, CineNet.modelAttach(child.getEntityId(), parent == null ? -1 : parent.getEntityId(), bone, (float) ox, (float) oy, (float) oz));
         }
 
+        /**
+         * Frase del personaje: subtítulo grande para quien tiene el mod; en la barra de acción para el resto.
+         * Se puede cambiar en habilidades.yml → frases.<clave> (vacío = sin frase).
+         */
+        void say(String key, String def, int rgb, int ticks) {
+            String text = cfgFile.getString("frases." + key, def);
+            if (text == null || text.isBlank()) return;
+            for (Player p : w.getPlayers()) {
+                if (p.getLocation().distanceSquared(origin) > 160 * 160) continue;
+                if (CineNet.hasMod(p)) net.send(p, CineNet.subtitle(text, rgb, ticks));
+                else p.sendActionBar(Component.text(text, TextColor.color(rgb)));
+            }
+        }
+
         void anim(Entity holder, String anim) {
             for (Player p : w.getPlayers()) net.send(p, CineNet.modelAnim(holder.getEntityId(), anim));
         }
@@ -301,23 +315,33 @@ final class CineEngine implements Listener, TabExecutor {
 
     static final Map<String, String> DEFAULT_SOUNDS = new LinkedHashMap<>();
     /** Sonidos por defecto de versiones anteriores (se sustituyen solos por los nuevos). */
-    static final Map<String, String> OLD_SOUNDS = Map.of(
-            "juicio.carga", "block.beacon.power_select", "juicio.final", "entity.wither.spawn",
-            "esfera.carga", "block.beacon.ambient", "esfera.lanzar", "entity.wither.shoot", "esfera.detonar", "entity.generic.explode",
-            "cortes.final", "entity.wither.break_block");
+    static final Map<String, String> OLD_SOUNDS = Map.ofEntries(
+            Map.entry("juicio.carga", "block.beacon.power_select"), Map.entry("juicio.final", "entity.wither.spawn"),
+            Map.entry("esfera.carga", "block.beacon.ambient"), Map.entry("esfera.lanzar", "entity.wither.shoot"), Map.entry("esfera.detonar", "entity.generic.explode"),
+            Map.entry("cortes.final", "entity.wither.break_block"),
+            Map.entry("rayo.trueno_lejano", "entity.lightning_bolt.thunder"), Map.entry("rayo.impacto", "entity.lightning_bolt.impact"),
+            Map.entry("trueno.menor", "entity.lightning_bolt.impact"), Map.entry("trueno.mayor", "entity.lightning_bolt.thunder"),
+            Map.entry("trueno.explosion_grande", "entity.generic.explode"),
+            Map.entry("corona.aparecer", "item.trident.return"), Map.entry("corona.disparo", "item.trident.throw"), Map.entry("corona.impacto", "item.trident.hit"),
+            Map.entry("ojo.abrir", "entity.elder_guardian.curse"), Map.entry("juicio.rayo", "entity.lightning_bolt.impact"));
 
     static {
         String[][] s = {
             {"escudo.activar", "block.beacon.activate"}, {"escudo.impacto", "block.amethyst_block.hit"}, {"escudo.romper", "block.glass.break"},
             {"onda.carga", "block.beacon.power_select"}, {"onda.liberar", "entity.warden.sonic_boom"},
-            {"corona.aparecer", "item.trident.return"}, {"corona.disparo", "item.trident.throw"}, {"corona.impacto", "item.trident.hit"},
-            {"rayo.trueno_lejano", "entity.lightning_bolt.thunder"}, {"rayo.impacto", "entity.lightning_bolt.impact"},
-            {"trueno.menor", "entity.lightning_bolt.impact"}, {"trueno.mayor", "entity.lightning_bolt.thunder"}, {"trueno.explosion_grande", "entity.generic.explode"},
+            {"corona.aparecer", "item.trident.return,block.amethyst_block.chime"}, {"corona.disparo", "item.trident.throw,entity.arrow.shoot"},
+            {"corona.impacto", "item.trident.hit,block.anvil.land"}, {"corona.apuntar", "block.respawn_anchor.set_spawn,item.crossbow.loading_end"},
+            {"rayo.trueno_lejano", "item.trident.thunder"}, {"rayo.carga", "block.respawn_anchor.charge,entity.creeper.primed"},
+            {"rayo.impacto", "entity.lightning_bolt.impact,entity.lightning_bolt.thunder,entity.generic.explode"},
+            {"trueno.menor", "entity.lightning_bolt.impact,item.trident.thunder"}, {"trueno.mayor", "entity.lightning_bolt.thunder,entity.lightning_bolt.impact,item.trident.thunder"},
+            {"trueno.explosion_grande", "entity.generic.explode,entity.dragon_fireball.explode,entity.lightning_bolt.thunder"},
             {"carrusel.musica", "block.note_block.bell"}, {"carrusel.siseo", "entity.creeper.primed"}, {"carrusel.explosion", "entity.generic.explode"},
-            {"ojo.abrir", "entity.elder_guardian.curse"}, {"ojo.latido", "entity.warden.heartbeat"}, {"ojo.zumbido", "block.beacon.ambient"},
+            {"ojo.abrir", "entity.elder_guardian.curse,entity.warden.emerge"}, {"ojo.susurro", "ambient.cave,entity.warden.ambient,entity.allay.death"},
+            {"ojo.grito", "entity.warden.roar,entity.elder_guardian.curse,entity.ghast.scream"}, {"ojo.latido", "entity.warden.heartbeat"}, {"ojo.zumbido", "block.beacon.ambient"},
             {"agujero.formacion", "block.portal.trigger"}, {"agujero.zumbido", "block.beacon.ambient"}, {"agujero.colapso", "entity.warden.sonic_boom"},
+            {"juicio.final_carga", "block.beacon.activate,block.end_portal.spawn,block.respawn_anchor.charge"},
             {"juicio.inicio", "block.end_portal.spawn,block.enchantment_table.use"}, {"juicio.carga", "block.beacon.power_select,block.respawn_anchor.charge"},
-            {"juicio.rayo", "entity.lightning_bolt.impact"}, {"juicio.final", "entity.lightning_bolt.thunder,entity.generic.explode,block.beacon.deactivate"},
+            {"juicio.rayo", "entity.lightning_bolt.impact,block.amethyst_block.break,entity.generic.explode"}, {"juicio.final", "entity.lightning_bolt.thunder,entity.generic.explode,block.beacon.deactivate"},
             {"esfera.inicio", "block.conduit.activate,block.beacon.activate"}, {"esfera.carga", "block.respawn_anchor.charge,block.conduit.ambient.short"},
             {"esfera.lanzar", "entity.warden.sonic_boom,entity.ender_dragon.shoot"}, {"esfera.detonar", "entity.generic.explode,entity.lightning_bolt.thunder,item.totem.use"},
             {"meteorito.entrada", "item.firecharge.use"}, {"meteorito.estampido", "entity.lightning_bolt.thunder"}, {"meteorito.impacto", "entity.generic.explode"},

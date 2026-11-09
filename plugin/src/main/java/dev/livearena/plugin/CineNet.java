@@ -16,7 +16,7 @@ import org.bukkit.entity.Player;
 final class CineNet {
     static final String CHANNEL = "livearena:cine";
 
-    static final byte SHOT = 1, END = 2, SHAKE = 3, SCREEN = 4, SKY = 5, KEEPALIVE = 6, CAPTION = 7, MODEL = 8, MODEL_ANIM = 9, MODEL_REMOVE = 10, MODEL_ATTACH = 11;
+    static final byte SHOT = 1, END = 2, SHAKE = 3, SCREEN = 4, SKY = 5, KEEPALIVE = 6, CAPTION = 7, MODEL = 8, MODEL_ANIM = 9, MODEL_REMOVE = 10, MODEL_ATTACH = 11, SUBTITLE = 12;
 
     /** Curvas de interpolación de la cámara (mismos valores en el mod). */
     static final byte LINEAR = 0, EASE_IN_OUT = 1, EASE_IN_EXPO = 2, EASE_OUT_EXPO = 3, CUT = 4;
@@ -181,6 +181,11 @@ final class CineNet {
     /** Ancla el modelo «child» al hueso «bone» del modelo «parent» (+ desplazamiento en bloques); parent -1 lo suelta. */
     static byte[] modelAttach(int child, int parent, String bone, float ox, float oy, float oz) {
         return new Msg(MODEL_ATTACH).i(child).i(parent).s(bone).f(ox).f(oy).f(oz).bytes();
+    }
+
+    /** Frase en pantalla (subtítulo de cine). */
+    static byte[] subtitle(String text, int rgb, int ticks) {
+        return new Msg(SUBTITLE).s(text).i(rgb).i(ticks).bytes();
     }
 
     static byte[] modelRemove(int entityId) {

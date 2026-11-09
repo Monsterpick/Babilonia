@@ -402,12 +402,30 @@ final class CineAbilities implements Listener {
                     sw.d.setGlowing(true);
                     sw.d.setGlowColorOverride(org.bukkit.Color.fromRGB(glow[tier]));
                     sw.glow = glow[tier];
+                    // Aparece desde un portal: arranca diminuta y crece girando.
+                    sw.d.setTransformation(new Transformation(new Vector3f(), new Quaternionf(), new Vector3f(0.01f, 0.01f, 0.01f), new Quaternionf()));
+                    CineFx.ring(c.w, at, 0.9, glow[tier], 1.2f, i);
+                    CineFx.part(c.w, Particle.END_ROD, at, 10, 0.3, 0.08);
+                    CineFx.part(c.w, Particle.ENCHANT, at, 20, 0.6, 0.5);
                     sw.pos = at.toVector();
                     swords.add(sw);
                     c.sound(at, "corona.aparecer", 0.7f, 1.2f + i * 0.05f);
                     CineFx.part(c.w, Particle.END_ROD, at, 6, 0.2, 0.03);
                 }
                 double spin = t >= 30 && t < 60 ? (t - 30) * Math.PI * 2 / 20 : t >= 60 ? Math.PI * 3 : 0;
+                // Halo dorado bajo la corona y destellos que suben mientras gira.
+                if (t < 70 && t % 2 == 0) {
+                    CineFx.ring(c.w, cc.clone().add(0, -0.4, 0), ring, 0xffd34d, 1.3f, -t * 0.1);
+                    if (t >= 30) CineFx.ring(c.w, cc.clone().add(0, 0.6, 0), ring * 0.6, 0xffffff, 1f, t * 0.2);
+                    CineFx.part(c.w, Particle.WAX_OFF, cc, 3, ring, 0.05);
+                }
+                if (t == 60) {
+                    // Todas apuntan a la vez al objetivo.
+                    c.sound(cc, "corona.apuntar", 1.5f, 1.2f);
+                    CineFx.part(c.w, Particle.FLASH, cc, 1, 0, 0);
+                    CineFx.wave(c.w, cc, ring * 1.6, 0xffffff);
+                    c.shake(0.4, 6, 0.85);
+                }
                 Location aim = c.eye();
                 for (int i = 0; i < swords.size(); i++) {
                     Sword sw = swords.get(i);
@@ -422,8 +440,9 @@ final class CineAbilities implements Listener {
                         Location at = cc.clone().add(Math.cos(a) * ring, Math.sin(t * 0.2 + i) * 0.1, Math.sin(a) * ring);
                         sw.pos = at.toVector();
                         sw.d.teleport(at);
-                        Vector dir = t >= 60 ? aim.toVector().subtract(sw.pos) : new Vector(Math.cos(a), 0.6, Math.sin(a));
-                        point(sw.d, dir, 2.0f);
+                        // Antes de apuntar: hacia fuera y girando sobre sí mismas; después, todas al objetivo.
+                        Vector dir = t >= 60 ? aim.toVector().subtract(sw.pos) : new Vector(Math.cos(a), 0.9 * Math.cos(t * 0.15 + i), Math.sin(a));
+                        point(sw.d, dir, t - i * 2 < 6 ? 0.4f + (t - i * 2) * 0.27f : 2.0f);
                         if (t == 30) c.anim(sw.d, "girar");
                     }
                 }
@@ -435,7 +454,9 @@ final class CineAbilities implements Listener {
                         Sword sw = swords.get(i);
                         sw.flying = true;
                         sw.vel = aim.toVector().subtract(sw.pos).normalize().multiply(c.cfg("velocidad", 1.8));
-                        c.sound(sw.d.getLocation(), "corona.disparo", 1f, 1.3f);
+                        c.sound(sw.d.getLocation(), "corona.disparo", 1f, 1.1f + i * 0.04f);
+                        CineFx.ring(c.w, sw.d.getLocation(), 1.0, sw.glow, 1.4f, 0);
+                        CineFx.part(c.w, Particle.SONIC_BOOM, sw.d.getLocation(), 1, 0, 0);
                         if (i == 0) {
                             // Cámara: de lado con la primera espada y luego plano frontal del objetivo.
                             CineNet.Shot s = c.shot().followLook(sw.d.getEntityId());
@@ -468,8 +489,9 @@ final class CineAbilities implements Listener {
                     Location at = sw.pos.toLocation(c.w);
                     sw.d.teleport(at);
                     point(sw.d, sw.vel, 2.0f);
-                    CineFx.dot(c.w, at, sw.glow, 1.4f);
-                    CineFx.part(c.w, Particle.END_ROD, at, 1, 0.05, 0.01);
+                    CineFx.dot(c.w, at, sw.glow, 1.6f);
+                    CineFx.dot(c.w, at.clone().subtract(sw.vel.clone().multiply(0.5)), sw.glow, 1.2f);
+                    CineFx.part(c.w, Particle.END_ROD, at, 2, 0.05, 0.01);
                     for (Entity en : c.w.getNearbyEntities(at, 1.1, 1.1, 1.1)) {
                         if (!(en instanceof LivingEntity le) || !CineWorld.affectable(en, c.launcher)) continue;
                         boolean last = swords.indexOf(sw) == swords.size() - 1 && en == c.target;
@@ -490,7 +512,14 @@ final class CineAbilities implements Listener {
             void stick(CineEngine.Ctx c, Sword sw, Location at) {
                 sw.stuck = true;
                 sw.stuckAt = c.t;
-                CineFx.part(c.w, Particle.ELECTRIC_SPARK, at, 12, 0.3, 0.2);
+                CineFx.part(c.w, Particle.ELECTRIC_SPARK, at, 30, 0.6, 0.35);
+                CineFx.part(c.w, Particle.CRIT, at, 20, 0.5, 0.4);
+                CineFx.wave(c.w, at, 2.5, sw.glow);
+                Block under = at.getBlock().getType().isSolid() ? at.getBlock() : at.clone().add(0, -1, 0).getBlock();
+                if (under.getType().isSolid())
+                    for (int k = 0; k < 4; k++)
+                        world.flyVisual(at.clone(), under.getBlockData(), CineWorld.Path.LAUNCH, null, new Vector(c.rnd.nextGaussian() * 0.2, 0.4 + c.rnd.nextDouble() * 0.3, c.rnd.nextGaussian() * 0.2), 24, 0);
+                c.shake(0.35, 5, 0.85);
                 c.sound(at, "corona.impacto", 1f, 1f);
             }
         });
@@ -525,36 +554,82 @@ final class CineAbilities implements Listener {
             }
 
             void tick(CineEngine.Ctx c, int t) {
-                if (t < 40 && t % 10 == 5) {
-                    CineFx.part(c.w, Particle.FLASH, c.feet().add(Math.random() * 30 - 15, 35, Math.random() * 30 - 15), 1, 0, 0);
-                    if (t % 20 == 5) c.sound(c.feet(), "rayo.trueno_lejano", 0.5f, 0.7f);
+                Location f = c.feet();
+                // 0–45: tormenta que se carga. Relámpagos entre nubes, chispas que suben del suelo y arcos que
+                // convergen desde un anillo hacia el objetivo (se le eriza todo).
+                if (t < 45) {
+                    if (t % 6 == 3) {
+                        Location a1 = f.clone().add(c.rnd.nextDouble() * 50 - 25, 34 + c.rnd.nextDouble() * 6, c.rnd.nextDouble() * 50 - 25);
+                        Location a2 = a1.clone().add(c.rnd.nextDouble() * 24 - 12, -c.rnd.nextDouble() * 4, c.rnd.nextDouble() * 24 - 12);
+                        fx.lightning(c.w, a1, a2, 0.18f, 2, c.seed + t, 0xbfe0ff, 3);
+                        CineFx.part(c.w, Particle.FLASH, a1, 1, 0, 0);
+                    }
+                    if (t % 15 == 5) c.sound(f, "rayo.trueno_lejano", 0.7f, 0.6f + t / 60f);
+                    if (t >= 15) {
+                        double r = 7 - (t - 15) * 0.15;
+                        CineFx.ring(c.w, f.clone().add(0, 0.15, 0), r, 0x6fb8ff, 1.4f, t * 0.12);
+                        if (t % 3 == 0) {
+                            double ang = c.rnd.nextDouble() * Math.PI * 2;
+                            fx.lightning(c.w, f.clone().add(Math.cos(ang) * r, 0.2, Math.sin(ang) * r), c.eye(), 0.07f, 0, c.seed + t * 3, 0xa8d8ff, 2);
+                        }
+                        CineFx.part(c.w, Particle.ELECTRIC_SPARK, f.clone().add(0, 0.2, 0), 10, 2.5, 0.25);
+                        CineFx.part(c.w, Particle.END_ROD, f.clone().add(c.rnd.nextGaussian() * 3, 0.1, c.rnd.nextGaussian() * 3), 2, 0.1, 0.12);
+                    }
+                    if (t == 20) c.sound(f, "rayo.carga", 1.5f, 0.6f);
+                    if (t >= 30) {
+                        CineFx.marker(c.w, f, 3.0, 0x3a8dff, (t - 30) / 15.0);
+                        c.target.setVelocity(new Vector(0, 0.04, 0)); // la carga lo levanta un poco
+                    }
                 }
                 if (c.launcher != null && t >= 30 && t < 44 && t % 3 == 0)
                     fx.lightning(c.w, c.launcher.getEyeLocation().add(0, 0.6, 0), c.launcher.getLocation().add(0, 60, 0), 0.25f, 2, c.seed + t, 0x9fdcff, 3);
-                if (t >= 30 && t < 45) {
-                    CineFx.marker(c.w, c.feet(), 2.5, 0x3a8dff, (t - 30) / 15.0);
-                    CineFx.part(c.w, Particle.ELECTRIC_SPARK, c.feet().add(0, 1, 0), 4, 0.6, 0.05);
-                }
                 if (t == 45) {
-                    Location p = c.feet();
+                    Location p = f;
                     c.data.put("p", p.clone());
-                    fx.lightning(c.w, p.clone().add(0, 80, 0), p, (float) c.cfg("grosor", 0.9), 6, c.seed, 0x9fdcff, 4);
-                    c.w.strikeLightningEffect(p);
-                    c.flash(0xffffff, 0, 4, 10);
-                    c.shake(2.0, 25, 0.85);
+                    float g = (float) c.cfg("grosor", 0.9);
+                    // Relámpago colosal: tronco grueso, ramas y un núcleo de luz blanca.
+                    fx.lightning(c.w, p.clone().add(0, 90, 0), p, g, 8, c.seed, 0x9fdcff, 5);
+                    fx.lightning(c.w, p.clone().add(3, 90, -2), p, g * 0.55f, 4, c.seed + 7, 0xd8f0ff, 4);
+                    fx.beam(p.clone().add(0, -1, 0), p.clone().add(0, 90, 0), g * 0.9f, Material.WHITE_CONCRETE, 0xffffff, 4);
+                    c.flash(0xffffff, 0, 5, 14);
+                    c.shake(2.4, 30, 0.85);
                     c.sound(p, "rayo.impacto", 3f, 0.8f);
                     c.finalHit(c.target, c.cfg("danio", 25.0));
                     world.areaDamage(p, c.cfg("radioArea", 4.0), c.cfg("danio", 25.0) * 0.5, c.launcher, c.target.getUniqueId());
-                    world.bowlCrater(p.clone().add(0, -1, 0), c.cfgI("radioCrater", 3), 2, false, 0.3, 0, 0, c.rnd);
+                    world.bowlCrater(p.clone().add(0, -1, 0), c.cfgI("radioCrater", 3) + 1, 3, true, 0.35, 0.08, 0, c.rnd);
+                    CineWorld.radial(p, 8, 1.4, 0.9, c.launcher, null);
+                    CineFx.part(c.w, Particle.EXPLOSION_EMITTER, p, 1, 0, 0);
+                    CineFx.part(c.w, Particle.ELECTRIC_SPARK, p.clone().add(0, 1, 0), 120, 2.5, 0.6);
+                    // Arcos que recorren el suelo hacia fuera.
+                    for (int k = 0; k < 8; k++) {
+                        double ang = k * Math.PI / 4 + c.rnd.nextDouble() * 0.3;
+                        Location end = c.ground(p.clone().add(Math.cos(ang) * 11, 3, Math.sin(ang) * 11)).add(0, 0.2, 0);
+                        fx.lightning(c.w, p.clone().add(0, 0.3, 0), end, 0.12f, 1, c.seed + 50 + k, 0xa8d8ff, 6);
+                    }
+                    // Tierra y piedra que salen volando.
+                    for (int k = 0; k < 30; k++) {
+                        double ang = c.rnd.nextDouble() * Math.PI * 2;
+                        Vector v = new Vector(Math.cos(ang) * (0.3 + c.rnd.nextDouble() * 0.5), 0.8 + c.rnd.nextDouble() * 0.7, Math.sin(ang) * (0.3 + c.rnd.nextDouble() * 0.5));
+                        Material m = k % 3 == 0 ? Material.STONE : k % 3 == 1 ? Material.DIRT : Material.MAGMA_BLOCK;
+                        world.flyVisual(p.clone().add(0, 0.5, 0), m.createBlockData(), CineWorld.Path.LAUNCH, null, v, 40, 0);
+                    }
                 }
-                if (t == 48 || t == 51 || t == 54) {
+                if (t > 45 && t < 70) {
                     Location p = get(c, "p");
-                    fx.lightning(c.w, p.clone().add(0, 80, 0), p, (float) c.cfg("grosor", 0.9) * 0.8f, 5, c.seed + t, 0x9fdcff, 2);
-                    c.flash(0xd8ecff, 0, 1, 3);
+                    if (t < 60) CineFx.wave(c.w, p.clone().add(0, 0.2, 0), (t - 45) * 1.4, t % 2 == 0 ? 0xffffff : 0x6fb8ff);
+                    if (t % 2 == 0) CineFx.part(c.w, Particle.CAMPFIRE_SIGNAL_SMOKE, p.clone().add(c.rnd.nextGaussian(), 0.5, c.rnd.nextGaussian()), 2, 0.4, 0.05);
+                    if (t % 3 == 0) CineFx.part(c.w, Particle.ELECTRIC_SPARK, p.clone().add(0, 0.4, 0), 15, 3, 0.2);
+                }
+                if (t == 49 || t == 53 || t == 58) {
+                    Location p = get(c, "p");
+                    fx.lightning(c.w, p.clone().add(c.rnd.nextGaussian() * 2, 80, c.rnd.nextGaussian() * 2), p, (float) c.cfg("grosor", 0.9) * 0.7f, 5, c.seed + t, 0x9fdcff, 3);
+                    c.flash(0xd8ecff, 0, 1, 4);
+                    c.shake(1.0, 8, 0.85);
+                    c.sound(p, "trueno.menor", 2f, 0.9f + t / 200f);
                 }
                 if (t == 60 && c.cfgB("crearFulguritas", true)) {
                     Location p = get(c, "p");
-                    for (Block b : world.sphere(p, 4)) {
+                    for (Block b : world.sphere(p, 5)) {
                         Material m = b.getType();
                         if (m == Material.SAND || m == Material.RED_SAND || m == Material.GRAVEL || m == Material.SUSPICIOUS_SAND) world.set(b, Material.GLASS);
                     }
@@ -589,12 +664,26 @@ final class CineAbilities implements Listener {
                 if (t == 20 || t == 30 || t == 40) {
                     Location p = v.get((t - 20) / 10);
                     fx.lightning(c.w, p.clone().add(0, 60, 0), p, 0.35f, 3, c.seed + t, 0xa8d8ff, 5);
+                    fx.beam(p.clone().add(0, -0.5, 0), p.clone().add(0, 60, 0), 0.22f, Material.WHITE_CONCRETE, 0xffffff, 3);
                     c.sound(p, "trueno.menor", 2f, 1.1f);
-                    c.shake(0.6, 10, 0.85);
+                    c.shake(0.8, 10, 0.85);
+                    c.flash(0xd8ecff, 0, 1, 4);
+                    CineFx.part(c.w, Particle.ELECTRIC_SPARK, p.clone().add(0, 0.5, 0), 50, 1.5, 0.4);
+                    CineFx.wave(c.w, p.clone().add(0, 0.2, 0), 4, 0xa8d8ff);
+                    for (int k = 0; k < 10; k++) {
+                        double ang = c.rnd.nextDouble() * Math.PI * 2;
+                        world.flyVisual(p.clone().add(0, 0.5, 0), (k % 2 == 0 ? Material.DIRT : Material.STONE).createBlockData(), CineWorld.Path.LAUNCH, null,
+                                new Vector(Math.cos(ang) * 0.35, 0.7 + c.rnd.nextDouble() * 0.4, Math.sin(ang) * 0.35), 30, 0);
+                    }
                     world.areaDamage(p, 2, c.cfg("danioRayoMenor", 6.0), c.launcher, null);
                     world.bowlCrater(p.clone().add(0, -1, 0), 1, 1, false, 0.4, 0, 0, c.rnd);
                 }
                 if (t >= 40 && t < 60) {
+                    // Jaula: anillo eléctrico que gira y se estrecha sobre el objetivo.
+                    Location cc = get(c, "center");
+                    CineFx.ring(c.w, cc.clone().add(0, 0.2 + (t - 40) * 0.12, 0), 6 - (t - 40) * 0.2, 0x9fd0ff, 1.5f, t * 0.3);
+                    CineFx.part(c.w, Particle.ELECTRIC_SPARK, c.eye(), 6, 0.6, 0.1);
+                    if (t % 5 == 0) c.sound(cc, "rayo.carga", 0.8f, 0.8f + (t - 40) / 20f);
                     if (c.cfgB("inmovilizar", true)) c.target.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 25, 6, false, false));
                     if (t % 4 == 0)
                         for (int i = 0; i < 3; i++)
@@ -604,6 +693,9 @@ final class CineAbilities implements Listener {
                     Location p = c.feet();
                     c.data.put("center", p.clone());
                     fx.lightning(c.w, p.clone().add(0, 80, 0), p, 0.9f, 6, c.seed + 99, 0xbfe4ff, 8);
+                    fx.beam(p.clone().add(0, -1, 0), p.clone().add(0, 80, 0), 0.7f, Material.WHITE_CONCRETE, 0xffffff, 6);
+                    CineFx.part(c.w, Particle.ELECTRIC_SPARK, p.clone().add(0, 1, 0), 120, 2, 0.6);
+                    c.shake(1.4, 12, 0.85);
                     c.flash(0xffffff, 0, 3, 6);
                     c.sound(p, "trueno.mayor", 3f, 0.7f);
                     c.damage(c.target, c.cfg("danioRayo", 15.0), true);
@@ -618,6 +710,14 @@ final class CineAbilities implements Listener {
                         c.shake(2.0, 30, 0.9);
                         c.sound(p, "trueno.explosion_grande", 4f, 0.6f);
                         CineFx.part(c.w, Particle.EXPLOSION_EMITTER, p, 3, 2, 0);
+                        CineFx.part(c.w, Particle.FLASH, p.clone().add(0, 2, 0), 1, 0, 0);
+                        // Lluvia de escombros y bloques ardientes.
+                        for (int k = 0; k < 50; k++) {
+                            double ang = c.rnd.nextDouble() * Math.PI * 2;
+                            Vector vv = new Vector(Math.cos(ang) * (0.4 + c.rnd.nextDouble() * 0.7), 0.9 + c.rnd.nextDouble() * 0.9, Math.sin(ang) * (0.4 + c.rnd.nextDouble() * 0.7));
+                            Material m = k % 4 == 0 ? Material.MAGMA_BLOCK : k % 4 == 1 ? Material.NETHERRACK : k % 4 == 2 ? Material.DIRT : Material.STONE;
+                            world.flyVisual(p.clone().add(0, 1, 0), m.createBlockData(), CineWorld.Path.LAUNCH, null, vv, 50, 0);
+                        }
                         world.bowlCrater(p.clone().add(0, -1, 0), c.cfgI("radioCrater", 8), 5, true, 0.25, 0.05, 0, c.rnd);
                         c.finalHit(c.target, c.cfg("danioExplosion", 30.0));
                         world.areaDamage(p, 12, c.cfg("danioExplosion", 30.0), c.launcher, c.target.getUniqueId());
@@ -628,6 +728,12 @@ final class CineAbilities implements Listener {
                         o.radius(0.1f, 2.4f, 18);
                     }
                     CineFx.wave(c.w, p, (t - 70) * 25.0 / 30, 0xffa040);
+                    if (t < 90) CineFx.wave(c.w, p.clone().add(0, 0.5, 0), (t - 70) * 18.0 / 20, 0xffffff);
+                    // Hongo de fuego: columna que sube y se abre.
+                    double hh = Math.min(16, (t - 70) * 0.8);
+                    CineFx.part(c.w, Particle.FLAME, p.clone().add(0, hh * 0.5, 0), 12, 1.0, 0.04);
+                    if (t > 78) CineFx.ring(c.w, p.clone().add(0, hh, 0), 2 + (t - 78) * 0.25, 0xff7a20, 2f, t * 0.1);
+                    CineFx.part(c.w, Particle.LARGE_SMOKE, p.clone().add(0, hh, 0), 6, 1.5, 0.03);
                 }
                 if (t > 70 && t % 3 == 0) {
                     Location p = get(c, "center");
@@ -721,6 +827,24 @@ final class CineAbilities implements Listener {
                     if (t % 6 == 0) CineFx.ring(c.w, center.clone().add(0, 0.1, 0), r, 0x3ddc5c, 1.3f, -t * 0.05);
                 }
                 if (t >= 20 && t < 130 && t % 5 == 0) c.sound(center, "carrusel.musica", 0.8f, (float) Math.min(2.0, 0.6 + (t - 20) / 80.0));
+                // Arcos eléctricos verdes entre creepers vecinos (ya cargados), notas de feria y estela de cada uno.
+                if (t >= 56 && t < 130) {
+                    if (t % 4 == 0)
+                        for (int i = 0; i < n; i++) {
+                            Creeper a1 = list.get(i), a2 = list.get((i + 1) % n);
+                            if (a1.isValid() && a2.isValid() && !a1.getScoreboardTags().contains("dash") && !a2.getScoreboardTags().contains("dash"))
+                                fx.lightning(c.w, a1.getLocation().add(0, 1, 0), a2.getLocation().add(0, 1, 0), 0.06f, 0, c.seed + t * 13 + i, 0x7dff9a, 3);
+                        }
+                    if (t % 3 == 0) {
+                        double na = t * 0.2;
+                        for (int k = 0; k < 4; k++)
+                            CineFx.part(c.w, Particle.NOTE, center.clone().add(Math.cos(na + k * Math.PI / 2) * (r + 1.5), 4 + Math.sin(t * 0.1 + k), Math.sin(na + k * Math.PI / 2) * (r + 1.5)), 1, 0, 0);
+                    }
+                    for (Creeper cr : list)
+                        if (cr.isValid() && !cr.getScoreboardTags().contains("dash")) CineFx.dot(c.w, cr.getLocation().add(0, 0.6, 0), 0x58ff7a, 1.1f);
+                }
+                if (t >= 100 && t < 130 && t % 4 == 0)
+                    for (Creeper cr : list) if (cr.isValid()) CineFx.part(c.w, Particle.ELECTRIC_SPARK, cr.getLocation().add(0, 1, 0), 6, 0.5, 0.15);
                 if (t == 100) {
                     for (Creeper cr : list) if (cr.isValid()) cr.ignite();
                     c.sound(center, "carrusel.siseo", 1.5f, 1f);
@@ -744,6 +868,10 @@ final class CineAbilities implements Listener {
                         continue;
                     }
                     cr.teleport(at.add(to.normalize().multiply(Math.max(1.2, to.length() / 3))));
+                    // Estela de fuego verde y chispas al lanzarse.
+                    CineFx.part(c.w, Particle.HAPPY_VILLAGER, cr.getLocation().add(0, 1, 0), 6, 0.3, 0.05);
+                    CineFx.part(c.w, Particle.SOUL_FIRE_FLAME, cr.getLocation().add(0, 0.8, 0), 6, 0.25, 0.03);
+                    if (since == 0) CineFx.ring(c.w, cr.getLocation().add(0, 1, 0), 1.2, 0x7dff9a, 1.5f, 0);
                 }
             }
 
@@ -888,6 +1016,60 @@ final class CineAbilities implements Listener {
                         CineFx.part(c.w, Particle.REVERSE_PORTAL, c.origin.clone().add(c.rnd.nextDouble() * 20 - 10, 0.5, c.rnd.nextDouble() * 20 - 10), 6, 0.5, 0.05);
                     }
                     if (t % 40 == 0) c.sound(eyeAt, "ojo.zumbido", 2f, 0.5f);
+                }
+                // Fase de terror (100–158): oscuridad, latidos cada vez más rápidos, susurros, ojos que flotan
+                // alrededor del objetivo mirándolo y, al final, la cámara se lanza hacia la pupila.
+                if (t == 100) {
+                    c.target.addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS, 80, 0, false, false));
+                    List<ItemDisplay> eyes = new ArrayList<>();
+                    for (int k = 0; k < 10; k++) {
+                        ItemDisplay ed = c.actor(fx.itemDisplay(c.eye(), new ItemStack(Material.ENDER_EYE), 0.7f, 0));
+                        ed.setBillboard(org.bukkit.entity.Display.Billboard.CENTER);
+                        ed.setGlowing(true);
+                        ed.setGlowColorOverride(org.bukkit.Color.fromRGB(0xb15cff));
+                        ed.setTeleportDuration(3);
+                        eyes.add(ed);
+                    }
+                    c.data.put("eyes", eyes);
+                }
+                if (t >= 100 && t < 162) {
+                    List<ItemDisplay> eyes = get(c, "eyes");
+                    double rad = 3.5 - (t - 100) * 0.03;
+                    for (int k = 0; k < eyes.size(); k++) {
+                        double a = t * 0.05 + k * Math.PI * 2 / eyes.size();
+                        eyes.get(k).teleport(c.eye().add(Math.cos(a) * rad, Math.sin(t * 0.1 + k) * 0.8, Math.sin(a) * rad));
+                    }
+                    int every = Math.max(4, 22 - (t - 100) / 3);
+                    if ((t - 100) % every == 0) {
+                        c.sound(c.feet(), "ojo.latido", 2.5f, 0.55f);
+                        c.vignette(0xd0000000, 1, 2, every - 3);
+                    }
+                    if (t % 17 == 0) c.sound(c.eye().add(c.rnd.nextGaussian() * 3, 0, c.rnd.nextGaussian() * 3), "ojo.susurro", 1.2f, 0.5f + c.rnd.nextFloat() * 0.3f);
+                    if (t % 9 == 0 && c.rnd.nextDouble() < 0.5) c.tint(0x70600000, 0, 1, 2);
+                    CineFx.part(c.w, Particle.SQUID_INK, c.eye(), 3, 1.5, 0.02);
+                }
+                if (t == 112) c.say("ojo_vacio", "Te estoy viendo...", 0xb15cff, 40);
+                if (t == 140) {
+                    // Zoom brutal hacia la pupila (FOV 70 → 25) y corte al aplastamiento.
+                    // eyeAt ya es la posición del ojo
+                    CineNet.Shot s = c.shot();
+                    s.key(0, c.feet().add(0, 2, 0), eyeAt, 75, CUT);
+                    s.key(18, eyeAt.clone().add(0, -9, 0), eyeAt, 25, CineNet.EASE_IN_EXPO);
+                    s.key(19, eyeAt.clone().add(0, -8.5, 0), eyeAt, 22, LINEAR);
+                    s.key(21, c.around(c.feet(), 90, 30, 8), c.feet().add(0, 8, 0), 72, CUT);
+                    s.key(120, c.around(c.feet(), 95, 31, 9), c.feet().add(0, 10, 0), 70, LINEAR);
+                    c.cam(s);
+                    c.sound(c.feet(), "ojo.susurro", 2f, 0.4f);
+                }
+                if (t == 158) {
+                    // Susto: grito, fogonazo rojo y sacudida máxima.
+                    c.sound(c.feet(), "ojo.grito", 4f, 0.6f);
+                    c.flash(0xff0000, 0, 2, 6);
+                    c.shake(2.6, 14, 0.8);
+                }
+                if (t == 162) {
+                    List<ItemDisplay> eyes = get(c, "eyes");
+                    if (eyes != null) for (ItemDisplay ed : eyes) ed.remove();
                 }
                 if (t == 160) {
                     c.anim(get(c, "holder"), "latido");
@@ -1111,7 +1293,7 @@ final class CineAbilities implements Listener {
                     Strike s = strikes.get(i);
                     int warn = s.impact() - 10;
                     if (t == warn) {
-                        boolean near = c.rnd.nextDouble() < 0.3;
+                        boolean near = c.rnd.nextDouble() < 0.5;
                         double rr = near ? c.rnd.nextDouble() * 4 : c.rnd.nextDouble() * zone;
                         double a = c.rnd.nextDouble() * Math.PI * 2;
                         Location at = c.ground(c.feet().add(Math.cos(a) * rr, 3, Math.sin(a) * rr));
@@ -1122,7 +1304,21 @@ final class CineAbilities implements Listener {
                     if (t == s.impact()) {
                         Location from = minors.get(0);
                         for (Location m : minors) if (m.distanceSquared(s.at()) < from.distanceSquared(s.at())) from = m;
-                        fx.beam(s.at(), from, 0.25f, Material.YELLOW_CONCRETE, 0xffe066, 5);
+                        fx.beam(s.at(), from, 0.3f, Material.WHITE_CONCRETE, 0xffffff, 5);
+                        fx.beam(s.at(), from, 0.7f, Material.YELLOW_STAINED_GLASS, 0xffe066, 6);
+                        CineFx.wave(c.w, s.at().clone().add(0, 0.2, 0), 3.5, 0xffd34d);
+                        CineFx.part(c.w, Particle.END_ROD, s.at().clone().add(0, 0.5, 0), 25, 0.8, 0.3);
+                        CineFx.part(c.w, Particle.WAX_OFF, s.at().clone().add(0, 0.5, 0), 15, 1, 0.5);
+                        for (int k = 0; k < 6; k++) {
+                            double ang = c.rnd.nextDouble() * Math.PI * 2;
+                            Block bb = s.at().clone().add(0, -1, 0).getBlock();
+                            if (bb.getType().isSolid())
+                                world.flyVisual(s.at().clone().add(0, 0.4, 0), bb.getBlockData(), CineWorld.Path.LAUNCH, null, new Vector(Math.cos(ang) * 0.3, 0.6 + c.rnd.nextDouble() * 0.4, Math.sin(ang) * 0.3), 30, 0);
+                        }
+                        if (c.target.getLocation().distance(s.at()) < 4) {
+                            CineWorld.radial(s.at(), 4, 0.9, 0.5, c.launcher, null);
+                            c.shake(0.7, 6, 0.85);
+                        }
                         List<Location> ms = minors;
                         int idx = ms.indexOf(from);
                         List<ItemDisplay> mhs = get(c, "mhs");
@@ -1130,13 +1326,35 @@ final class CineAbilities implements Listener {
                         CineFx.part(c.w, Particle.FLASH, s.at().clone().add(0, 1, 0), 1, 0, 0);
                         c.sound(s.at(), "juicio.rayo", 1.2f, 1.2f);
                         world.areaDamage(s.at(), 2, c.cfg("danioRayo", 8.0), c.launcher, null);
-                        world.bowlCrater(s.at().clone().add(0, -1, 0), 1, 1, false, 0.2, 0, 0, c.rnd);
+                        world.bowlCrater(s.at().clone().add(0, -1, 0), 2, 2, false, 0.25, 0.05, 0, c.rnd);
                     }
                 }
-                if (t >= 200 && t < 220) CineFx.marker(c.w, c.feet(), 5, 0xffffff, (t - 200) / 20.0);
+                if (t >= 200 && t < 220) {
+                    // Carga final: los círculos alineados laten, la energía baja por la columna y el suelo se marca.
+                    CineFx.marker(c.w, c.feet(), 6, 0xffffff, (t - 200) / 20.0);
+                    List<ItemDisplay> mhs = get(c, "mhs");
+                    if (t % 4 == 0) for (ItemDisplay d : mhs) c.anim(d, "disparo");
+                    for (int k = 0; k < 3; k++) CineFx.stream(c.w, main.clone().add(c.rnd.nextGaussian() * 6, 0, c.rnd.nextGaussian() * 6), c.feet().add(0, 8, 0), Particle.END_ROD, 1);
+                    CineFx.part(c.w, Particle.ENCHANT, c.feet().add(0, 2, 0), 30, 3, 1);
+                    if (t == 200) c.sound(c.feet(), "juicio.final_carga", 3f, 0.6f);
+                    if (t % 5 == 0) c.shake(0.3 + (t - 200) * 0.05, 5, 0.9);
+                }
                 if (t == 220) {
                     Location ground = c.ground(c.feet());
                     BlockDisplay pillar = fx.beam(ground.clone().add(0, -2, 0), main, 3f, Material.YELLOW_CONCRETE, 0xfff2a0, 45);
+                    // Rayo final en capas: núcleo blanco, pilar dorado y aura de cristal.
+                    fx.beam(ground.clone().add(0, -2, 0), main, 1.6f, Material.WHITE_CONCRETE, 0xffffff, 40);
+                    fx.beam(ground.clone().add(0, -2, 0), main, 5f, Material.YELLOW_STAINED_GLASS, 0xffe066, 30);
+                    CineFx.part(c.w, Particle.FLASH, ground.clone().add(0, 2, 0), 3, 1, 0);
+                    CineFx.part(c.w, Particle.EXPLOSION_EMITTER, ground, 3, 2, 0);
+                    CineWorld.radial(ground, 16, 2.2, 1.0, c.launcher, null);
+                    world.bowlCrater(ground.clone().add(0, -1, 0), c.cfgI("radioCraterFinal", 5) + 3, 7, true, 0.2, 0.1, 0.05, c.rnd);
+                    for (int k = 0; k < 60; k++) {
+                        double ang = c.rnd.nextDouble() * Math.PI * 2;
+                        Vector vv = new Vector(Math.cos(ang) * (0.4 + c.rnd.nextDouble() * 0.8), 0.8 + c.rnd.nextDouble(), Math.sin(ang) * (0.4 + c.rnd.nextDouble() * 0.8));
+                        Material m = k % 3 == 0 ? Material.GOLD_BLOCK : k % 3 == 1 ? Material.STONE : Material.DIRT;
+                        world.flyVisual(ground.clone().add(0, 1, 0), m.createBlockData(), CineWorld.Path.LAUNCH, null, vv, 50, 0);
+                    }
                     c.data.put("pillar", pillar);
                     c.data.put("pg", ground);
                     c.flash(0xfff8e0, 0, 5, 18);
@@ -1146,6 +1364,14 @@ final class CineAbilities implements Listener {
                     world.areaDamage(ground, 5, c.cfg("danioFinal", 40.0) * 0.6, c.launcher, c.target.getUniqueId());
                     int rc = c.cfgI("radioCraterFinal", 5);
                     world.enqueueSorted(world.cylinder(ground, rc, 6, 4), ground, true, Material.AIR);
+                }
+                if (t > 220 && t < 245) {
+                    // Anillos que bajan por la columna y ondas que barren el suelo.
+                    Location pg = get(c, "pg");
+                    double hh = 28 - (t - 220) * 1.1;
+                    if (hh > 0) CineFx.ring(c.w, pg.clone().add(0, hh, 0), 3.5, 0xffffff, 2f, t * 0.3);
+                    CineFx.wave(c.w, pg.clone().add(0, 0.3, 0), (t - 220) * 1.4, t % 2 == 0 ? 0xffd34d : 0xffffff);
+                    CineFx.part(c.w, Particle.END_ROD, pg.clone().add(0, c.rnd.nextDouble() * 20, 0), 8, 2, 0.1);
                 }
                 if (t == 225) {
                     BlockDisplay pillar = get(c, "pillar");

@@ -38,7 +38,7 @@ import static dev.livearena.plugin.CineNet.LINEAR;
 final class CineCharacters {
     /* ------------------------------ contrato de modelos (nombres exactos) ------------------------------ */
     static final String GOKU = "goku", SUKUNA = "sukuna", SANTUARIO = "santuario", GOJO = "gojo", AKAZA = "akaza";
-    static final String ESFERA = "esfera", COPO = "copo";
+    static final String ESFERA = "esfera", VACIO = "vacio", COPO = "copo", AURA = "aura";
     static final String B_MANOS = "manos", B_MANO_IZQ = "mano_izquierda", B_MANO_DER = "mano_derecha", B_MANO_PROY = "mano_proyectil";
     static final String A_APARICION = "aparicion", A_ALZAR = "alzar_brazos", A_LANZAR = "lanzar", A_POSE_FINAL = "pose_final";
     static final String A_SELLO = "sello_mano", A_IDLE_DOMINIO = "idle_dominio", A_CORTE_FINAL = "corte_final", A_DESAPARICION = "desaparicion";
@@ -123,9 +123,15 @@ final class CineCharacters {
 
     /** Esfera de energía (modelo «esfera» teñido) de radio r en bloques. */
     private ItemDisplay energy(CineEngine.Ctx c, Location at, float r, String argb) {
+        return energy(c, at, r, argb, ESFERA);
+    }
+
+    private ItemDisplay energy(CineEngine.Ctx c, Location at, float r, String argb, String model) {
         ItemDisplay d = c.actor(fx.itemDisplay(at, new ItemStack(Material.AIR), 1f, 0));
         d.setTeleportDuration(1);
-        c.model(d, ESFERA, "idle", 1f);
+        d.setDisplayWidth(40f);
+        d.setDisplayHeight(40f);
+        c.model(d, model, "idle", 1f);
         c.anim(d, "color:" + argb);
         size(d, r, 0);
         return d;
@@ -152,8 +158,14 @@ final class CineCharacters {
                     Vector right = forward(c.launcher.getLocation().getYaw()).crossProduct(new Vector(0, 1, 0)).normalize().multiply(-2);
                     at = c.ground(c.launcher.getLocation().add(right).add(0, 2, 0));
                 } else at = c.ground(c.feet().add(forward(c.yaw0).multiply(c.cfg("distanciaGokuSinLanzador", 30.0))).add(0, 6, 0));
+                // El guerrero se coloca en el cielo, flotando, y desde ahí carga y lanza la esfera.
+                at = at.clone().add(0, c.cfg("alturaVuelo", 16.0), 0);
                 float yaw = yawTo(at, c.feet());
-                ItemDisplay goku = character(c, at, yaw, GOKU, A_APARICION, ALTO_PERSONAJE / 2f, 0x2a6eaa);
+                ItemDisplay goku = character(c, at, yaw, GOKU, A_APARICION, ALTO_PERSONAJE / 2f, 0xff7a1a);
+                ItemDisplay aura = c.actor(fx.itemDisplay(at, new ItemStack(Material.AIR), 1f, 0));
+                c.model(aura, AURA, "aparicion", 1.15f);
+                c.anim(aura, "color:ff9fe4ff");
+                c.data.put("aura", aura);
                 c.data.put("goku", goku);
                 c.data.put("base", at);
                 c.data.put("yaw", yaw);
@@ -175,19 +187,19 @@ final class CineCharacters {
                 ItemDisplay sphere = energy(c, center, 0.01f, "ff8fd3ff");
                 for (Player p : c.w.getPlayers()) if (CineNet.hasMod(p)) for (BlockDisplay d : o.parts) p.hideEntity(e.plugin, d);
                 c.data.put("sphere", sphere);
-                // 0–40: plano medio frontal del guerrero apareciendo y alzando los brazos.
+                // 0–40: plano medio frontal del guerrero en el cielo, llegando y alzando los brazos.
                 Vector face = forward(yaw);
                 CineNet.Shot s = c.shot();
                 s.key(0, at.clone().add(face.clone().multiply(5)).add(0, 1.4, 0), at.clone().add(0, 1.4, 0), 60, LINEAR);
                 s.key(39, at.clone().add(face.clone().multiply(4.2)).add(0, 1.6, 0), at.clone().add(0, 2.2, 0), 62, LINEAR);
-                // 40–200: contrapicado desde el suelo que se aleja según crece la esfera (siempre cabe entera).
+                // 40–200: contrapicado desde abajo que se aleja según crece la esfera (siempre cabe entera).
                 double rmax = c.cfg("radioMax", 12.0);
                 Vector side = face.clone().crossProduct(new Vector(0, 1, 0)).normalize();
                 for (int k = 0; k <= 8; k++) {
                     int tk = 40 + k * 20;
                     double r = 0.5 + (rmax - 0.5) * (1 - Math.pow(1 - k / 8.0, 2));
                     double dist = 8 + r * 2.4;
-                    Location cpos = at.clone().add(face.clone().multiply(dist * 0.8)).add(side.clone().multiply(dist * 0.6)).add(0, 0.4, 0);
+                    Location cpos = at.clone().add(face.clone().multiply(dist * 0.8)).add(side.clone().multiply(dist * 0.6)).add(0, -6 - r * 0.4, 0);
                     s.key(tk, cpos, at.clone().add(0, MANOS_ALTO + r * 0.9, 0), 74, k == 0 ? CUT : LINEAR);
                 }
                 c.cam(s);
@@ -199,7 +211,15 @@ final class CineCharacters {
                 ItemDisplay sphere = get(c, "sphere");
                 CineFx.Orb o = get(c, "orb");
                 double rmax = c.cfg("radioMax", 12.0);
-                if (t == 20) c.anim(goku, A_ALZAR);
+                if (t == 20) {
+                    c.anim(goku, A_ALZAR);
+                    c.say("genkidama", "¡Gente de la Tierra, por favor, denme un poco de su energía!", 0x8fd3ff, 90);
+                }
+                if (t == 8) c.anim(get(c, "aura"), "idle");
+                if (t < 220 && t % 4 == 0) {
+                    CineFx.part(c.w, Particle.END_ROD, base.clone().add(0, 1, 0), 3, 0.6, 0.05);
+                    CineFx.ring(c.w, base.clone().add(0, 0.1, 0), 1.4 + (t % 20) * 0.05, 0x9fe4ff, 1f, t * 0.1);
+                }
                 if (t >= 40 && t < 200) {
                     double f = (t - 40) / 160.0;
                     double r = 0.5 + (rmax - 0.5) * (1 - Math.pow(1 - f, 2));
@@ -322,7 +342,7 @@ final class CineCharacters {
                         remove(sphere);
                         c.anim(goku, A_POSE_FINAL);
                     }
-                    if (since == 74) remove(goku, get(c, "stand_" + GOKU));
+                    if (since == 74) remove(goku, get(c, "stand_" + GOKU), get(c, "aura"));
                     if (since >= 78) e.finish(c, false);
                 }
             }
@@ -370,6 +390,7 @@ final class CineCharacters {
                 if (t == 30) {
                     c.anim(sk, A_SELLO);
                     c.sound(skAt, "sukuna.dominio", 3f, 0.55f);
+                    c.say("mil_cortes_dominio", "Conoce tu lugar, maldito insecto... Expansión de Dominio: Santuario Malévolo.", 0xff4040, 80);
                 }
                 if (t == 60) {
                     ItemDisplay santuario = character(c, shAt, (float) c.data.get("yaw"), SANTUARIO, A_EMERGER, 14f / ALTO_SANTUARIO, 0x3a0000);
@@ -385,6 +406,7 @@ final class CineCharacters {
                 }
                 if (t == 110) {
                     c.anim(sk, A_IDLE_DOMINIO);
+                    c.say("mil_cortes_cortes", "Te cortaré en mil pedazos hasta que no quede nada de ti.", 0xffd0d0, 75);
                     c.tint(0x60ff0000, 2, 4, 10); // pulso rojo
                 }
                 if (t >= 110 && t < 190) {
@@ -535,6 +557,7 @@ final class CineCharacters {
                 if (t == 30) {
                     c.anim(gj, A_CARGA);
                     c.sound(at, "gojo.carga", 1.5f, 0.8f);
+                    c.say("vacio_purpura", "Nueve cuerdas, luz polarizada, cuervos y declaración... Técnica Imaginaria: Púrpura.", 0xc58bff, 85);
                     // Azul (atracción) en la mano izquierda y rojo (repulsión) en la derecha, pegadas a los huesos.
                     ItemDisplay blue = energy(c, at.clone().add(0, 1, 0), 0.01f, "ff3a7bff");
                     ItemDisplay red = energy(c, at.clone().add(0, 1, 0), 0.01f, "ffff3030");
@@ -550,21 +573,29 @@ final class CineCharacters {
                     CineFx.dot(c.w, at.clone().add(side.clone().multiply(0.9)).add(0, 1.2, 0).add(face.clone().multiply(0.5)), 0x3a7bff, 1.2f);
                     CineFx.dot(c.w, at.clone().add(side.clone().multiply(-0.9)).add(0, 1.2, 0).add(face.clone().multiply(0.5)), 0xff3030, 1.2f);
                 }
-                if (t == 90) {
-                    // Las manos se juntan: ambas esferas viajan al hueso «mano_proyectil».
-                    c.attach(get(c, "blue"), gj, B_MANO_PROY, -0.25, 0, 0);
-                    c.attach(get(c, "red"), gj, B_MANO_PROY, 0.25, 0, 0);
+                if (t >= 90 && t < 102 && t % 2 == 0) {
+                    // Fusión: el azul y el rojo giran en espiral uno alrededor del otro hasta tocarse en «mano_proyectil».
+                    double f = (t - 90) / 12.0, th = (t - 90) * 0.9, r = 1.1 * (1 - f);
+                    c.attach(get(c, "blue"), gj, B_MANO_PROY, Math.cos(th) * r, Math.sin(th * 1.3) * r * 0.3, Math.sin(th) * r);
+                    c.attach(get(c, "red"), gj, B_MANO_PROY, -Math.cos(th) * r, -Math.sin(th * 1.3) * r * 0.3, -Math.sin(th) * r);
+                    Location p0 = at.clone().add(0, PROY_ALTO, 0).add(face.clone().multiply(PROY_DELANTE + 0.3));
+                    CineFx.part(c.w, Particle.ELECTRIC_SPARK, p0, 12, 0.6, 0.15);
+                    CineFx.part(c.w, Particle.REVERSE_PORTAL, p0, 20, 1.2, 0.3);
+                    if (t % 4 == 0) c.shake(0.25 + f * 0.4, 4, 0.9);
                 }
                 if (t == 102) {
                     remove(get(c, "blue"), get(c, "red"));
                     Location p0 = at.clone().add(0, PROY_ALTO, 0).add(face.clone().multiply(PROY_DELANTE));
-                    ItemDisplay purple = energy(c, p0, 0.6f, "ff9b30ff");
+                    ItemDisplay purple = energy(c, p0, 0.3f, "ffa64dff", VACIO);
                     c.attach(purple, gj, B_MANO_PROY, 0, 0, 0);
-                    size(purple, 0.9f, 8);
+                    size(purple, 1.1f, 6);
                     c.data.put("purple", purple);
-                    c.flash(0x9b30ff, 0, 2, 8);
+                    c.flash(0xb050ff, 0, 3, 10);
+                    c.shake(0.9, 12, 0.85);
+                    c.sound(p0, "gojo.carga", 2f, 1.6f);
                     CineFx.part(c.w, Particle.FLASH, p0, 1, 0, 0);
-                    CineFx.part(c.w, Particle.DRAGON_BREATH, p0, 20, 0.3, 0.05);
+                    CineFx.part(c.w, Particle.DRAGON_BREATH, p0, 40, 0.5, 0.08);
+                    for (int k = 0; k < 3; k++) CineFx.ring(c.w, p0, 1.2 + k * 1.3, k == 1 ? 0xffffff : 0xa64dff, 1.6f, k * 0.7);
                 }
                 if (t == 110) {
                     c.anim(gj, A_DISPARO);
@@ -615,7 +646,8 @@ final class CineCharacters {
                         CineFx.part(c.w, Particle.DRAGON_BREATH, pos, 10, 2.2, 0.02);
                         CineFx.part(c.w, Particle.REVERSE_PORTAL, pos, 20, 3.5, 0.2);
                     }
-                    if (t % 4 == 0) c.anim(purple, (t / 4) % 2 == 0 ? "color:ffb050ff" : "color:ff9b30ff");
+                    if (t % 4 == 0) c.anim(purple, (t / 4) % 2 == 0 ? "color:ffc070ff" : "color:ffa64dff");
+                    if (t % 3 == 0) CineFx.ring(c.w, pos, 3.4, 0xa64dff, 1.8f, t * 0.2);
                     boolean done = t - 110 >= c.cfgI("ticksMax", 100) || pos.distance((Location) get(c, "start")) >= c.cfg("distanciaMax", 60.0);
                     if (done) detonate(c, t, pos);
                 }
@@ -675,6 +707,7 @@ final class CineCharacters {
                 c.data.put("at", at);
                 c.data.put("yaw", yaw);
                 c.sound(at, "akaza.aparicion", 2f, 0.7f);
+                c.say("akaza_aparicion", "¡Siente el poder de la destrucción!", 0xff7fae, 50);
                 CineFx.part(c.w, Particle.BLOCK, at.clone().add(0, 0.2, 0), 40, 1.5, 0.1, 1.5, 0, at.clone().add(0, -1, 0).getBlock().getBlockData());
                 CineFx.part(c.w, Particle.CLOUD, at, 20, 1.5, 0.05);
                 Vector back = c.feet().toVector().subtract(at.toVector()).setY(0).normalize();
@@ -700,13 +733,26 @@ final class CineCharacters {
                 if (t == 30) {
                     c.anim(ak, A_DESPLIEGUE);
                     c.sound(at, "akaza.despliegue", 2f, 0.9f);
+                    c.say("akaza_despliegue", "¡Despliegue de técnica!", 0x7fd8ff, 45);
+                    c.vignette(0x9000183a, 10, 110, 20);
                     // Copo plano a la altura de los pies del luchador (+0.05): en terreno irregular atraviesa el relieve,
                     // pero nunca parpadea (proyectarlo bloque a bloque obligaría a partirlo en cientos de piezas).
                     ItemDisplay copo = c.actor(fx.itemDisplay(at.clone().add(0, 0.05, 0), new ItemStack(Material.AIR), 1f, 0));
                     copo.setDisplayWidth((float) rc * 2.5f);
                     copo.setDisplayHeight(2f);
                     c.model(copo, COPO, "trazar", (float) (rc / 2.0));
+                    c.anim(copo, "color:ff7fd8ff");
                     c.data.put("copo", copo);
+                }
+                if (t >= 40 && t < 120 && t % 3 == 0) {
+                    // Niebla helada y copos que suben desde los 12 nodos del patrón.
+                    for (int k = 0; k < 12; k++) {
+                        double a = Math.toRadians(k * 30 - 90), f = k % 2 == 0 ? 0.72 : 0.42;
+                        Location n = at.clone().add(Math.cos(a) * rc * f, 0.3, Math.sin(a) * rc * f);
+                        CineFx.part(c.w, Particle.SNOWFLAKE, n, 2, 0.2, 0.08);
+                        if (t % 6 == 0) CineFx.dot(c.w, n.clone().add(0, 1 + c.rnd.nextDouble() * 3, 0), t >= 85 ? 0xff3030 : 0x7fd8ff, 1.6f);
+                    }
+                    CineFx.part(c.w, Particle.CLOUD, at.clone().add(0, 0.4, 0), 6, rc * 0.5, 0.01);
                 }
                 if (t >= 30 && t < 120 && t % 2 == 0) {
                     // Sin el mod: el mismo patrón con partículas, trazado desde el centro en 30 ticks.
@@ -715,11 +761,17 @@ final class CineCharacters {
                 }
                 if (t == 70) {
                     c.anim(ak, A_GOLPE_SUELO);
+                    c.say("akaza_ataque", "¡Muerte destructiva, estilo del caos!", 0xff5a7a, 50);
                     c.anim(get(c, "copo"), "color:ffffffff");
                     c.target.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 20, 9, false, false));
                 }
                 if (t > 70 && t < 85) c.target.setVelocity(new Vector(0, Math.min(0, c.target.getVelocity().getY()), 0));
-                if (t == c.cfgI("tickImpacto", 85)) impact(c, at);
+                if (t == c.cfgI("tickImpacto", 85)) {
+                    impact(c, at);
+                    c.anim(get(c, "copo"), "golpe");
+                    c.anim(get(c, "copo"), "color:ffff3030"); // el copo se vuelve rojo en el golpe
+                }
+                if (t == 100) c.anim(get(c, "copo"), "color:ffff6060");
                 if (t == 120) {
                     c.anim(ak, A_POSE_FINAL);
                     c.anim(get(c, "copo"), "desvanecer");

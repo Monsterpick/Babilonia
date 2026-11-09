@@ -76,6 +76,10 @@ public final class CineClient {
     private static String capTitle = "", capSub = "";
     private static int capRgb;
     private static long capStart, capUntil;
+    /** Subtítulo (frase del personaje): texto, color, inicio y fin. */
+    private static String subText = "";
+    private static int subRgb;
+    private static long subStart, subUntil;
 
     /* ----------------------------------- registro ----------------------------------- */
 
@@ -149,6 +153,12 @@ public final class CineClient {
                 case 9 -> CineModels.anim(in.readInt(), in.readUTF());
                 case 10 -> CineModels.remove(in.readInt());
                 case 11 -> CineModels.attach(in.readInt(), in.readInt(), in.readUTF(), in.readFloat(), in.readFloat(), in.readFloat());
+                case 12 -> { // SUBTITLE
+                    subText = in.readUTF();
+                    subRgb = in.readInt();
+                    subStart = ticks;
+                    subUntil = ticks + in.readInt();
+                }
                 default -> {}
             }
         } catch (IOException | RuntimeException ex) {
@@ -185,6 +195,7 @@ public final class CineClient {
         skyUntil = 0;
         shakeTicks = 0;
         capUntil = 0;
+        subUntil = 0;
         CineModels.clear();
     }
 
@@ -371,6 +382,30 @@ public final class CineClient {
                     g.fill(0, h - bar, w, h, 0xff000000);
                 }
                 default -> {}
+            }
+        }
+        if (now < subUntil && !subText.isEmpty()) {
+            // Frase del personaje: grande, centrada, con fondo, efecto «máquina de escribir» y fundido.
+            float t = now - subStart, total = subUntil - subStart;
+            float a = Math.min(1, Math.min(t / 4f, (total - t) / 8f));
+            if (a > 0.02f) {
+                int shown = Math.min(subText.length(), (int) (t * 2.2f) + 1);
+                String txt = subText.substring(0, shown);
+                float sc = w > 700 ? 1.6f : 1.25f;
+                int maxW = (int) (w * 0.8f / sc);
+                var lines = mc.font.split(net.minecraft.network.chat.Component.literal(txt), maxW);
+                var full = mc.font.split(net.minecraft.network.chat.Component.literal(subText), maxW);
+                int lh = 11;
+                float cy = h * 0.70f / sc - full.size() * lh / 2f;
+                int alpha = Math.max(5, (int) (a * 255)) << 24;
+                g.pose().pushMatrix();
+                g.pose().scale(sc, sc);
+                int bw = 0;
+                for (var l : full) bw = Math.max(bw, mc.font.width(l));
+                int cx = (int) (w / 2f / sc);
+                g.fill(cx - bw / 2 - 6, (int) cy - 4, cx + bw / 2 + 6, (int) cy + full.size() * lh + 2, ((int) (a * 150)) << 24);
+                for (int i = 0; i < lines.size(); i++) g.centeredText(mc.font, lines.get(i), cx, (int) cy + i * lh, alpha | (subRgb & 0xffffff));
+                g.pose().popMatrix();
             }
         }
         if (now < capUntil && !capTitle.isEmpty()) {

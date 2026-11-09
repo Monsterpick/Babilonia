@@ -31,7 +31,7 @@ public final class CineModels {
 
     static final Set<String> LOOPS = Set.of("idle", "girar", "rotar", "cargar", "arder", "idle_dominio", "pose_final");
     /** Modelos de energía: translúcidos y a plena luz (escudo, disco del agujero negro, círculos…). */
-    static final Set<String> TRANSLUCENT = Set.of("escudo", "agujero_negro", "circulo_arcano", "aura", "esfera", "copo");
+    static final Set<String> TRANSLUCENT = Set.of("escudo", "agujero_negro", "circulo_arcano", "aura", "esfera", "copo", "vacio");
     /** Modelos con partes que brillan: llevan además textures/entity/<modelo>_glowmask.png. */
     static final Set<String> GLOW = Set.of("meteorito", "ojo_vacio", "guerrero", "santuario", "goku", "sukuna", "gojo", "akaza");
 
