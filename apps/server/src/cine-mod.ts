@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
+import { createHash } from 'node:crypto'
 import { inflateRawSync } from 'node:zlib'
 import { downloadFile, findJavaFor, minecraftDirs } from '@livearena/minecraft'
 import type { MinecraftService } from './minecraft-service.js'
@@ -54,12 +55,25 @@ const exists = (p: string) => fs.access(p).then(() => true, () => false)
 /** Archivos de perfiles: el launcher clásico usa el primero; el de Microsoft Store / Xbox, el segundo. */
 export const PROFILE_FILES = ['launcher_profiles.json', 'launcher_profiles_microsoft_store.json']
 export const PROFILE_KEY = 'livearena-neoforge'
+/**
+ * Carpeta de juego propia del perfil (dentro de .minecraft). Así sus mods no se mezclan con los de otros perfiles
+ * (p. ej. Forge 1.20.1 con MiniLive): NeoForge se niega a arrancar si ve mods de Forge en su carpeta.
+ */
+export const GAME_DIR_NAME = 'livearena-neoforge'
+export const gameDirOf = (dir: string) => path.join(dir, GAME_DIR_NAME)
+
+/** ¿El archivo existe y tiene el sha1 esperado? (detecta descargas cortadas o archivos dañados). */
+export async function fileHasSha1(file: string, sha1: string): Promise<boolean> {
+  const b = await fs.readFile(file).catch(() => null)
+  return !!b && createHash('sha1').update(b).digest('hex') === sha1
+}
 
 /** ¿Hay algún perfil del launcher que arranque nuestra versión de NeoForge? */
 export async function hasNeoForgeProfile(dir: string): Promise<boolean> {
   for (const f of PROFILE_FILES) {
-    const j = await fs.readFile(path.join(dir, f), 'utf8').then((t) => JSON.parse(t) as { profiles?: Record<string, { lastVersionId?: string }> }, () => null)
-    if (j?.profiles && Object.values(j.profiles).some((p) => p?.lastVersionId === `neoforge-${CINE.neoforge}`)) return true
+    const j = await fs.readFile(path.join(dir, f), 'utf8').then((t) => JSON.parse(t) as { profiles?: Record<string, { lastVersionId?: string; gameDir?: string }> }, () => null)
+    const p = j?.profiles?.[PROFILE_KEY]
+    if (p?.lastVersionId === `neoforge-${CINE.neoforge}` && p.gameDir === gameDirOf(dir)) return true
   }
   return false
 }
@@ -83,11 +97,14 @@ export async function ensureNeoForgeProfile(dir: string): Promise<string[]> {
     const j = await fs.readFile(file, 'utf8').then((t) => JSON.parse(t) as Record<string, unknown>, () => ({}) as Record<string, unknown>)
     const profiles = (j.profiles ?? {}) as Record<string, Record<string, unknown>>
     const prev = profiles[PROFILE_KEY]
+    // El instalador oficial crea otro perfil «NeoForge» que usa la carpeta mods compartida: se quita para no confundir.
+    for (const [k, p] of Object.entries(profiles)) if (k !== PROFILE_KEY && p?.lastVersionId === `neoforge-${CINE.neoforge}` && !p.gameDir) delete profiles[k]
     profiles[PROFILE_KEY] = {
       ...(prev ?? {}),
       name: 'LiveArena · NeoForge',
       type: 'custom',
       lastVersionId: `neoforge-${CINE.neoforge}`,
+      gameDir: gameDirOf(dir),
       icon: 'Furnace_On',
       created: (prev?.created as string) ?? now,
       lastUsed: now,
@@ -175,7 +192,7 @@ export async function launcherRunning(): Promise<boolean> {
 /**
  * Instala la parte de cliente de las cinemáticas en el Minecraft del streamer:
  * 1) NeoForge (instalador oficial en modo consola: crea el perfil «NeoForge» en el launcher),
- * 2) GeckoLib y el mod LiveArena en .minecraft/mods.
+ * 2) GeckoLib y el mod LiveArena en .minecraft/livearena-neoforge/mods (carpeta propia del perfil).
  * El servidor sigue siendo Paper (plugins y s2e incluidos): el mod se conecta por un canal opcional.
  */
 export class CineModService {
@@ -218,7 +235,7 @@ export class CineModService {
 
   async status(): Promise<CineModStatus> {
     const dir = await this.mcDir()
-    const mods = dir ? path.join(dir, 'mods') : null
+    const mods = dir ? path.join(gameDirOf(dir), 'mods') : null
     const bundled = await exists(BUNDLED_MOD)
     let mod: CineModStatus['mod'] = 'missing'
     if (mods && (await exists(path.join(mods, MOD_FILE)))) mod = bundled && !(await this.sameFile(BUNDLED_MOD, path.join(mods, MOD_FILE))) ? 'outdated' : 'installed'
@@ -230,7 +247,7 @@ export class CineModService {
       vanilla: !!dir && (await vanillaReady(dir)),
       neoforge: !!dir && (await neoforgeValid(dir)),
       mod,
-      geckolib: !!mods && (await exists(path.join(mods, CINE.geckolib.fileName))),
+      geckolib: !!mods && (await fileHasSha1(path.join(mods, CINE.geckolib.fileName), CINE.geckolib.sha1)),
       bundled,
       inGame: await this.inGame(),
       busy: this.busy,
@@ -303,15 +320,28 @@ export class CineModService {
       const files = await ensureNeoForgeProfile(dir)
       this.log.info('cinematicas', `Perfil del launcher añadido en: ${files.join(', ')}`)
 
-      const mods = path.join(dir, 'mods')
+      const game = gameDirOf(dir)
+      const mods = path.join(game, 'mods')
       await fs.mkdir(mods, { recursive: true })
+      // Versiones anteriores ponían los mods en .minecraft/mods, compartida con otros perfiles: se quitan de ahí.
+      const shared = path.join(dir, 'mods')
+      for (const f of await fs.readdir(shared).catch(() => [] as string[])) {
+        if (/^geckolib-neoforge-26\.1\.2-.*\.jar$/i.test(f) || /^LiveArena-Cinematicas.*\.jar$/i.test(f)) await fs.rm(path.join(shared, f), { force: true })
+      }
+      // La lista de servidores y las opciones del juego normal, para no empezar de cero (solo la primera vez).
+      for (const f of ['servers.dat', 'options.txt']) {
+        if (!(await exists(path.join(game, f))) && (await exists(path.join(dir, f)))) await fs.copyFile(path.join(dir, f), path.join(game, f)).catch(() => undefined)
+      }
       // Quita versiones viejas de GeckoLib para 26.1.2 y del mod.
       for (const f of await fs.readdir(mods)) {
         if (/^geckolib-neoforge-26\.1\.2-.*\.jar$/i.test(f) && f !== CINE.geckolib.fileName) await fs.rm(path.join(mods, f), { force: true })
         if (/^LiveArena-Cinematicas.*\.jar$/i.test(f) && f !== MOD_FILE) await fs.rm(path.join(mods, f), { force: true })
       }
       const gecko = path.join(mods, CINE.geckolib.fileName)
-      if (!(await exists(gecko))) await downloadFile(CINE.geckolib, gecko, (pct) => this.step('geckolib', `Descargando GeckoLib… ${pct}%`, pct))
+      if (!(await fileHasSha1(gecko, CINE.geckolib.sha1))) {
+        await fs.rm(gecko, { force: true })
+        await downloadFile(CINE.geckolib, gecko, (pct) => this.step('geckolib', `Descargando GeckoLib… ${pct}%`, pct))
+      }
       this.step('mod', 'Copiando el mod LiveArena Cinemáticas…')
       await fs.copyFile(BUNDLED_MOD, path.join(mods, MOD_FILE))
       this.log.info('cinematicas', `Mod LiveArena Cinemáticas y GeckoLib copiados en ${mods}`)
@@ -325,12 +355,14 @@ export class CineModService {
     return this.status()
   }
 
-  /** Quita el mod y GeckoLib de .minecraft/mods (NeoForge se queda; no molesta al Minecraft normal). */
+  /** Quita el mod y GeckoLib (NeoForge se queda; no molesta al Minecraft normal). */
   async uninstall(): Promise<CineModStatus> {
     const dir = await this.mcDir()
     if (dir) {
-      await fs.rm(path.join(dir, 'mods', MOD_FILE), { force: true })
-      await fs.rm(path.join(dir, 'mods', CINE.geckolib.fileName), { force: true })
+      for (const m of [path.join(gameDirOf(dir), 'mods'), path.join(dir, 'mods')]) {
+        await fs.rm(path.join(m, MOD_FILE), { force: true })
+        await fs.rm(path.join(m, CINE.geckolib.fileName), { force: true })
+      }
     }
     return this.status()
   }

@@ -130,7 +130,7 @@ export function CinematicsPage() {
             <div className="grid gap-x-8 px-5 py-3 md:grid-cols-2">
               <Step ok={!!s?.mcDir && !!s?.launcher} title="Minecraft encontrado" detail={s?.mcDir ?? 'No encuentro .minecraft: abre el launcher oficial una vez'} />
               <Step ok={!!s?.neoforge} title={`NeoForge ${s?.versions.neoforge ?? ''}`} detail="Instalado dentro de tu .minecraft" />
-              <Step ok={!!s?.profile} warn={!!s?.neoforge && !s?.profile} title="Perfil «LiveArena · NeoForge» en el launcher" detail={s?.profile ? 'Búscalo en Instalaciones (marca «Con mods»)' : 'Pulsa «Instalar» con el launcher cerrado para crearlo'} />
+              <Step ok={!!s?.profile} warn={!!s?.neoforge && !s?.profile} title="Perfil «LiveArena · NeoForge» en el launcher" detail={s?.profile ? 'Con su propia carpeta de mods (no se mezcla con Forge u otros perfiles)' : 'Pulsa «Instalar» con el launcher cerrado para crearlo'} />
               <Step
                 ok={!!s?.vanilla}
                 warn={!!s?.neoforge && !s?.vanilla}
@@ -143,7 +143,7 @@ export function CinematicsPage() {
                 ok={s?.inGame === true}
                 warn={s?.inGame === false}
                 title={s?.inGame === true ? 'Detectado en el juego' : s?.inGame === false ? 'Conectado SIN el mod' : 'En el juego: sin comprobar'}
-                detail={s?.inGame === false ? 'Entra con el perfil «NeoForge» del launcher' : s?.inGame == null ? 'Enciende el servidor y entra para comprobarlo' : 'La cámara cinemática está activa'}
+                detail={s?.inGame === false ? 'Entra con el perfil «LiveArena · NeoForge» del launcher' : s?.inGame == null ? 'Enciende el servidor y entra para comprobarlo' : 'La cámara cinemática está activa'}
               />
             </div>
             {s?.busy && (

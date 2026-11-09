@@ -3,7 +3,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { deflateRawSync } from 'node:zlib'
 import { describe, expect, it } from 'vitest'
-import { CINE, ensureNeoForgeProfile, hasNeoForgeProfile, neoforgeJson, neoforgeValid, readZipEntry, vanillaReady } from '../src/cine-mod.js'
+import { CINE, ensureNeoForgeProfile, gameDirOf, hasNeoForgeProfile, neoforgeJson, neoforgeValid, readZipEntry, vanillaReady } from '../src/cine-mod.js'
 
 describe('perfil de NeoForge en el launcher', () => {
   it('lo añade también al archivo del launcher de Microsoft/Xbox sin tocar los demás perfiles', async () => {
@@ -16,6 +16,7 @@ describe('perfil de NeoForge en el launcher', () => {
     expect(j.profiles.abc.name).toBe('Última versión')
     expect(j.settings).toEqual({ x: 1 })
     expect(j.profiles['livearena-neoforge'].lastVersionId).toBe(`neoforge-${CINE.neoforge}`)
+    expect(j.profiles['livearena-neoforge'].gameDir).toBe(gameDirOf(dir))
     expect(await hasNeoForgeProfile(dir)).toBe(true)
   })
 
@@ -23,6 +24,14 @@ describe('perfil de NeoForge en el launcher', () => {
     const dir = await mkdtemp(path.join(os.tmpdir(), 'mc-'))
     for (const f of ['launcher_profiles.json', 'launcher_profiles_microsoft_store.json']) await writeFile(path.join(dir, f), JSON.stringify({ profiles: {} }))
     expect(await ensureNeoForgeProfile(dir)).toHaveLength(2)
+  })
+
+  it('quita el perfil «NeoForge» del instalador (usa la carpeta mods compartida)', async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), 'mc-'))
+    await writeFile(path.join(dir, 'launcher_profiles.json'), JSON.stringify({ profiles: { NeoForge: { name: 'NeoForge', lastVersionId: `neoforge-${CINE.neoforge}` }, forge: { lastVersionId: '1.20.1-forge-47.4.20' } } }))
+    await ensureNeoForgeProfile(dir)
+    const j = JSON.parse(await readFile(path.join(dir, 'launcher_profiles.json'), 'utf8'))
+    expect(Object.keys(j.profiles).sort()).toEqual(['forge', 'livearena-neoforge'])
   })
 })
 
