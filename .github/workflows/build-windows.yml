@@ -47,8 +47,29 @@ jobs:
           path: plugin/target/LiveArena.jar
           if-no-files-found: error
 
+  mod:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compilar el mod LiveArena Cinemáticas (NeoForge + GeckoLib)
+        working-directory: mod
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon build
+          cp build/libs/LiveArena-Cinematicas-*.jar LiveArena-Cinematicas.jar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LiveArena-mod
+          path: mod/LiveArena-Cinematicas.jar
+          if-no-files-found: error
+
   windows:
-    needs: [test, plugin]
+    needs: [test, plugin, mod]
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -62,17 +83,24 @@ jobs:
         with:
           name: LiveArena-plugin
           path: apps/server/assets/plugins
+      - uses: actions/download-artifact@v4
+        with:
+          name: LiveArena-mod
+          path: apps/server/assets/mods
       - run: pnpm build
       - name: Empaquetar instalador y portable
         run: pnpm --filter @livearena/desktop dist
-      - name: Añadir el plugin junto a los .exe
-        run: Copy-Item apps/server/assets/plugins/LiveArena.jar apps/desktop/release/
+      - name: Añadir el plugin y el mod junto a los .exe
+        run: |
+          Copy-Item apps/server/assets/plugins/LiveArena.jar apps/desktop/release/
+          Copy-Item apps/server/assets/mods/LiveArena-Cinematicas.jar apps/desktop/release/
       - uses: actions/upload-artifact@v4
         with:
           name: LiveArena-Windows
           path: |
             apps/desktop/release/*.exe
             apps/desktop/release/LiveArena.jar
+            apps/desktop/release/LiveArena-Cinematicas.jar
           if-no-files-found: error
       - name: Publicar release (solo en tags v*)
         if: startsWith(github.ref, 'refs/tags/v')
@@ -81,3 +109,4 @@ jobs:
           files: |
             apps/desktop/release/*.exe
             apps/desktop/release/LiveArena.jar
+            apps/desktop/release/LiveArena-Cinematicas.jar

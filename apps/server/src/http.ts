@@ -5,6 +5,7 @@ import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest }
 import fastifyStatic from '@fastify/static'
 import { z } from 'zod'
 import { KitSchema, OverlayStyleSchema } from '@livearena/shared'
+import { CineSettingsSchema, readCineSettings, writeCineSettings } from './cine-settings.js'
 import { ITEMS } from './items.js'
 import { ConfigSchema, paths } from './config.js'
 import { SceneSchema } from '@livearena/shared'
@@ -356,6 +357,29 @@ export async function buildHttp(app: App): Promise<FastifyInstance> {
     const { command } = parse(z.object({ command: z.string().min(1).max(2000) }), req.body)
     const response = await app.mc.link.enqueue(command, 1000)
     return { response }
+  })
+  /* ---------------- habilidades cinemáticas (plugin + mod NeoForge/GeckoLib) ---------------- */
+  f.get('/api/cine/status', async () => app.cine.status())
+  f.post('/api/cine/install', async () => app.cine.install())
+  f.post('/api/cine/uninstall', async () => app.cine.uninstall())
+  f.post('/api/cine/run', async (req) => {
+    const { id, viewer } = parse(z.object({ id: z.string().regex(/^[a-z_]+$/), viewer: z.string().max(40).default('Prueba') }), req.body)
+    const player = app.mc.player
+    if (!player) throw new Error('Configura tu nick de Minecraft.')
+    const response = await app.mc.link.enqueue(`habilidad ${id} ${player} - ${viewer.replace(/\s+/g, '_') || 'Prueba'}`, 1000)
+    return { response }
+  })
+  f.post('/api/cine/stop', async () => {
+    const player = app.mc.player
+    if (!player) throw new Error('Configura tu nick de Minecraft.')
+    return { response: await app.mc.link.enqueue(`habilidad detener ${player}`, 1000) }
+  })
+  f.get('/api/cine/settings', async () => readCineSettings(app.cfg.get().minecraft.server.folder))
+  f.put('/api/cine/settings', async (req) => {
+    const body = parse(CineSettingsSchema.partial(), req.body)
+    const out = await writeCineSettings(app.cfg.get().minecraft.server.folder, body)
+    await app.mc.link.enqueue('habilidad recargar', 500).catch(() => undefined)
+    return out
   })
   f.post('/api/minecraft/kit/give', async () => ({ commands: await app.mc.giveKit(app.activeProfile.kit) }))
   f.get('/api/minecraft/java', async () => app.mc.javaInfo())

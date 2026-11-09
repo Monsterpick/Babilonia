@@ -17,6 +17,7 @@ export const paths = {
   db: path.join(DATA_DIR, 'estadisticas.db'),
   java: path.join(DATA_DIR, 'java'),
   textures: path.join(DATA_DIR, 'texturas'),
+  cache: path.join(DATA_DIR, 'cache'),
 }
 
 export const ConfigSchema = z.object({
@@ -36,6 +37,8 @@ export const ConfigSchema = z.object({
       port: z.number().int().default(25575),
       password: z.string().default(''),
       version: z.string().default('1.20.1'),
+      /** Carpeta .minecraft del juego (vacío = autodetectar). La usa el instalador del mod cinemático. */
+      clientDir: z.string().default(''),
       autoConnect: z.boolean().default(true),
       commandsPerSecond: z.number().min(1).max(100).default(20),
       /** 0 = sin límite. Mobs invocados por LiveArena vivos a la vez. */

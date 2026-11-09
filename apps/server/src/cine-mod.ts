@@ -1,0 +1,190 @@
+import { spawn } from 'node:child_process'
+import { promises as fs } from 'node:fs'
+import path from 'node:path'
+import { downloadFile, findJavaFor, minecraftDirs } from '@livearena/minecraft'
+import type { MinecraftService } from './minecraft-service.js'
+import type { ConfigStore } from './config.js'
+import type { Logger } from './logger.js'
+import { ASSETS_DIR } from './resources.js'
+import { paths } from './config.js'
+
+/** Mod cliente «LiveArena Cinemáticas» (compilado en CI). Puede no existir en desarrollo. */
+export const BUNDLED_MOD = path.join(ASSETS_DIR, 'mods', 'LiveArena-Cinematicas.jar')
+export const MOD_FILE = 'LiveArena-Cinematicas.jar'
+
+/** Versiones probadas juntas: Minecraft 26.1.2 + NeoForge + GeckoLib. */
+export const CINE = {
+  minecraft: '26.1.2',
+  neoforge: '26.1.2.126',
+  installer: {
+    url: 'https://maven.neoforged.net/releases/net/neoforged/neoforge/26.1.2.126/neoforge-26.1.2.126-installer.jar',
+    sha1: 'b1c3eec3468ae94f61d79ea716131eff1d8dbbf5',
+    fileName: 'neoforge-26.1.2.126-installer.jar',
+  },
+  geckolib: {
+    url: 'https://cdn.modrinth.com/data/8BmcQJ2H/versions/xfVfPcoC/geckolib-neoforge-26.1.2-5.5.2.jar',
+    sha1: '2108a1175f8edb52f30a9b3d6dd42eccf045623f',
+    fileName: 'geckolib-neoforge-26.1.2-5.5.2.jar',
+  },
+}
+
+export interface CineModStatus {
+  /** Carpeta .minecraft detectada (null si no hay Minecraft instalado). */
+  mcDir: string | null
+  launcher: boolean
+  neoforge: boolean
+  mod: 'missing' | 'installed' | 'outdated'
+  geckolib: boolean
+  bundled: boolean
+  /** ¿El jugador conectado tiene el mod cargado? (null = no se sabe: servidor apagado o sin jugador). */
+  inGame: boolean | null
+  busy: { step: string; message: string; pct?: number } | null
+  error: string | null
+  versions: typeof CINE
+}
+
+const exists = (p: string) => fs.access(p).then(() => true, () => false)
+
+/**
+ * Instala la parte de cliente de las cinemáticas en el Minecraft del streamer:
+ * 1) NeoForge (instalador oficial en modo consola: crea el perfil «NeoForge» en el launcher),
+ * 2) GeckoLib y el mod LiveArena en .minecraft/mods.
+ * El servidor sigue siendo Paper (plugins y s2e incluidos): el mod se conecta por un canal opcional.
+ */
+export class CineModService {
+  private busy: CineModStatus['busy'] = null
+  private error: string | null = null
+  private inGameCache = { at: 0, value: null as boolean | null }
+
+  constructor(
+    private readonly cfg: ConfigStore,
+    private readonly mc: MinecraftService,
+    private readonly log: Logger,
+    private readonly onChange: () => void,
+  ) {}
+
+  async mcDir(): Promise<string | null> {
+    const custom = this.cfg.get().minecraft.clientDir
+    if (custom && (await exists(custom))) return custom
+    for (const d of minecraftDirs()) if (await exists(path.join(d, 'launcher_profiles.json'))) return d
+    for (const d of minecraftDirs()) if (await exists(d)) return d
+    return null
+  }
+
+  private async sameFile(a: string, b: string): Promise<boolean> {
+    const [x, y] = await Promise.all([fs.readFile(a).catch(() => null), fs.readFile(b).catch(() => null)])
+    return !!x && !!y && x.equals(y)
+  }
+
+  async inGame(): Promise<boolean | null> {
+    if (Date.now() - this.inGameCache.at < 5000) return this.inGameCache.value
+    let value: boolean | null = null
+    const player = this.mc.player
+    if (player && this.mc.link.isConnected) {
+      const r = await this.mc.link.sendNow(`habilidad mod ${player}`).catch(() => '')
+      if (/MOD \S+ si/i.test(r)) value = true
+      else if (/MOD \S+ no/i.test(r)) value = false
+    }
+    this.inGameCache = { at: Date.now(), value }
+    return value
+  }
+
+  async status(): Promise<CineModStatus> {
+    const dir = await this.mcDir()
+    const mods = dir ? path.join(dir, 'mods') : null
+    const bundled = await exists(BUNDLED_MOD)
+    let mod: CineModStatus['mod'] = 'missing'
+    if (mods && (await exists(path.join(mods, MOD_FILE)))) mod = bundled && !(await this.sameFile(BUNDLED_MOD, path.join(mods, MOD_FILE))) ? 'outdated' : 'installed'
+    return {
+      mcDir: dir,
+      launcher: !!dir && (await exists(path.join(dir, 'launcher_profiles.json'))),
+      neoforge: !!dir && (await exists(path.join(dir, 'versions', `neoforge-${CINE.neoforge}`))),
+      mod,
+      geckolib: !!mods && (await exists(path.join(mods, CINE.geckolib.fileName))),
+      bundled,
+      inGame: await this.inGame(),
+      busy: this.busy,
+      error: this.error,
+      versions: CINE,
+    }
+  }
+
+  private step(step: string, message: string, pct?: number) {
+    this.busy = { step, message, pct }
+    this.onChange()
+  }
+
+  private async java(): Promise<string> {
+    const configured = this.cfg.get().minecraft.server.java
+    if (configured && (await exists(configured))) return configured
+    const found = await findJavaFor(CINE.minecraft)
+    if (found.java) return found.java.path
+    this.step('java', 'Instalando Java 25…')
+    return this.mc.installJava(CINE.minecraft)
+  }
+
+  private run(java: string, args: string[], cwd: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const p = spawn(java, args, { cwd, windowsHide: true })
+      let out = ''
+      p.stdout.on('data', (d) => (out += d.toString()))
+      p.stderr.on('data', (d) => (out += d.toString()))
+      p.on('error', reject)
+      p.on('close', (code) => (code === 0 ? resolve(out) : reject(new Error(out.split('\n').slice(-6).join('\n') || `código ${code}`))))
+    })
+  }
+
+  /** Instala (o actualiza) todo lo necesario. Se puede repetir sin problema. */
+  async install(): Promise<CineModStatus> {
+    if (this.busy) throw new Error('Ya hay una instalación en marcha.')
+    this.error = null
+    try {
+      const dir = await this.mcDir()
+      if (!dir) throw new Error('No encuentro tu carpeta .minecraft. Abre el launcher oficial de Minecraft una vez y vuelve a intentarlo.')
+      if (!(await exists(path.join(dir, 'launcher_profiles.json'))))
+        throw new Error('Tu carpeta .minecraft no tiene launcher_profiles.json. Abre el launcher oficial de Minecraft una vez y vuelve a intentarlo.')
+      if (!(await exists(BUNDLED_MOD))) throw new Error('Esta copia de LiveArena no incluye el mod (solo viene en la versión compilada para Windows).')
+      const cache = paths.cache
+      await fs.mkdir(cache, { recursive: true })
+
+      if (!(await exists(path.join(dir, 'versions', `neoforge-${CINE.neoforge}`)))) {
+        const java = await this.java()
+        const inst = path.join(cache, CINE.installer.fileName)
+        if (!(await exists(inst))) await downloadFile(CINE.installer, inst, (pct) => this.step('neoforge', `Descargando NeoForge ${CINE.neoforge}… ${pct}%`, pct))
+        this.step('neoforge', `Instalando NeoForge ${CINE.neoforge} en tu Minecraft (descarga Minecraft ${CINE.minecraft} si hace falta)…`)
+        await this.run(java, ['-jar', inst, '--install-client', dir], cache)
+        this.log.info('cinematicas', `NeoForge ${CINE.neoforge} instalado en ${dir}`)
+      }
+
+      const mods = path.join(dir, 'mods')
+      await fs.mkdir(mods, { recursive: true })
+      // Quita versiones viejas de GeckoLib para 26.1.2 y del mod.
+      for (const f of await fs.readdir(mods)) {
+        if (/^geckolib-neoforge-26\.1\.2-.*\.jar$/i.test(f) && f !== CINE.geckolib.fileName) await fs.rm(path.join(mods, f), { force: true })
+        if (/^LiveArena-Cinematicas.*\.jar$/i.test(f) && f !== MOD_FILE) await fs.rm(path.join(mods, f), { force: true })
+      }
+      const gecko = path.join(mods, CINE.geckolib.fileName)
+      if (!(await exists(gecko))) await downloadFile(CINE.geckolib, gecko, (pct) => this.step('geckolib', `Descargando GeckoLib… ${pct}%`, pct))
+      this.step('mod', 'Copiando el mod LiveArena Cinemáticas…')
+      await fs.copyFile(BUNDLED_MOD, path.join(mods, MOD_FILE))
+      this.log.info('cinematicas', `Mod LiveArena Cinemáticas y GeckoLib copiados en ${mods}`)
+    } catch (err) {
+      this.error = (err as Error).message
+      this.log.warn('cinematicas', this.error)
+    } finally {
+      this.busy = null
+      this.onChange()
+    }
+    return this.status()
+  }
+
+  /** Quita el mod y GeckoLib de .minecraft/mods (NeoForge se queda; no molesta al Minecraft normal). */
+  async uninstall(): Promise<CineModStatus> {
+    const dir = await this.mcDir()
+    if (dir) {
+      await fs.rm(path.join(dir, 'mods', MOD_FILE), { force: true })
+      await fs.rm(path.join(dir, 'mods', CINE.geckolib.fileName), { force: true })
+    }
+    return this.status()
+  }
+}
