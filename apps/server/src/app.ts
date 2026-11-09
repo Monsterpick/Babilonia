@@ -51,6 +51,8 @@ export class App {
   private profile!: Profile
   private activity: ActivityItem[] = []
   private paused = false
+  /** Hasta cuándo los eventos simulados son «solo overlays» (no ejecutan nada en Minecraft). */
+  private simDryUntil = 0
   private timer = { running: false, startedAt: 0, accumulatedMs: 0, ended: false }
   private lastBad: { user: NonNullable<LiveEvent['user']>; gift?: ActionMessage['gift']; actionName: string; color?: string; ts: number } | null = null
   private resetSave: { state: 'waiting' | 'saved' | 'reset'; by: string; avatar?: string; needed: number; saved: number; endsAt: number; clearAt?: number } | null = null
@@ -143,6 +145,11 @@ export class App {
     this.combos.receive(g)
   }
 
+  /** Los próximos eventos simulados (durante `ms`) solo afectan a los overlays. */
+  simulateDry(ms = 6000): void {
+    this.simDryUntil = Date.now() + ms
+  }
+
   onEvent(ev: LiveEvent): void {
     if (!this.dedup.accept(ev.id)) return
     const ok = LiveEventSchema.safeParse(ev)
@@ -166,6 +173,7 @@ export class App {
     if (changed.leaderboard || changed.best) this.publishStats(true)
     else if (changed.likes) this.publishStats(false)
 
+    if ((ev as { simulated?: boolean }).simulated && Date.now() < this.simDryUntil) (ev as { dry?: boolean }).dry = true
     const res = this.paused ? { jobs: [], skipped: [], trimmed: 0 } : this.engine.handle(ev)
     if (res.trimmed) this.log.warn('reglas', `Se recortaron ${res.trimmed} repeticiones (límite por evento)`)
     for (const j of res.jobs) this.jobs.push(j, j.priority)
@@ -297,6 +305,8 @@ export class App {
     if (action.showInOverlay) this.hub.action({ ...base, kind: 'overlay.card', params: { count: job.repetitions, alignment: action.alignment, trigger: rule.trigger.type, meta: job.meta } })
     if (job.playSound && rule.sound) this.hub.action({ ...base, kind: 'sound', params: { file: rule.sound.file, volume: rule.sound.volume } })
 
+    // Prueba de overlays: se ven las tarjetas y sonidos, pero no se ejecuta nada en Minecraft.
+    if ((event as { dry?: boolean }).dry) return
     const mcCfg = this.cfg.get().minecraft
     const player = mcCfg.player
     if (action.alignment === 'bad' && user) this.lastBad = { user, gift: base.gift, actionName: action.name, color: action.color, ts: Date.now() }

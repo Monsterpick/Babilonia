@@ -268,6 +268,7 @@ export async function buildHttp(app: App): Promise<FastifyInstance> {
 
   /* ------------------------------- simulador ------------------------------- */
   f.post('/api/simulate', async (req) => {
+    if ((req.body as { dry?: boolean } | null)?.dry) app.simulateDry()
     sim.run(parse(SimRequestSchema, req.body))
     return { ok: true }
   })

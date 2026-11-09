@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { Copy, ExternalLink, Minus, Pause, Play, Plus, RotateCcw, Sparkles } from 'lucide-react'
+import { Copy, ExternalLink, FlaskConical, Minus, Pause, Play, Plus, RotateCcw, Search, Sparkles, Trash2, X } from 'lucide-react'
 import { api, overlayUrl } from '../lib/api'
 import { useLiveState } from '../lib/live'
 import { Check, Modal, Seg } from '../components/ui'
 import { toast } from '../components/Toast'
 import { GiftPicker } from '../components/GiftPicker'
+import { useGifts } from '../lib/catalog'
 
 type Cfg = Record<string, any>
 
@@ -466,74 +467,231 @@ function topSettings(c: Cfg, set: (p: Cfg) => void) {
   )
 }
 
-/* ------------------------------ tarjeta de overlay ------------------------------ */
+/* ------------------------------ vista previa ------------------------------ */
 
-function Preview({ id, w, h, nonce, wide, example }: { id: string; w: number; h: number; nonce: number; wide?: boolean; example: boolean }) {
+type Bg = 'cuadros' | 'juego' | 'verde' | 'oscuro' | 'claro'
+const BGS: { v: Bg; l: string; css: string }[] = [
+  { v: 'cuadros', l: 'Transparente', css: 'repeating-conic-gradient(#171723 0 25%, #0f0f18 0 50%) 0 0/22px 22px' },
+  { v: 'juego', l: 'Minecraft', css: 'linear-gradient(180deg,#78a7ff 0%,#a9c8ff 55%,#6aa84f 55.5%,#4f7f37 72%,#7a5a3a 72.5%,#5e4329 100%)' },
+  { v: 'verde', l: 'Croma', css: '#00b140' },
+  { v: 'oscuro', l: 'Oscuro', css: '#0b0b12' },
+  { v: 'claro', l: 'Claro', css: '#e8e8ef' },
+]
+const bgCss = (b: Bg) => BGS.find((x) => x.v === b)?.css ?? BGS[0]!.css
+
+function useBg(): [Bg, (b: Bg) => void] {
+  const [bg, setBg] = useState<Bg>(() => {
+    try {
+      return (localStorage.getItem('la-ov-bg') as Bg) || 'cuadros'
+    } catch {
+      return 'cuadros'
+    }
+  })
+  return [
+    bg,
+    (b) => {
+      setBg(b)
+      try {
+        localStorage.setItem('la-ov-bg', b)
+      } catch {
+        /* sin almacenamiento */
+      }
+    },
+  ]
+}
+
+/**
+ * Muestra el overlay ENTERO dentro de la caja (escala «contain»: nunca se recorta), sobre el fondo elegido.
+ * Mientras está vacío se ve el marco del tamaño real para saber dónde irá.
+ */
+function Stage({ id, w, h, nonce, example, bg, height, maxScale = 2 }: { id: string; w: number; h: number; nonce: number; example: boolean; bg: Bg; height: number | string; maxScale?: number }) {
   const box = useRef<HTMLDivElement>(null)
-  const [width, setWidth] = useState(380)
+  const [size, setSize] = useState({ w: 380, h: 200 })
   useEffect(() => {
     const el = box.current
     if (!el) return
-    const ro = new ResizeObserver(() => setWidth(el.clientWidth))
+    const ro = new ResizeObserver(() => setSize({ w: el.clientWidth, h: el.clientHeight }))
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
-  const maxH = wide ? 520 : 236
-  // Escala para que se vea grande: encaja al ancho (permite ampliar un poco) y limita la altura.
-  const scale = Math.min(1.6, (width - 8) / w, maxH / h)
-  const boxH = Math.min(maxH, Math.round(h * scale) + 16)
+  const scale = Math.max(0.05, Math.min(maxScale, (size.w - 24) / w, (size.h - 24) / h))
   return (
-    <div ref={box} className="relative grid place-items-center overflow-hidden rounded-xl border border-white/5" style={{ height: boxH, background: 'repeating-conic-gradient(#14141f 0 25%, #0e0e17 0 50%) 0 0/22px 22px' }}>
-      <span className="absolute top-2 right-2 z-10 rounded-full bg-black/60 px-2 py-0.5 text-[10px] text-muted">{example ? 'ejemplo' : 'en vivo'}</span>
-      <div style={{ width: w * scale, height: h * scale, position: 'relative' }}>
+    <div ref={box} className="relative grid place-items-center overflow-hidden rounded-xl border border-white/5" style={{ height, background: bgCss(bg) }}>
+      <div style={{ width: w * scale, height: h * scale, position: 'relative' }} className="rounded-[3px] outline outline-1 outline-dashed outline-white/20">
+        {!example && (
+          <span className="pointer-events-none absolute bottom-1 left-1.5 text-[10px] font-semibold whitespace-nowrap text-white/30">vacío hasta el primer evento</span>
+        )}
         <iframe key={`${nonce}-${example}`} title={id} src={overlayUrl(id, example ? { demo: '1' } : {})} style={{ position: 'absolute', top: 0, left: 0, width: w, height: h, transform: `scale(${scale})`, transformOrigin: 'top left', border: 0, background: 'transparent', pointerEvents: 'none' }} />
       </div>
     </div>
   )
 }
 
-function OverlayCard({ d, cfg, set }: { d: Def; cfg: Cfg; set: (p: Cfg) => void }) {
+/* ---------------------------------- tarjeta ---------------------------------- */
+
+function OverlayCard({ d, bg, onTest }: { d: Def; bg: Bg; onTest: () => void }) {
   const url = overlayUrl(d.id)
-  const [nonce, setNonce] = useState(0)
-  const [example, setExample] = useState(!!d.demoFirst)
-  const Tools = d.tools
+  const [example, setExample] = useState(false)
   return (
-    <div className={`card flex flex-col gap-3 p-4 ${d.wide ? 'md:col-span-2 2xl:col-span-3' : ''}`}>
-      <div className="flex items-start gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="font-bold tracking-tight">{d.name}</div>
-          <div className="text-xs text-muted">{d.desc}</div>
+    <div className="card group flex flex-col overflow-hidden">
+      <div className="relative">
+        <Stage id={d.id} w={d.w} h={d.h} nonce={0} example={example} bg={bg} height={190} maxScale={1.4} />
+        <button
+          className={`absolute top-2 left-2 rounded-full px-2 py-0.5 text-[10px] font-bold backdrop-blur ${example ? 'bg-accent/80 text-white' : 'bg-black/60 text-muted hover:text-white'}`}
+          onClick={() => setExample((e) => !e)}
+          title="Ver con datos de ejemplo (solo aquí: tu overlay real sigue vacío)"
+        >
+          <Sparkles size={10} className="mr-1 inline" />
+          {example ? 'Ejemplo' : 'En vivo'}
+        </button>
+        <span className="absolute top-2 right-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] text-muted">
+          {d.w}×{d.h}
+        </span>
+      </div>
+      <div className="flex flex-1 flex-col gap-2 p-3.5">
+        <div className="font-bold tracking-tight">{d.name}</div>
+        <div className="line-clamp-2 min-h-[2rem] text-xs text-muted">{d.desc}</div>
+        <div className="mt-auto flex items-center gap-1.5">
+          <button className="btn-accent flex-1 justify-center" onClick={onTest}>
+            <FlaskConical size={14} /> Probar y ajustar
+          </button>
+          <button className="btn !px-2.5" title="Copiar enlace para OBS / TikTok LIVE Studio" onClick={() => copy(url)}>
+            <Copy size={14} />
+          </button>
+          <a className="btn !px-2.5" href={url} target="_blank" rel="noreferrer" title="Abrir">
+            <ExternalLink size={14} />
+          </a>
         </div>
-        <button className={`btn !px-2.5 ${example ? 'border-accent/60 text-accent-2' : ''}`} title="Ver con datos de ejemplo" onClick={() => setExample((e) => !e)}>
-          <Sparkles size={13} /> Ejemplo
-        </button>
-        <button className="btn !px-2.5" title="Recargar la vista previa" onClick={() => setNonce((n) => n + 1)}>
-          <RotateCcw size={13} />
-        </button>
       </div>
-      {!example && <p className="-mt-1 text-[11px] text-muted">Se ve vacío hasta que recibas la donación o lo cambies con los controles. Pulsa «Ejemplo» para ver cómo queda.</p>}
-      <div className={d.wide ? 'mx-auto w-full max-w-3xl' : ''}>
-        <Preview id={d.id} w={d.w} h={d.h} nonce={nonce} wide={d.wide} example={example} />
-      </div>
-      {Tools && <Tools />}
-      {d.settings && <div className="space-y-2.5 rounded-xl border border-white/5 bg-black/20 p-3">{d.settings(cfg, set)}</div>}
-      <div className="mt-auto flex items-center gap-1.5 rounded-full border border-line bg-black/30 p-1 pl-3">
-        <code className="min-w-0 flex-1 truncate text-[11px] text-[#c4b5fd]">{url}</code>
-        <button className="btn-accent !px-3" onClick={() => copy(url)}>
-          <Copy size={13} /> Copiar
-        </button>
-        <a className="btn !px-3" href={url} target="_blank" rel="noreferrer" title="Abrir">
-          <ExternalLink size={13} />
-        </a>
-      </div>
-      <div className="text-[11px] text-muted">Fuente de navegador de {d.w} × {d.h}</div>
     </div>
   )
 }
 
+/* ---------------------------------- probador ---------------------------------- */
+
+function SimButton({ label, emoji, body, hint }: { label: string; emoji: string; body: Record<string, unknown>; hint?: string }) {
+  return (
+    <button className="flex items-center gap-2 rounded-xl border border-line bg-black/20 px-3 py-2 text-left text-sm transition hover:border-accent/60 hover:bg-accent/10" title={hint} onClick={() => void post('/api/simulate', { ...body, dry: true })}>
+      <span className="text-lg">{emoji}</span>
+      <span className="font-semibold">{label}</span>
+    </button>
+  )
+}
+
+function Tester({ d, cfg, set, onClose, bg, setBg }: { d: Def; cfg: Cfg; set: (p: Cfg) => void; onClose: () => void; bg: Bg; setBg: (b: Bg) => void }) {
+  const url = overlayUrl(d.id)
+  const [nonce, setNonce] = useState(0)
+  const [example, setExample] = useState(false)
+  const gifts = useGifts()
+  const cheap = gifts.find((g) => /^rose$/i.test(g.name)) ?? gifts.find((g) => g.diamonds === 1) ?? gifts[0]
+  const big = [...gifts].sort((a, b) => b.diamonds - a.diamonds).find((g) => g.diamonds <= 30000) ?? gifts[gifts.length - 1]
+  const mid = gifts.find((g) => g.diamonds >= 99 && g.diamonds <= 500) ?? big
+  const Tools = d.tools
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', k)
+    return () => window.removeEventListener('keydown', k)
+  }, [onClose])
+  return (
+    <div className="fixed inset-0 z-50 flex bg-black/80 p-4 backdrop-blur-sm md:p-6" onClick={onClose}>
+      <div className="mx-auto grid h-full w-full max-w-[1600px] gap-4 overflow-hidden rounded-2xl border border-line bg-bg p-4 lg:grid-cols-[minmax(0,1fr)_400px]" onClick={(e) => e.stopPropagation()}>
+        <div className="flex min-h-0 flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="mr-auto min-w-0">
+              <div className="text-lg font-extrabold tracking-tight">{d.name}</div>
+              <div className="text-xs text-muted">
+                Fuente de navegador de {d.w} × {d.h} · Esc para cerrar
+              </div>
+            </div>
+            <Seg
+              value={example ? 'ej' : 'vivo'}
+              options={[
+                { v: 'vivo', l: 'En vivo' },
+                { v: 'ej', l: 'Ejemplo' },
+              ]}
+              onChange={(v) => setExample(v === 'ej')}
+            />
+            <select className="input !w-48 !py-1.5" value={bg} onChange={(e) => setBg(e.target.value as Bg)} title="Fondo de prueba">
+              {BGS.map((b) => (
+                <option key={b.v} value={b.v}>
+                  Fondo: {b.l}
+                </option>
+              ))}
+            </select>
+            <button className="btn" title="Recargar" onClick={() => setNonce((n) => n + 1)}>
+              <RotateCcw size={14} />
+            </button>
+            <button className="btn" onClick={onClose}>
+              <X size={14} />
+            </button>
+          </div>
+          <div className="min-h-0 flex-1">
+            <Stage id={d.id} w={d.w} h={d.h} nonce={nonce} example={example} bg={bg} height="100%" />
+          </div>
+          <div className="rounded-xl border border-white/5 bg-black/20 p-3">
+            <div className="mb-2 flex items-center gap-2 text-sm">
+              <b>Simular eventos</b>
+              <span className="mr-auto text-xs text-muted">Solo se ven en los overlays: no pasa nada en Minecraft.</span>
+              <button className="btn !py-1 text-xs" onClick={() => void post('/api/overlays/reset', { what: 'session' })} title="Pone a cero rankings, metas y regalos de este live">
+                <Trash2 size={12} /> Borrar pruebas
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-8">
+              {cheap && <SimButton emoji="🌹" label={cheap.name} body={{ type: 'gift', name: cheap.name, count: 1 }} />}
+              {cheap && <SimButton emoji="🔥" label={`Racha ×15`} body={{ type: 'gift', name: cheap.name, count: 15 }} />}
+              {mid && <SimButton emoji="🎁" label={mid.name} body={{ type: 'gift', name: mid.name, count: 1, streak: false }} />}
+              {big && <SimButton emoji="🦁" label={big.name} body={{ type: 'gift', name: big.name, count: 1, streak: false }} hint="El regalo más caro del catálogo" />}
+              <SimButton emoji="➕" label="Seguidor" body={{ type: 'follow' }} />
+              <SimButton emoji="❤️" label="200 likes" body={{ type: 'like', count: 200 }} />
+              <SimButton emoji="💬" label="Comentario" body={{ type: 'chat', text: '¡Hola! Saludos desde el chat' }} />
+              <SimButton emoji="🌪️" label="Ráfaga" body={{ type: 'burst', events: 40, seconds: 3 }} />
+            </div>
+          </div>
+        </div>
+        <div className="flex min-h-0 flex-col gap-3 overflow-y-auto pr-1">
+          <div className="rounded-xl border border-white/5 bg-black/20 p-3 text-sm text-muted">{d.desc}</div>
+          {Tools && (
+            <div className="rounded-xl border border-white/5 bg-black/20 p-3">
+              <span className="label">Controles</span>
+              <Tools />
+            </div>
+          )}
+          {d.settings && (
+            <div className="space-y-2.5 rounded-xl border border-white/5 bg-black/20 p-3">
+              <span className="label">Ajustes</span>
+              {d.settings(cfg, set)}
+            </div>
+          )}
+          <div className="mt-auto space-y-2 rounded-xl border border-accent/30 bg-accent/5 p-3">
+            <span className="label">Ponerlo en OBS / TikTok LIVE Studio</span>
+            <div className="flex items-center gap-1.5 rounded-full border border-line bg-black/30 p-1 pl-3">
+              <code className="min-w-0 flex-1 truncate text-[11px] text-[#c4b5fd]">{url}</code>
+              <button className="btn-accent !px-3" onClick={() => copy(url)}>
+                <Copy size={13} /> Copiar
+              </button>
+              <a className="btn !px-3" href={url} target="_blank" rel="noreferrer" title="Abrir">
+                <ExternalLink size={13} />
+              </a>
+            </div>
+            <p className="text-[11px] text-muted">
+              Añade una «Fuente de navegador» de <b className="text-white">{d.w} × {d.h}</b> con este enlace. Fondo transparente: no hace falta croma.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ---------------------------------- catálogo ---------------------------------- */
+
 export function OverlayCatalog() {
   const live = useLiveState<Cfg>('overlaycfg')
   const [cfg, setCfg] = useState<Cfg>({})
+  const [cat, setCat] = useState('Todos')
+  const [q, setQ] = useState('')
+  const [testing, setTesting] = useState<Def | null>(null)
+  const [bg, setBg] = useBg()
   useEffect(() => {
     if (live) setCfg(live)
   }, [live])
@@ -542,27 +700,55 @@ export function OverlayCatalog() {
     setCfg((c) => merge(c, patch))
     api('PUT', '/api/overlays/settings', patch).catch((e) => toast((e as Error).message, 'error'))
   }
+  const norm = (t: string) => t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+  const sections = SECTIONS.filter((s) => cat === 'Todos' || s.title === cat)
+    .map((s) => ({ ...s, items: s.items.filter((d) => !q || norm(`${d.name} ${d.desc}`).includes(norm(q))) }))
+    .filter((s) => s.items.length)
+  const total = SECTIONS.reduce((n, s) => n + s.items.length, 0)
   return (
-    <div className="space-y-8 px-8 pb-10">
-      <label className="flex items-center gap-2.5 rounded-xl border border-white/5 bg-black/20 px-4 py-2.5 text-sm">
+    <div className="px-8 pb-10">
+      <div className="sticky top-0 z-20 -mx-8 mb-5 flex flex-wrap items-center gap-2 border-b border-white/5 bg-bg/90 px-8 py-3 backdrop-blur">
+        {['Todos', ...SECTIONS.map((s) => s.title)].map((c) => (
+          <button key={c} onClick={() => setCat(c)} className={`rounded-full px-3.5 py-1.5 text-sm font-semibold transition ${cat === c ? 'bg-gradient-to-r from-accent to-hot text-white' : 'border border-line text-muted hover:text-white'}`}>
+            {c}
+            <span className="ml-1.5 text-[11px] opacity-70">{c === 'Todos' ? total : SECTIONS.find((s) => s.title === c)?.items.length}</span>
+          </button>
+        ))}
+        <div className="relative ml-auto">
+          <Search size={14} className="absolute top-2.5 left-3 text-muted" />
+          <input className="input !w-56 !py-1.5 pl-8" placeholder="Buscar overlay…" value={q} onChange={(e) => setQ(e.target.value)} />
+        </div>
+        <select className="input !w-48 !py-1.5" value={bg} onChange={(e) => setBg(e.target.value as Bg)} title="Fondo de las vistas previas">
+          {BGS.map((b) => (
+            <option key={b.v} value={b.v}>
+              Fondo: {b.l}
+            </option>
+          ))}
+        </select>
+      </div>
+      <label className="mb-6 flex items-center gap-2.5 rounded-xl border border-white/5 bg-black/20 px-4 py-2.5 text-sm">
         <input type="checkbox" className="h-4 w-4 accent-[var(--color-hot)]" checked={cfg.resetOnNewLive ?? true} onChange={(e) => set({ resetOnNewLive: e.target.checked })} />
         <span>
           <b>Reiniciar regalos y rankings en cada live nuevo</b> <span className="text-muted">— el «Mejor regalo» histórico no se borra</span>
         </span>
       </label>
-      {SECTIONS.map((s) => (
-        <section key={s.title}>
-          <div className="mb-3 flex items-baseline gap-3">
-            <h2 className="text-xl font-extrabold tracking-tight">{s.title}</h2>
-            <span className="text-sm text-muted">{s.hint}</span>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-            {s.items.map((d) => (
-              <OverlayCard key={d.id} d={d} cfg={cfg} set={set} />
-            ))}
-          </div>
-        </section>
-      ))}
+      <div className="space-y-8">
+        {sections.map((s) => (
+          <section key={s.title}>
+            <div className="mb-3 flex items-baseline gap-3">
+              <h2 className="text-xl font-extrabold tracking-tight">{s.title}</h2>
+              <span className="text-sm text-muted">{s.hint}</span>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+              {s.items.map((d) => (
+                <OverlayCard key={d.id} d={d} bg={bg} onTest={() => setTesting(d)} />
+              ))}
+            </div>
+          </section>
+        ))}
+        {!sections.length && <p className="py-16 text-center text-muted">No hay overlays con «{q}».</p>}
+      </div>
+      {testing && <Tester d={testing} cfg={cfg} set={set} onClose={() => setTesting(null)} bg={bg} setBg={setBg} />}
     </div>
   )
 }
