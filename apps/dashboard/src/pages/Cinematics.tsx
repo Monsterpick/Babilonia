@@ -12,6 +12,7 @@ interface CineStatus {
   neoforge: boolean
   profile: boolean
   launcherOpen: boolean
+  vanilla: boolean
   mod: 'missing' | 'installed' | 'outdated'
   geckolib: boolean
   bundled: boolean
@@ -130,6 +131,12 @@ export function CinematicsPage() {
               <Step ok={!!s?.mcDir && !!s?.launcher} title="Minecraft encontrado" detail={s?.mcDir ?? 'No encuentro .minecraft: abre el launcher oficial una vez'} />
               <Step ok={!!s?.neoforge} title={`NeoForge ${s?.versions.neoforge ?? ''}`} detail="Instalado dentro de tu .minecraft" />
               <Step ok={!!s?.profile} warn={!!s?.neoforge && !s?.profile} title="Perfil «LiveArena · NeoForge» en el launcher" detail={s?.profile ? 'Búscalo en Instalaciones (marca «Con mods»)' : 'Pulsa «Instalar» con el launcher cerrado para crearlo'} />
+              <Step
+                ok={!!s?.vanilla}
+                warn={!!s?.neoforge && !s?.vanilla}
+                title={`Minecraft ${s?.versions.minecraft ?? ''} abierto una vez`}
+                detail={s?.vanilla ? 'Recursos del juego descargados' : `Antes de NeoForge, juega una vez Minecraft ${s?.versions.minecraft ?? ''} normal (crea una instalación con esa versión) y ciérralo`}
+              />
               <Step ok={!!s?.geckolib} title="GeckoLib" detail={s?.versions.geckolib.fileName} />
               <Step ok={s?.mod === 'installed'} warn={s?.mod === 'outdated'} title={s?.mod === 'outdated' ? 'Mod LiveArena (hay versión nueva)' : 'Mod LiveArena Cinemáticas'} detail={s?.bundled ? 'Incluido en esta versión de la app' : 'Esta copia no trae el mod (solo la versión de Windows)'} />
               <Step

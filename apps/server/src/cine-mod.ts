@@ -36,6 +36,8 @@ export interface CineModStatus {
   /** ¿Aparece el perfil de NeoForge en el launcher? */
   profile: boolean
   launcherOpen: boolean
+  /** ¿Minecraft 26.1.2 normal ya se abrió una vez (recursos/assets descargados)? */
+  vanilla: boolean
   mod: 'missing' | 'installed' | 'outdated'
   geckolib: boolean
   bundled: boolean
@@ -97,6 +99,20 @@ export async function ensureNeoForgeProfile(dir: string): Promise<string[]> {
 }
 
 /** ¿Está abierto el launcher de Minecraft? (si lo está, al cerrarse puede borrar el perfil nuevo). */
+/**
+ * El launcher nuevo falla con «Unable to prepare assets for download» si el perfil de NeoForge se abre antes
+ * de haber jugado una vez la versión normal: comprobamos que el índice de recursos ya esté descargado.
+ */
+export async function vanillaReady(dir: string): Promise<boolean> {
+  try {
+    const v = JSON.parse(await fs.readFile(path.join(dir, 'versions', CINE.minecraft, `${CINE.minecraft}.json`), 'utf8')) as { assetIndex?: { id?: string } }
+    const id = v.assetIndex?.id
+    return !!id && (await exists(path.join(dir, 'assets', 'indexes', `${id}.json`)))
+  } catch {
+    return false
+  }
+}
+
 export async function launcherRunning(): Promise<boolean> {
   if (process.platform !== 'win32') return false
   const out = await new Promise<string>((res) => {
@@ -164,6 +180,7 @@ export class CineModService {
       launcher: !!dir && ((await exists(path.join(dir, PROFILE_FILES[0]!))) || (await exists(path.join(dir, PROFILE_FILES[1]!)))),
       profile: !!dir && (await hasNeoForgeProfile(dir)),
       launcherOpen: await launcherRunning(),
+      vanilla: !!dir && (await vanillaReady(dir)),
       neoforge: !!dir && (await exists(path.join(dir, 'versions', `neoforge-${CINE.neoforge}`))),
       mod,
       geckolib: !!mods && (await exists(path.join(mods, CINE.geckolib.fileName))),

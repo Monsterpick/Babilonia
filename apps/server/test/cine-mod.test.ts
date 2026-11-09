@@ -1,8 +1,8 @@
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { CINE, ensureNeoForgeProfile, hasNeoForgeProfile } from '../src/cine-mod.js'
+import { CINE, ensureNeoForgeProfile, hasNeoForgeProfile, vanillaReady } from '../src/cine-mod.js'
 
 describe('perfil de NeoForge en el launcher', () => {
   it('lo añade también al archivo del launcher de Microsoft/Xbox sin tocar los demás perfiles', async () => {
@@ -22,5 +22,18 @@ describe('perfil de NeoForge en el launcher', () => {
     const dir = await mkdtemp(path.join(os.tmpdir(), 'mc-'))
     for (const f of ['launcher_profiles.json', 'launcher_profiles_microsoft_store.json']) await writeFile(path.join(dir, f), JSON.stringify({ profiles: {} }))
     expect(await ensureNeoForgeProfile(dir)).toHaveLength(2)
+  })
+})
+
+describe('Minecraft normal abierto una vez', () => {
+  it('lo detecta por el índice de recursos descargado', async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), 'mc-'))
+    expect(await vanillaReady(dir)).toBe(false)
+    await mkdir(path.join(dir, 'versions', CINE.minecraft), { recursive: true })
+    await writeFile(path.join(dir, 'versions', CINE.minecraft, `${CINE.minecraft}.json`), JSON.stringify({ assetIndex: { id: '30' } }))
+    expect(await vanillaReady(dir)).toBe(false)
+    await mkdir(path.join(dir, 'assets', 'indexes'), { recursive: true })
+    await writeFile(path.join(dir, 'assets', 'indexes', '30.json'), '{}')
+    expect(await vanillaReady(dir)).toBe(true)
   })
 })
