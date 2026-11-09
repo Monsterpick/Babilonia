@@ -81,15 +81,15 @@ img.save(tex_path(N))
 glow.save(tex_path(N, '_glowmask'))
 
 g = Geo(N, S, S, bounds=(14, 14, 3))
-g.bone('root', rotation=(0, 180, 0))  # el modelo mira a -Z; girado para que mire al frente del display
-base = g.bone('escalinata', 'root')
+g.bone('base', rotation=(0, 180, 0))  # hueso raíz del contrato; girado para que la puerta mire al frente del display
+base = g.bone('escalinata', 'base')
 for k, (w, h) in enumerate([(72, 4), (60, 4), (50, 4)]):
     y = k * 4
     g.cube(base, (-w / 2, y, -w / 2), (w, h, w), STONE if k % 2 == 0 else STONE2)
 # escalera frontal
 for k in range(6):
     g.cube(base, (-8, k * 2, -36 - 6 + k * 2), (16, 2, 4), STONE2)
-temple = g.bone('templo', 'root', pivot=(0, 12, 0))
+temple = g.bone('templo', 'base', pivot=(0, 12, 0))
 # suelo interior y paredes del fondo y laterales
 g.cube(temple, (-22, 12, -22), (44, 1, 44), STONE2)
 g.cube(temple, (-20, 13, 16), (40, 24, 3), WOOD)
@@ -132,7 +132,7 @@ for i, x in enumerate((-15, 15, -30, 30)):
     g.cube(lb, (x - 0.2, 31, z - 0.2), (0.4, 6, 0.4), DARK)
     g.cube(lb, (x - 2, 25, z - 2), (4, 6, 4), LANTERN)
 # montones de calaveras alrededor
-piles = g.bone('calaveras', 'root')
+piles = g.bone('calaveras', 'base')
 for k in range(26):
     a = rnd.uniform(0, 2 * math.pi)
     r = rnd.uniform(36, 46)
@@ -144,26 +144,37 @@ for k in range(26):
         g.cube(piles, (x - s / 2 + rnd.uniform(-2, 2), j * s * 0.8, z - s / 2 + rnd.uniform(-2, 2)), (s, s, s), {'north': SKULL, '*': BONE},
                rotation=(0, math.degrees(-a) + 90, rnd.uniform(-15, 15)), pivot=(x, 0, z))
 # torii de la entrada (puerta propia: dos postes y dos travesaños)
-gate = g.bone('puerta', 'root')
+gate = g.bone('puerta', 'base')
 for x in (-14, 14):
     g.cube(gate, (x - 2, 0, -58), (4, 34, 4), WOOD)
 g.cube(gate, (-22, 34, -59), (44, 4, 6), ROOF)
 g.cube(gate, (-18, 27, -57.5), (36, 3, 3), WOOD)
 g.cube(gate, (-3, 27, -58), (6, 7, 0.1), PAPER)
+# fauces: colmillos de hueso en el marco de la entrada del templo (se abren y cierran despacio)
+fa = g.bone('fauces', 'templo', pivot=(0, 37, -24))
+sup = g.bone('fauces_sup', 'fauces', pivot=(0, 37, -24))
+inf = g.bone('fauces_inf', 'fauces', pivot=(0, 13, -24))
+for k in range(9):
+    x = -14 + k * 3.5
+    h = 5 if k % 2 == 0 else 3.5
+    g.cube(sup, (x - 0.9, 37 - h, -25), (1.8, h, 1.8), BONE, rotation=(0, 45, 0), pivot=(x, 37, -24))
+    g.cube(inf, (x + 0.85, 13, -25), (1.6, h * 0.8, 1.6), BONE, rotation=(0, 45, 0), pivot=(x + 1.7, 13, -24))
 g.save()
 
 save_anims(N, {
-    'aparicion': anim(2.5, False, {
-        'root': {'position': {0: [0, -70, 0], 2.0: (0, 2, 0, 'easeOutCubic'), 2.5: (0, 0, 0, 'easeInOutSine')}},
+    'emerger': anim(2.5, False, {
+        'base': {'position': {0: [0, -70, 0], 2.0: (0, 2, 0, 'easeOutCubic'), 2.5: (0, 0, 0, 'easeInOutSine')}},
         'puerta': {'position': {0: [0, -40, 0], 1.2: [0, -40, 0], 2.5: (0, 0, 0, 'easeOutBack')}},
         'calaveras': {'scale': {0: [0.01, 0.01, 0.01], 1.5: [0.01, 0.01, 0.01], 2.5: (1, 1, 1, 'easeOutBack')}},
     }),
     'idle': anim(3.0, True, {
         **{f'farol{i}': {'rotation': {0: [0, 0, 0], 0.75 + i * 0.1: (8, 0, 5, 'easeInOutSine'), 1.5: (0, 0, 0, 'easeInOutSine'), 2.25: (-8, 0, -5, 'easeInOutSine'), 3.0: (0, 0, 0, 'easeInOutSine')}} for i in range(4)},
         'templo': {'scale': {0: [1, 1, 1], 1.5: (1.01, 1.01, 1.01, 'easeInOutSine'), 3.0: (1, 1, 1, 'easeInOutSine')}},
+        'fauces_sup': {'position': {0: [0, 0, 0], 1.5: (0, 2, 0, 'easeInOutSine'), 3.0: (0, 0, 0, 'easeInOutSine')}},
+        'fauces_inf': {'position': {0: [0, 0, 0], 1.5: (0, -1.5, 0, 'easeInOutSine'), 3.0: (0, 0, 0, 'easeInOutSine')}},
     }),
-    'desaparecer': anim(2.0, None, {
-        'root': {'position': {0: [0, 0, 0], 2.0: (0, -80, 0, 'easeInQuad')}},
+    'hundirse': anim(2.0, None, {
+        'base': {'position': {0: [0, 0, 0], 2.0: (0, -80, 0, 'easeInQuad')}},
     }),
 })
 print('santuario ok')

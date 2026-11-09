@@ -148,6 +148,7 @@ public final class CineClient {
                 case 8 -> CineModels.add(in.readInt(), in.readUTF(), in.readUTF(), in.readFloat());
                 case 9 -> CineModels.anim(in.readInt(), in.readUTF());
                 case 10 -> CineModels.remove(in.readInt());
+                case 11 -> CineModels.attach(in.readInt(), in.readInt(), in.readUTF(), in.readFloat(), in.readFloat(), in.readFloat());
                 default -> {}
             }
         } catch (IOException | RuntimeException ex) {

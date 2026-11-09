@@ -42,12 +42,22 @@ public final class ModelDisplayRenderer extends DisplayRenderer.ItemDisplayRende
             return;
         }
         poseStack.pushPose();
+        // Anclado al hueso de otro modelo: se dibuja en la posición del hueso (+ desplazamiento), no en la del display.
+        if (inst.attachParent >= 0) {
+            CineModels.Inst parent = CineModels.get(inst.attachParent);
+            net.minecraft.world.phys.Vec3 b = parent == null ? null : parent.boneWorld.get(inst.attachBone);
+            if (b != null) poseStack.translate(b.x + inst.ox - state.x, b.y + inst.oy - state.y, b.z + inst.oz - state.z);
+        }
         // Misma orientación que el display vanilla (FIXED) + su transformación interpolada (giro y escala del servidor).
         poseStack.mulPose(new Quaternionf().rotationYXZ((float) (-Math.PI / 180.0) * state.entityYRot, (float) (Math.PI / 180.0) * state.entityXRot, 0.0F));
         if (state.renderState != null) poseStack.mulPose(state.renderState.transformation().get(state.interpolationProgress));
         poseStack.scale(inst.scale, inst.scale, inst.scale);
         float partial = Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(false);
+        CineModels.current = inst;
+        CineModels.currentPose = new org.joml.Matrix4f(poseStack.last().pose());
+        CineModels.currentCam = camera.pos;
         CineModels.renderer(inst.model).performRenderPass(inst, null, poseStack, collector, camera, 0xF000F0, partial);
+        CineModels.current = null;
         poseStack.popPose();
     }
 }

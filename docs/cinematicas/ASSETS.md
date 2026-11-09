@@ -19,11 +19,31 @@ Los actuales los generan los scripts de `mod/tools/` (diseños propios).
 | `circulo_arcano` | juicio_arcano | `aparicion`, `idle`, `disparo`, `desaparecer` | translúcido + emisivo | 8 (principal), 2.2 (menores) |
 | `ojo_vacio` | ojo_vacio | `cerrado`, `abrir`, `idle`, `latido`, `cerrar` (huesos `parpado_a`, `parpado_b`, `iris`, `pupila`) | glowmask | 16 |
 | `agujero_negro` | agujero_negro | `aparicion`, `idle`, `colapso` | translúcido + emisivo | 3.6 |
-| `guerrero` | esfera_energia (sin lanzador) | `aparicion`, `idle`, `cargar`, `alzar_brazos`, `lanzar` (hueso `manos`) | glowmask (ojos) | 2.2 |
-| `aura` | esfera_energia | `aparicion`, `idle`, `desaparecer` | translúcido + emisivo, tinte | 2.4 |
-| `esfera` | esfera_energia | `idle` | translúcido + emisivo; el tamaño lo da el servidor | radio en bloques |
+| `esfera` | genkidama, vacio_purpura | `idle` | translúcido + emisivo, tinte; el tamaño lo da el servidor | radio en bloques |
 | `meteorito` | meteorito | `rotar`, `idle` | glowmask (grietas de lava) | 6.5 |
-| `santuario` | mil_cortes | `aparicion`, `idle`, `desaparecer` | glowmask (faroles, grietas) | 3.2 |
+| `copo` | akaza | `trazar`, `idle`, `desvanecer` | translúcido + emisivo | radioCopo / 2 |
+
+## Personajes (contrato de las fichas del kit de personajes)
+| Modelo | Habilidad | Huesos obligatorios | Animaciones | Altura en juego |
+|---|---|---|---|---|
+| `goku` | genkidama | `cabeza`, `brazo_izquierdo`, `brazo_derecho`, `manos` | `aparicion`, `alzar_brazos`, `lanzar`, `pose_final` | 2 bloques |
+| `sukuna` | mil_cortes | `cabeza`, `manos`, `brazo_derecho` | `aparicion`, `sello_mano`, `idle_dominio`, `corte_final`, `desaparicion` | 2 bloques |
+| `santuario` | mil_cortes | `base`, `fauces` | `emerger`, `idle`, `hundirse` | 14 bloques |
+| `gojo` | vacio_purpura | `cabeza`, `mano_izquierda`, `mano_derecha`, `mano_proyectil` | `aparicion`, `carga`, `disparo`, `pose_final` | 2 bloques |
+| `akaza` | akaza | `cabeza`, `cuerpo`, `puno_derecho` | `aparicion`, `despliegue_tecnica`, `golpe_suelo`, `pose_final` | 2 bloques |
+
+Los modelos incluidos los completan `mod/tools/gen_personajes.py` y `gen_santuario.py` (diseños propios con el
+esqueleto del contrato). Para usar los tuyos de Blockbench:
+
+```
+python3 mod/tools/validar_modelo.py goku modelos_entrada/goku            # comprueba huesos, animaciones y textura
+python3 mod/tools/validar_modelo.py goku modelos_entrada/goku --instalar # y los copia al mod
+```
+
+Las animaciones pueden llamarse `aparicion` o `animation.goku.aparicion` (como exporta Blockbench): el mod las
+traduce solo. Las esferas se anclan en el cliente a los huesos `manos`, `mano_izquierda`, `mano_derecha` y
+`mano_proyectil`, así que siguen a las manos aunque cambies la animación. El código usa los nombres desde
+constantes (`CineCharacters`), nunca escritos a mano en varios sitios.
 
 La corona de espadas usa las espadas de Minecraft (madera, piedra, hierro, oro, diamante, netherita) y el
 carrusel usa creepers cargados reales: no necesitan archivo.
@@ -41,7 +61,10 @@ El servidor puede teñir cualquier modelo con la animación especial `color:AARR
 | ojo | `abrir`, `latido`, `zumbido` |
 | agujero | `formacion`, `zumbido`, `colapso` |
 | juicio | `inicio`, `carga`, `rayo`, `final` |
-| esfera | `inicio`, `carga`, `lanzar`, `detonar` |
+| genkidama | `aparicion`, `carga`, `lanzar`, `detonar` |
+| sukuna | `dominio` |
+| gojo | `aparicion`, `carga`, `disparo`, `detonacion` |
+| akaza | `aparicion`, `despliegue`, `golpe` |
 | meteorito | `entrada`, `estampido`, `impacto` |
 | cortes | `dominio`, `ambiente`, `tajo`, `final` |
 

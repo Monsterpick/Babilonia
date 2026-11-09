@@ -18,12 +18,16 @@ Probado en Minecraft 26.1.2 real (NeoForge 26.1.2.126 + GeckoLib 5.5.2 contra Pa
 | 03 corona_espadas | ✅ | Espadas de Minecraft de madera a netherita |
 | 06 carrusel_creepers | ✅ | Creepers cargados por rayos; explosiones con onda, tierra volando y gran final (no funcionan en pacífico) |
 | 09 juicio_arcano | ✅ | Círculos arcanos animados (modelo) y sonido desde el inicio |
-| 10 esfera_energia | ✅ | Guerrero propio con aura (si no hay lanzador) y esfera redonda brillante; sonidos en capas |
+| 10 genkidama (alias esfera_energia) | ✅ | Actor `goku`; la esfera se ancla al hueso `manos` y crece sobre las manos alzadas; túnel por la cola con presupuesto |
 | 11 meteorito | ✅ | Roca de basalto con grietas de lava que brillan; nace a 70 bloques para estar en zona cargada |
 | 08 agujero_negro | ✅ | Horizonte, disco de acreción, anillo de fotones y chorros (modelo) |
 | 07 ojo_vacio | ✅ | Ojo con párpados, iris brillante, pupila rasgada, tentáculos y cristales |
-| 12 mil_cortes | ✅ | Dominio: cielo carmesí y santuario maldito (diseño propio) que surge del suelo; luego los cortes |
+| 12 mil_cortes | ✅ | Actores `sukuna` y `santuario` (14 bloques); sello, dominio, ráfaga 110–190, cruz en 220 con mitades desplazadas |
+| 13 akaza | ✅ | Actor `akaza`; copo de 12 puntas (modelo plano a la altura de sus pies), impacto visual en el tick 85 (configurable) |
+| 14 vacio_purpura (alias gojo) | ✅ | Actor `gojo`; esferas azul y roja ancladas a las manos, fusión en `mano_proyectil`, orbe que borra y atrae |
 
 Los modelos son diseños propios generados por `mod/tools/` y se pueden sustituir por modelos de Blockbench con un
 paquete de recursos (ver ASSETS.md). Los sonidos son vanilla en capas; se cambian en `habilidades.yml → sonidos`.
+Sin DamageType propio en JSON: el servidor es Paper (los plugins no registran tipos de daño); se usa el daño del
+motor con el «golpe letal final» de LiveArena.
 Durante las habilidades Paper no expulsa por «volar» (y la app pone allow-flight=true).

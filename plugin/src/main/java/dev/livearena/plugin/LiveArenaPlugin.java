@@ -21,10 +21,16 @@ public final class LiveArenaPlugin extends JavaPlugin {
         CineAbilities abilities = new CineAbilities(cine);
         abilities.register();
         getServer().getPluginManager().registerEvents(abilities, this);
+        new CineCharacters(cine).register();
         cine.enable();
         for (CineEngine.Ability a : cine.all().values()) {
             if (a.id.equals("test")) continue;
             effects.addSpecial("cine_" + a.id, a.nombre, a.colorHex, false, a.ayuda + " (cinemática)", (p, viewer, args) -> cine.request(a.id, p, null, viewer, false));
+        }
+        // Ids antiguos que siguen funcionando en las reglas ya creadas.
+        for (var alias : CineEngine.ALIASES.entrySet()) {
+            CineEngine.Ability a = cine.all().get(alias.getValue());
+            if (a != null) effects.addSpecial("cine_" + alias.getKey(), a.nombre, a.colorHex, false, a.ayuda + " (cinemática)", (p, viewer, args) -> cine.request(a.id, p, null, viewer, false));
         }
         PluginCommand hab = getCommand("habilidad");
         if (hab != null) {

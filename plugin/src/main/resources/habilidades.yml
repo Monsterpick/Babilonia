@@ -24,9 +24,11 @@ carrusel_creepers: { numeroCreepers: 8, radioOrbita: 6.0, velocidadMax: 3.0, dan
 ojo_vacio:         { radio: 15.0, alturaLevitacion: 6.0, maxBloquesFlotantes: 120, danio: 24.0, radioCrater: 6 }
 agujero_negro:     { radioAtraccion: 25.0, radioArranque: 10.0, radioHorizonte: 2.0, fuerzaMax: 0.25, danioTick: 2.0, danioColapso: 20.0, maxBloquesAbsorbidos: 600, destruirItems: true }
 juicio_arcano:     { radioZona: 15.0, numeroRayos: 33, danioRayo: 8.0, danioFinal: 40.0, radioCraterFinal: 5 }
-esfera_energia:    { radioMax: 12.0, velocidad: 0.4, danio: 50.0, radioCrater: 14, profundidadCrater: 8, energiaDeJugadores: true }
+genkidama:         { radioMax: 12.0, velocidad: 0.4, danio: 50.0, radioCrater: 14, profundidadCrater: 8, energiaDeJugadores: true, distanciaGokuSinLanzador: 30.0 }
 meteorito:         { radioCrater: 18, profundidadCrater: 10, radioLetal: 6.0, radioDanio: 30.0, danioMax: 100.0, bloquesEyeccion: 80, radioSacudida: 150 }
-mil_cortes:        { radio: 10.0, cortesPorTick: 3, danioCorte: 1.0, danioFinal: 30.0, romperBloques: true }
+mil_cortes:        { radio: 10.0, cortesPorTick: 3, danioCorte: 1.0, danioFinal: 30.0, romperBloques: true, distanciaSukunaSinLanzador: 12.0 }
+vacio_purpura:     { velocidad: 0.6, radioDestruccion: 3.0, radioAtraccion: 10.0, radioNucleo: 1.5, danioTick: 2.0, ticksMax: 100, distanciaMax: 60.0, radioDetonacion: 7, danioFinal: 30.0 }
+akaza:             { distanciaAparicion: 8.0, radioCopo: 10.0, radioCrater: 6, danio: 20.0, knockbackHorizontal: 2.5, knockbackVertical: 1.2, tickImpacto: 85 }
 
 # Sonidos de cada habilidad. Si tienes un resource pack con sonidos propios, pon aquí su id
 # (p. ej. "livearena:cortes.tajo"). Mientras tanto se usan sonidos vanilla parecidos.
@@ -68,3 +70,15 @@ sonidos:
   cortes.final: entity.wither.break_block,entity.generic.explode
   cortes.dominio: entity.warden.emerge,block.end_portal.spawn
   cortes.ambiente: ambient.crimson_forest.mood,entity.warden.heartbeat
+  genkidama.aparicion: entity.breeze.land,block.beacon.activate
+  genkidama.carga: block.respawn_anchor.charge,block.conduit.ambient.short
+  genkidama.lanzar: entity.warden.sonic_boom,entity.ender_dragon.shoot
+  genkidama.detonar: entity.generic.explode,entity.lightning_bolt.thunder,item.totem.use
+  sukuna.dominio: block.bell.resonate,entity.warden.emerge,block.end_portal.spawn
+  gojo.aparicion: entity.illusioner.mirror_move,block.amethyst_block.resonate
+  gojo.carga: block.beacon.power_select,block.respawn_anchor.charge
+  gojo.disparo: entity.warden.sonic_boom,entity.wither.shoot
+  gojo.detonacion: entity.generic.explode,entity.lightning_bolt.thunder,block.beacon.deactivate
+  akaza.aparicion: entity.breeze.land,entity.player.attack.strong
+  akaza.despliegue: block.amethyst_block.resonate,block.beacon.activate
+  akaza.golpe: entity.generic.explode,entity.warden.attack_impact,entity.lightning_bolt.thunder

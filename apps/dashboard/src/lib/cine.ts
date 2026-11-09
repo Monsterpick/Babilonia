@@ -19,7 +19,9 @@ export const CINE_ABILITIES: CineAbility[] = [
   { id: 'ojo_vacio', name: 'Ojo del vacío', color: '#b15cff', icon: '👁️', seconds: 13, desc: 'Un ojo colosal con párpados y tentáculos se abre en el cielo: todo levita y luego es aplastado.', model: 'ojo_vacio' },
   { id: 'agujero_negro', name: 'Agujero negro', color: '#ff8a1a', icon: '🕳️', seconds: 15, desc: 'Un agujero negro con disco de acreción arranca el terreno en espiral, lo traga todo y colapsa.', model: 'agujero_negro' },
   { id: 'juicio_arcano', name: 'Juicio arcano', color: '#ffd34d', icon: '🔯', seconds: 13, desc: 'Círculos arcanos animados en el cielo desatan una lluvia de rayos y un pilar final.', model: 'circulo_arcano' },
-  { id: 'esfera_energia', name: 'Esfera de energía', color: '#7fd4ff', icon: '🔵', seconds: 16, desc: 'Un guerrero con aura reúne la energía de todo lo cercano en una esfera gigante y la lanza.', model: 'guerrero' },
+  { id: 'genkidama', name: 'Genkidama', color: '#8fd3ff', icon: '🔵', seconds: 17, desc: 'El guerrero alza los brazos: la energía de árboles, agua y cada jugador cercano forma una esfera gigante sobre sus manos y la lanza.', model: 'goku' },
   { id: 'meteorito', name: 'Meteorito', color: '#ff6a1a', icon: '☄️', seconds: 18, desc: 'La cámara sube al espacio, una roca incandescente entra y deja un cráter enorme.', model: 'meteorito' },
-  { id: 'mil_cortes', name: 'Mil cortes', color: '#ff3b3b', icon: '⚔️', seconds: 15, desc: 'El cielo se vuelve carmesí, surge un santuario maldito y mil cortes rebanan todo hasta el tajo final.', model: 'santuario' },
+  { id: 'mil_cortes', name: 'Mil cortes: Santuario', color: '#ff3b3b', icon: '⚔️', seconds: 15, desc: 'El rey maldito forma su sello, el santuario emerge bajo un cielo carmesí y mil cortes rebanan todo hasta el corte en cruz.', model: 'sukuna' },
+  { id: 'vacio_purpura', name: 'Vacío púrpura', color: '#9b30ff', icon: '🟣', seconds: 13, desc: 'Una esfera azul y una roja se funden entre las manos del hechicero en un orbe morado que avanza borrando todo.', model: 'gojo' },
+  { id: 'akaza', name: 'Despliegue de técnica', color: '#7fd8ff', icon: '❄️', seconds: 9, desc: 'El luchador dibuja un copo de hielo de 12 puntas en el suelo y golpea la tierra: cráter y el objetivo sale volando.', model: 'akaza' },
 ]

@@ -274,6 +274,12 @@ final class CineEngine implements Listener, TabExecutor {
             }
         }
 
+        /** Ancla un modelo al hueso de otro (lo sigue durante sus animaciones); en el servidor no cambia nada. */
+        void attach(Entity child, Entity parent, String bone, double ox, double oy, double oz) {
+            for (Player p : w.getPlayers())
+                if (CineNet.hasMod(p)) net.send(p, CineNet.modelAttach(child.getEntityId(), parent == null ? -1 : parent.getEntityId(), bone, (float) ox, (float) oy, (float) oz));
+        }
+
         void anim(Entity holder, String anim) {
             for (Player p : w.getPlayers()) net.send(p, CineNet.modelAnim(holder.getEntityId(), anim));
         }
@@ -316,7 +322,14 @@ final class CineEngine implements Listener, TabExecutor {
             {"esfera.lanzar", "entity.warden.sonic_boom,entity.ender_dragon.shoot"}, {"esfera.detonar", "entity.generic.explode,entity.lightning_bolt.thunder,item.totem.use"},
             {"meteorito.entrada", "item.firecharge.use"}, {"meteorito.estampido", "entity.lightning_bolt.thunder"}, {"meteorito.impacto", "entity.generic.explode"},
             {"cortes.tajo", "entity.player.attack.sweep"}, {"cortes.final", "entity.wither.break_block,entity.generic.explode"},
-            {"cortes.dominio", "entity.warden.emerge,block.end_portal.spawn"}, {"cortes.ambiente", "ambient.crimson_forest.mood,entity.warden.heartbeat"},
+            {"cortes.dominio", "entity.warden.emerge,block.end_portal.spawn"},
+            {"genkidama.aparicion", "entity.breeze.land,block.beacon.activate"}, {"genkidama.carga", "block.respawn_anchor.charge,block.conduit.ambient.short"},
+            {"genkidama.lanzar", "entity.warden.sonic_boom,entity.ender_dragon.shoot"}, {"genkidama.detonar", "entity.generic.explode,entity.lightning_bolt.thunder,item.totem.use"},
+            {"sukuna.dominio", "block.bell.resonate,entity.warden.emerge,block.end_portal.spawn"},
+            {"gojo.aparicion", "entity.illusioner.mirror_move,block.amethyst_block.resonate"}, {"gojo.carga", "block.beacon.power_select,block.respawn_anchor.charge"},
+            {"gojo.disparo", "entity.warden.sonic_boom,entity.wither.shoot"}, {"gojo.detonacion", "entity.generic.explode,entity.lightning_bolt.thunder,block.beacon.deactivate"},
+            {"akaza.aparicion", "entity.breeze.land,entity.player.attack.strong"}, {"akaza.despliegue", "block.amethyst_block.resonate,block.beacon.activate"},
+            {"akaza.golpe", "entity.generic.explode,entity.warden.attack_impact,entity.lightning_bolt.thunder"}, {"cortes.ambiente", "ambient.crimson_forest.mood,entity.warden.heartbeat"},
         };
         for (String[] e : s) DEFAULT_SOUNDS.put(e[0], e[1]);
     }
@@ -392,8 +405,12 @@ final class CineEngine implements Listener, TabExecutor {
         return request(id, target, launcher, viewer, true);
     }
 
+    /** Ids antiguos → id actual (las reglas y comandos viejos siguen funcionando). */
+    static final Map<String, String> ALIASES = Map.of("esfera_energia", "genkidama", "gojo", "vacio_purpura", "gojo_purpura", "vacio_purpura");
+
     boolean request(String id, Player target, Player launcher, String viewer, boolean announce) {
-        Ability a = abilities.get(id.toLowerCase(Locale.ROOT));
+        String key = id.toLowerCase(Locale.ROOT);
+        Ability a = abilities.get(ALIASES.getOrDefault(key, key));
         if (a == null || target == null) return false;
         if (running.containsKey(target.getUniqueId())) {
             Deque<Runnable> q = queue.computeIfAbsent(target.getUniqueId(), k -> new ArrayDeque<>());
