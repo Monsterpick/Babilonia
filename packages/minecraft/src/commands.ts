@@ -61,11 +61,15 @@ export function summon(v: McVersion, o: SummonOpts): string {
   return `execute at ${o.player} run summon ${ns(o.entity)} ~${off()} ~${dy} ~${off()} {${nbt.join(',')}}`
 }
 
+const UNSTACKABLE = /^minecraft:(totem_of_undying|.*_(sword|axe|pickaxe|shovel|hoe|helmet|chestplate|leggings|boots)|bow|crossbow|trident|shield|elytra|mace|potion|splash_potion|lingering_potion|enchanted_book|.*_bucket|cake|saddle)$/
+
 export function itemSpec(v: McVersion, it: KitItem): string {
   const id = ns(it.item)
   const ench = Object.entries(it.enchantments ?? {})
   if (usesComponents(v)) {
     const comps: string[] = []
+    // Objetos que no se apilan (tótems, espadas…): con max_stack_size caben hasta 99 en un hueco.
+    if ((it.count > 1 && UNSTACKABLE.test(id)) || it.count > 64) comps.push(`max_stack_size=${Math.min(99, it.count)}`)
     if (ench.length) comps.push(`enchantments={levels:{${ench.map(([k, l]) => `"${ns(k)}":${l}`).join(',')}}}`)
     if (it.unbreakable) comps.push('unbreakable={}')
     return comps.length ? `${id}[${comps.join(',')}]` : id
@@ -99,19 +103,25 @@ const ARMOR_SLOTS: Record<'head' | 'chest' | 'legs' | 'feet' | 'offhand', string
 }
 
 /** Comandos para entregar el kit inicial a un jugador (o a @a). */
-export function kitCommands(v: McVersion, kit: Kit, player: string): string[] {
+export function kitCommands(v: McVersion, kit: Kit, player: string, reason: 'manual' | 'start' | 'respawn' = 'manual'): string[] {
   const target = kit.allPlayers ? '@a' : player
   const out: string[] = []
+  const count = (n: number) => (usesComponents(v) ? Math.min(99, n) : Math.min(64, n))
   if (kit.clearBefore) out.push(`clear ${target}`)
   for (const [slot, it] of Object.entries(kit.armor) as [keyof typeof ARMOR_SLOTS, KitItem | undefined][]) {
-    if (it) out.push(`item replace entity ${target} ${ARMOR_SLOTS[slot]} with ${itemSpec(v, it)} ${it.count}`)
+    if (it) out.push(`item replace entity ${target} ${ARMOR_SLOTS[slot]} with ${itemSpec(v, it)} ${count(it.count)}`)
   }
   kit.hotbar.forEach((it, i) => {
-    if (it) out.push(`item replace entity ${target} hotbar.${i} with ${itemSpec(v, it)} ${it.count}`)
+    if (it) out.push(`item replace entity ${target} hotbar.${i} with ${itemSpec(v, it)} ${count(it.count)}`)
   })
   kit.inventory.forEach((it, i) => {
-    if (it) out.push(`item replace entity ${target} inventory.${i} with ${itemSpec(v, it)} ${it.count}`)
+    if (it) out.push(`item replace entity ${target} inventory.${i} with ${itemSpec(v, it)} ${count(it.count)}`)
   })
+  const t = kit.totems
+  if (t?.enabled) {
+    if (t.offhand > 0) out.push(`item replace entity ${target} weapon.offhand with ${itemSpec(v, { item: 'totem_of_undying', count: t.offhand, enchantments: {}, unbreakable: false })} ${count(t.offhand)}`)
+    if (t.total > 0 && (reason !== 'respawn' || t.onRespawn)) out.push(`la totem ${t.mode === 'add' ? 'add' : 'set'} ${target} ${t.total}${t.mode === 'add' ? ' Kit' : ''}`)
+  }
   if (kit.nightVision) out.push(effect(target, 'night_vision', 'infinite', 0))
   if (kit.jumpBoost > 0) out.push(effect(target, 'jump_boost', 'infinite', kit.jumpBoost - 1))
   out.push(`gamerule fallDamage ${kit.noFallDamage ? 'false' : 'true'}`)

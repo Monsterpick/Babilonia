@@ -1,6 +1,10 @@
-import type { LiveEvent } from '@livearena/shared'
+import { promises as fs } from 'node:fs'
+import path from 'node:path'
+import { findPreset, parseVoice, voiceLabel, type LiveEvent } from '@livearena/shared'
 import type { ConfigStore } from './config.js'
+import { paths } from './config.js'
 import type { Hub } from './hub.js'
+import { SapiService } from './sapi.js'
 
 export interface TtsItem {
   id: number
@@ -9,18 +13,24 @@ export interface TtsItem {
   nick: string
   avatar?: string
   voice: string
+  voiceLabel: string
   text: string
 }
 
+export const TTS_AUDIO_DIR = path.join(paths.cache, 'tts')
+
 /**
  * Lectura por voz de los comentarios. El servidor decide qué se lee y con qué voz (reglas, filtros,
- * antispam) y manda la orden a los overlays, que usan la síntesis de voz del navegador (sin internet).
+ * antispam, voz por usuario) y manda la orden a los overlays. Las voces del navegador/OBS suenan allí mismo
+ * (sin internet); las voces de Windows (SAPI, incluidas las de 32 bits como Loquendo) se generan aquí en .wav
+ * y el overlay reproduce el audio con el efecto elegido.
  */
 export class TtsService {
   private history: TtsItem[] = []
   private seq = 0
   private lastByUser = new Map<string, number>()
   private recentTexts: string[] = []
+  readonly sapi = new SapiService()
 
   constructor(
     private cfg: ConfigStore,
@@ -49,7 +59,7 @@ export class TtsService {
   }
 
   /** Limpia el texto según los filtros; devuelve null si no hay nada que leer. */
-  private clean(text: string): string | null {
+  clean(text: string): string | null {
     const f = this.cfg.get().tts.filters
     let t = text
     if (f.ignoreTiktokEmojis) t = t.replace(/\[[a-zA-Z0-9_]+\]/g, ' ')
@@ -62,11 +72,28 @@ export class TtsService {
     return t.length ? t : null
   }
 
-  private pickVoice(userId: string): string {
+  /** Voz de un usuario: la asignada por el streamer (o elegida con !voz), si no la general. */
+  voiceFor(user: { uniqueId?: string; id?: string } | null): string {
     const tts = this.cfg.get().tts
-    if (tts.perUser[userId]) return tts.perUser[userId]!
-    if (tts.random) return '' // el overlay elige una al azar
+    const keys = [user?.uniqueId?.toLowerCase(), user?.id].filter(Boolean) as string[]
+    for (const k of keys) if (tts.perUser[k]) return tts.perUser[k]!
+    if (tts.random) return ''
     return tts.voice
+  }
+
+  /** !voz <personaje>: el espectador elige su voz (si el streamer lo permite). Devuelve true si era el comando. */
+  private viewerChoice(ev: Extract<LiveEvent, { type: 'chat' }>, text: string): boolean {
+    const tts = this.cfg.get().tts
+    const m = text.match(/^!voz\s+(.+)$/i)
+    if (!m || !ev.user) return false
+    if (!tts.viewerChoice) return true // el comando no se lee aunque esté desactivado
+    const preset = findPreset(m[1]!)
+    if (!preset) return true
+    const key = ev.user.uniqueId.toLowerCase()
+    this.cfg.update((c) => (c.tts.perUser[key] = `p:${preset.id}`))
+    this.publishConfig()
+    void this.speak(`${ev.user.nickname} ahora habla como ${preset.name}`, `p:${preset.id}`, null, null)
+    return true
   }
 
   /** Procesa un comentario; si procede, manda la orden de leerlo. */
@@ -74,6 +101,7 @@ export class TtsService {
     const tts = this.cfg.get().tts
     if (!tts.enabled || !ev.user) return
     let text = ev.payload.text ?? ''
+    if (this.viewerChoice(ev, text.trim())) return
     if (tts.mode === 'prefix') {
       if (!text.startsWith(tts.prefix)) return
       text = text.slice(tts.prefix.length)
@@ -95,16 +123,61 @@ export class TtsService {
       .replace(/\{username\}|\{usuario\}/g, ev.user.nickname)
       .replace(/\{nickname\}|\{nick\}/g, ev.user.nickname)
       .replace(/\{comment\}|\{mensaje\}/g, body)
-    const item: TtsItem = { id: ++this.seq, ts: now, user: ev.user.uniqueId, nick: ev.user.nickname, avatar: ev.user.avatarUrl, voice: this.pickVoice(uid) || tts.voice || '(aleatoria)', text: body }
+    const voice = this.voiceFor(ev.user)
+    const item: TtsItem = {
+      id: ++this.seq,
+      ts: now,
+      user: ev.user.uniqueId,
+      nick: ev.user.nickname,
+      avatar: ev.user.avatarUrl,
+      voice,
+      voiceLabel: voice ? voiceLabel(voice) : tts.random ? 'Aleatoria' : 'Por defecto',
+      text: body,
+    }
     this.history.unshift(item)
     if (this.history.length > 100) this.history.pop()
     this.hub.setState('ttshistory', this.history.slice(0, 50))
-    this.hub.action({
-      kind: 'tts.speak',
-      user: ev.user,
-      params: { text: spoken, voice: this.pickVoice(uid), rate: tts.rate, volume: tts.volume, maxQueue: tts.antispam.maxQueue, id: item.id },
-      intensity: 0,
-      priority: 1,
-    })
+    void this.speak(spoken, voice, ev.user, item.id)
+  }
+
+  /**
+   * Manda a los overlays la orden de leer. Con voz de Windows genera antes el audio; si falla, lee con la
+   * voz por defecto del navegador para no perder el mensaje.
+   */
+  async speak(text: string, voice: string, user: Extract<LiveEvent, { type: 'chat' }>['user'] | null, id: number | null): Promise<{ audio?: string }> {
+    const tts = this.cfg.get().tts
+    const params: Record<string, unknown> = { text, voice, rate: tts.rate, volume: tts.volume, maxQueue: tts.antispam.maxQueue, id: id ?? Date.now(), random: !voice && tts.random }
+    const spec = parseVoice(voice)
+    if (spec.kind === 'windows' && this.sapi.available) {
+      try {
+        const file = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}.wav`
+        await this.sapi.speak(text, spec.name, tts.rate, path.join(TTS_AUDIO_DIR, file))
+        params.audio = `/tts/audio/${file}`
+        params.effect = tts.windowsEffect
+        void this.cleanupAudio()
+      } catch {
+        params.voice = ''
+      }
+    }
+    this.hub.action({ kind: 'tts.speak', user: user ?? null, params, intensity: 0, priority: 1 })
+    return { audio: params.audio as string | undefined }
+  }
+
+  /** Vista previa de una voz de Windows para el panel. */
+  async preview(voice: string, text: string): Promise<{ audio: string }> {
+    const spec = parseVoice(voice)
+    if (spec.kind !== 'windows') throw new Error('Solo las voces de Windows necesitan vista previa en el servidor.')
+    const file = `preview-${Date.now().toString(36)}.wav`
+    await this.sapi.speak(text, spec.name, this.cfg.get().tts.rate, path.join(TTS_AUDIO_DIR, file))
+    void this.cleanupAudio()
+    return { audio: `/tts/audio/${file}` }
+  }
+
+  private async cleanupAudio(): Promise<void> {
+    const files = await fs.readdir(TTS_AUDIO_DIR).catch(() => [] as string[])
+    if (files.length < 80) return
+    const stats = await Promise.all(files.map(async (f) => ({ f, t: (await fs.stat(path.join(TTS_AUDIO_DIR, f)).catch(() => null))?.mtimeMs ?? 0 })))
+    stats.sort((a, b) => a.t - b.t)
+    for (const s of stats.slice(0, stats.length - 50)) await fs.rm(path.join(TTS_AUDIO_DIR, s.f), { force: true })
   }
 }

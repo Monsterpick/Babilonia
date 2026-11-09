@@ -3,7 +3,7 @@ import { Infinity as InfinityIcon, Search } from 'lucide-react'
 import type { Kit, KitItem } from '@livearena/shared'
 import { useApp } from '../App'
 import { api } from '../lib/api'
-import { Check, Field, Modal, PageHeader } from '../components/ui'
+import { Check, Field, Modal, PageHeader, Toggle } from '../components/ui'
 import { toast } from '../components/Toast'
 import { ItemIcon, TexturesBar } from '../components/ItemIcon'
 
@@ -116,7 +116,7 @@ export function KitPage() {
             Para todos los jugadores (si no, solo tu nick)
           </Check>
         </div>
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2">
           <div className="card p-4">
             <span className="label text-sky-400">Visión</span>
             <Check on={kit.nightVision} onChange={(v) => setKit({ ...kit, nightVision: v })}>
@@ -139,13 +139,8 @@ export function KitPage() {
               </Check>
             </div>
           </div>
-          <div className="card p-4">
-            <span className="label text-amber-400">Tótems</span>
-            <p className="text-xs text-muted">
-              Vanilla solo permite 1 tótem por hueco. Para tótems apilados y contador en pantalla usa tu plugin de tótems; aquí puedes poner tótems en la mano secundaria y la mochila.
-            </p>
-          </div>
         </div>
+        <TotemsCard kit={kit} onChange={setKit} />
         <div className="card flex flex-wrap gap-8 p-5">
           <div>
             <span className="label">Equipado</span>
@@ -175,6 +170,84 @@ export function KitPage() {
         </div>
       </div>
       {slot && <ItemModal item={get(slot) ?? null} onClose={() => setSlot(null)} onSave={(it) => (put(slot, it), setSlot(null))} />}
+    </div>
+  )
+}
+
+const PACKS = [100, 120, 64, 50]
+
+/** Tótems apilables del plugin LiveArena, elegidos por paquetes (3 × 120 = 360). */
+function TotemsCard({ kit, onChange }: { kit: Kit; onChange: (k: Kit) => void }) {
+  const t = kit.totems ?? { enabled: false, total: 300, packSize: 100, mode: 'set' as const, onRespawn: true, offhand: 0 }
+  const set = (p: Partial<typeof t>) => onChange({ ...kit, totems: { ...t, ...p } })
+  const packs = Math.floor(t.total / t.packSize)
+  const rest = t.total - packs * t.packSize
+  const setPacks = (n: number) => set({ total: Math.max(0, n) * t.packSize })
+  return (
+    <div className={`card overflow-hidden ${t.enabled ? 'ring-1 ring-amber-400/40' : ''}`}>
+      <div className="flex flex-wrap items-center gap-3 border-b border-line bg-gradient-to-r from-amber-500/15 via-yellow-400/5 to-transparent px-5 py-3">
+        <ItemIcon id="minecraft:totem_of_undying" size={30} label={false} />
+        <div className="min-w-0 flex-1">
+          <div className="font-bold text-amber-300">Tótems apilables</div>
+          <div className="text-xs text-muted">Van al contador del plugin LiveArena (barra en pantalla, sin límite). Se gastan uno a uno al morir.</div>
+        </div>
+        <Toggle on={t.enabled} onChange={(v) => set({ enabled: v })} />
+      </div>
+      <div className={`grid gap-5 p-5 lg:grid-cols-[1.2fr_1fr] ${t.enabled ? '' : 'pointer-events-none opacity-45'}`}>
+        <div>
+          <span className="label">Tamaño del paquete</span>
+          <div className="mb-4 flex flex-wrap gap-2">
+            {PACKS.map((n) => (
+              <button key={n} onClick={() => set({ packSize: n, total: Math.max(1, packs) * n })} className={`rounded-lg border px-3 py-1.5 text-sm font-semibold ${t.packSize === n ? 'border-amber-400 bg-amber-400/15 text-amber-200' : 'border-line hover:border-white/30'}`}>
+                {n}
+              </button>
+            ))}
+            <input type="number" min={1} className="input w-24" value={t.packSize} onChange={(e) => set({ packSize: Math.max(1, Number(e.target.value) || 1) })} title="Tamaño personalizado" />
+          </div>
+          <span className="label">Paquetes</span>
+          <div className="flex items-center gap-2">
+            <button className="btn h-10 w-10 justify-center text-lg" onClick={() => setPacks(packs - 1)}>
+              −
+            </button>
+            <input type="number" min={0} className="input w-20 text-center text-lg font-bold" value={packs} onChange={(e) => setPacks(Number(e.target.value) || 0)} />
+            <button className="btn h-10 w-10 justify-center text-lg" onClick={() => setPacks(packs + 1)}>
+              +
+            </button>
+            <span className="text-sm text-muted">× {t.packSize}</span>
+          </div>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <span className="text-xs text-muted">Atajos:</span>
+            {[100, 300, 400, 500, 1000].map((n) => (
+              <button key={n} className="chip" onClick={() => set({ total: n })}>
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-col gap-3">
+          <div className="rounded-xl border border-amber-400/30 bg-amber-400/5 p-4 text-center">
+            <div className="text-xs tracking-widest text-amber-200/70 uppercase">Total al dar el kit</div>
+            <input type="number" min={0} max={100000} className="w-full bg-transparent text-center text-4xl font-black text-amber-300 outline-none" value={t.total} onChange={(e) => set({ total: Math.max(0, Math.min(100000, Number(e.target.value) || 0)) })} />
+            <div className="text-xs text-muted">
+              {packs} paquete{packs === 1 ? '' : 's'} de {t.packSize}
+              {rest > 0 ? ` + ${rest}` : ''}
+            </div>
+          </div>
+          <select className="input" value={t.mode} onChange={(e) => set({ mode: e.target.value as 'set' | 'add' })}>
+            <option value="set">Poner el contador en ese total</option>
+            <option value="add">Sumar ese total a los que ya tenga</option>
+          </select>
+          <Check on={t.onRespawn} onChange={(v) => set({ onRespawn: v })}>
+            Volver a rellenar al reaparecer
+          </Check>
+          <label className="flex items-center justify-between gap-3 text-sm">
+            <span>
+              Tótems de verdad en la mano secundaria <span className="text-xs text-muted">(máx. 99)</span>
+            </span>
+            <input type="number" min={0} max={99} className="input w-20" value={t.offhand} onChange={(e) => set({ offhand: Math.max(0, Math.min(99, Number(e.target.value) || 0)) })} />
+          </label>
+        </div>
+      </div>
     </div>
   )
 }
@@ -219,8 +292,8 @@ function ItemModal({ item, onClose, onSave }: { item: KitItem | null; onClose: (
         <Field label="Item">
           <input className="input" value={it.item} onChange={(e) => setIt({ ...it, item: e.target.value })} />
         </Field>
-        <Field label="Cantidad">
-          <input type="number" min={1} max={127} className="input" value={it.count} onChange={(e) => setIt({ ...it, count: Math.max(1, Math.min(127, Number(e.target.value))) })} />
+        <Field label="Cantidad" hint="Hasta 99 por hueco (también tótems y espadas)">
+          <input type="number" min={1} max={99} className="input" value={it.count} onChange={(e) => setIt({ ...it, count: Math.max(1, Math.min(99, Number(e.target.value))) })} />
         </Field>
         <div className="col-span-2">
           <Field label="Encantamientos" hint="Ej: sharpness:5, unbreaking:3, mending:1">

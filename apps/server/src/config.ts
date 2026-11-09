@@ -159,7 +159,12 @@ export const ConfigSchema = z.object({
         maxQueue: z.number().int().min(1).max(200).default(25),
         maxLen: z.number().int().min(20).max(500).default(200),
       }).default({}),
+      /** Voz por usuario: clave = usuario de TikTok en minúsculas (o id antiguo), valor = voz (p:, b:, w:). */
       perUser: z.record(z.string(), z.string()).default({}),
+      /** Permitir que los espectadores elijan su voz con «!voz <personaje>». */
+      viewerChoice: z.boolean().default(false),
+      /** Efecto para las voces de Windows (las del navegador no admiten efectos). */
+      windowsEffect: z.enum(['none', 'robot', 'eco', 'radio', 'grave', 'agudo']).default('none'),
     })
     .default({}),
   /** Escenas del estudio (editor de capas). */

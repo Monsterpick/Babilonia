@@ -153,6 +153,19 @@ describe('Comandos', () => {
     ])
   })
 
+  it('kit con tótems apilables por paquetes (contador del plugin + mano secundaria)', () => {
+    const v = parseVersion('26.1.2')
+    const kit = KitSchema.parse({ enabled: true, clearBefore: false, totems: { enabled: true, total: 360, packSize: 120, offhand: 99 } })
+    const cmds = kitCommands(v, kit, 'Steve', 'manual')
+    expect(cmds).toContain('item replace entity Steve weapon.offhand with minecraft:totem_of_undying[max_stack_size=99] 99')
+    expect(cmds).toContain('la totem set Steve 360')
+    // Al reaparecer: solo si «volver a rellenar» está activo.
+    expect(kitCommands(v, { ...kit, totems: { ...kit.totems, onRespawn: false } }, 'Steve', 'respawn').some((c) => c.startsWith('la totem'))).toBe(false)
+    expect(kitCommands(v, { ...kit, allPlayers: true, totems: { ...kit.totems, mode: 'add' } }, 'Steve')).toContain('la totem add @a 360 Kit')
+    // 120 tótems en un hueco no caben en vanilla: se recortan a 99 con max_stack_size.
+    expect(itemSpec(v, { item: 'totem_of_undying', count: 120, enchantments: {}, unbreakable: false })).toBe('minecraft:totem_of_undying[max_stack_size=99]')
+  })
+
   it('title', () => {
     expect(titleCommands('S', { type: 'minecraft.title', actionbar: 'Hola "x"' })).toEqual(['title S actionbar {"text":"Hola x","color":"yellow"}'])
   })

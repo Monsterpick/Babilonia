@@ -5,6 +5,7 @@ import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest }
 import fastifyStatic from '@fastify/static'
 import { z } from 'zod'
 import { KitSchema, OverlayStyleSchema } from '@livearena/shared'
+import { TTS_AUDIO_DIR } from './tts.js'
 import { CineSettingsSchema, readCineSettings, writeCineSettings } from './cine-settings.js'
 import { ITEMS } from './items.js'
 import { ConfigSchema, paths } from './config.js'
@@ -238,10 +239,31 @@ export async function buildHttp(app: App): Promise<FastifyInstance> {
     return { ok: true }
   })
   f.post('/api/tts/say', async (req) => {
-    const { text, voice } = parse(z.object({ text: z.string().min(1).max(500), voice: z.string().max(120).optional() }), req.body)
-    const t = app.cfg.get().tts
-    app.hub.action({ kind: 'tts.speak', user: null, params: { text, voice: voice ?? t.voice, rate: t.rate, volume: t.volume, maxQueue: 99, id: Date.now() }, intensity: 0, priority: 1 })
-    return { ok: true }
+    const { text, voice } = parse(z.object({ text: z.string().min(1).max(500), voice: z.string().max(160).optional() }), req.body)
+    return app.tts.speak(text, voice ?? app.cfg.get().tts.voice, null, null)
+  })
+  f.get('/api/tts/voices/windows', async () => ({ available: app.tts.sapi.available, voices: await app.tts.sapi.voices(true) }))
+  f.post('/api/tts/preview', async (req) => {
+    const { voice, text } = parse(z.object({ voice: z.string().min(1).max(160), text: z.string().min(1).max(300) }), req.body)
+    return app.tts.preview(voice, text)
+  })
+  /** Asigna (o quita, con voice vacío) la voz de un usuario. */
+  f.put('/api/tts/user', async (req) => {
+    const { user, voice } = parse(z.object({ user: z.string().min(1).max(60), voice: z.string().max(160) }), req.body)
+    const key = user.replace(/^@/, '').trim().toLowerCase()
+    app.cfg.update((c) => {
+      if (voice) c.tts.perUser[key] = voice
+      else delete c.tts.perUser[key]
+    })
+    app.tts.publishConfig()
+    return app.cfg.get().tts.perUser
+  })
+  f.get('/tts/audio/:file', async (req, reply) => {
+    const file = (req.params as { file: string }).file
+    if (!/^[\w.-]+\.wav$/.test(file)) return reply.code(404).send()
+    const data = await fsp.readFile(path.join(TTS_AUDIO_DIR, file)).catch(() => null)
+    if (!data) return reply.code(404).send()
+    return reply.type('audio/wav').header('Cache-Control', 'no-store').send(data)
   })
 
   /* ------------------------------- simulador ------------------------------- */

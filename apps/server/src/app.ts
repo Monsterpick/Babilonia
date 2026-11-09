@@ -355,7 +355,7 @@ export class App {
             mc(c)
         break
       case 'minecraft.kit':
-        await this.mc.giveKit(this.profile.kit).catch((e) => this.log.warn('minecraft', e.message))
+        await this.mc.giveKit(this.profile.kit, 'start').catch((e) => this.log.warn('minecraft', e.message))
         break
       case 'scoreboard':
         this.addScore(step.key, step.delta)

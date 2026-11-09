@@ -171,6 +171,22 @@ export const KitSchema = z.object({
   /** Nivel de salto mejorado (0 = normal). */
   jumpBoost: z.number().int().min(0).max(10).default(0),
   noFallDamage: z.boolean().default(false),
+  /**
+   * Tótems apilables del plugin LiveArena: al dar el kit se pone (o se suma) este total en el contador.
+   * Se elige por paquetes (p. ej. 3 paquetes de 120 = 360). Sin límite de 99 por hueco.
+   */
+  totems: z
+    .object({
+      enabled: z.boolean().default(false),
+      total: z.number().int().min(0).max(100_000).default(300),
+      packSize: z.number().int().min(1).max(10_000).default(100),
+      mode: z.enum(['set', 'add']).default('set'),
+      /** Volver a rellenar el contador cada vez que reaparece. */
+      onRespawn: z.boolean().default(true),
+      /** Además, tótems de verdad en la mano secundaria (vanilla: máx. 99 por hueco). */
+      offhand: z.number().int().min(0).max(99).default(0),
+    })
+    .default({}),
 })
 export type Kit = z.infer<typeof KitSchema>
 

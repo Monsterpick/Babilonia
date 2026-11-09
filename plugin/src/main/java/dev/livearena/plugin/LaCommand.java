@@ -131,6 +131,15 @@ final class LaCommand implements TabExecutor {
             return;
         }
         String op = a[0].toLowerCase(Locale.ROOT);
+        if (a[1].equals("@a")) {
+            // Para todos los jugadores conectados (lo usa el kit con «para todos»).
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                String[] copy = a.clone();
+                copy[1] = p.getName();
+                totem(sender, copy);
+            }
+            return;
+        }
         String name = a[1];
         Player online = Bukkit.getPlayerExact(name);
         if (online != null) name = online.getName();

@@ -97,7 +97,7 @@ export class MinecraftService extends EventEmitter {
     this.watcher.on('respawn', ({ player }) => {
       this.emit('respawn', { player })
       const kit = this.kitProvider()
-      if (kit?.enabled && kit.giveOnRespawn) void this.giveKit(kit).catch((err) => this.log.warn('minecraft', `Kit: ${err.message}`))
+      if (kit?.enabled && kit.giveOnRespawn) void this.giveKit(kit, 'respawn').catch((err) => this.log.warn('minecraft', `Kit: ${err.message}`))
     })
     this.watcher.on('online', ({ player }) => this.log.info('minecraft', `${player} está en el servidor`))
     this.watcher.on('offline', ({ player }) => this.log.warn('minecraft', `${player} no está en el servidor`))
@@ -208,9 +208,9 @@ export class MinecraftService extends EventEmitter {
     return this.liveMobsCache.count
   }
 
-  async giveKit(kit: Kit): Promise<number> {
+  async giveKit(kit: Kit, reason: 'manual' | 'start' | 'respawn' = 'manual'): Promise<number> {
     if (!this.player) throw new Error('Configura tu nick de Minecraft.')
-    const cmds = kitCommands(this.version, kit, this.player)
+    const cmds = kitCommands(this.version, kit, this.player, reason)
     await Promise.all(cmds.map((c) => this.link.enqueue(c, 900)))
     return cmds.length
   }

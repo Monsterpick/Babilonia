@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import type { ActionMessage, LiveEvent } from '@livearena/shared'
+import type { ActionMessage, LiveEvent, VoiceEffect } from '@livearena/shared'
+import { playAudio, utterance } from '../lib/speech'
 import { findGift, useGifts } from '../lib/catalog'
 import { useLiveState, useOnAction, useOnEvent, useTick } from '../lib/live'
 import { Avatar } from '../components/ui'
@@ -741,32 +742,32 @@ export function CombinedOverlay() {
 
 /* ----------------------------------- TTS ----------------------------------- */
 
-/** Lee los comentarios en voz alta con las voces del navegador (sin internet). Añádelo como fuente de navegador. */
+/** Lee los comentarios en voz alta: voces del PC (personajes) o voces de Windows con efectos. Añádelo como fuente de navegador. */
 export function TtsOverlay() {
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
-  const queue = useRef<{ text: string; voice: string; rate: number; volume: number; max: number }[]>([])
+  type Job = { text: string; voice: string; rate: number; volume: number; random: boolean; audio?: string; effect?: VoiceEffect }
+  const queue = useRef<Job[]>([])
   const speaking = useRef(false)
   useEffect(() => {
     const load = () => setVoices(window.speechSynthesis.getVoices())
     load()
     window.speechSynthesis.onvoiceschanged = load
   }, [])
+  const done = () => {
+    speaking.current = false
+    pump()
+  }
   const pump = () => {
     if (speaking.current) return
     const job = queue.current.shift()
     if (!job) return
     speaking.current = true
-    const u = new SpeechSynthesisUtterance(job.text)
-    const list = window.speechSynthesis.getVoices()
-    const byName = job.voice ? list.find((v) => v.name === job.voice || v.voiceURI === job.voice) : undefined
-    const es = list.filter((v) => v.lang.toLowerCase().startsWith('es'))
-    u.voice = byName ?? (job.voice ? undefined : es.length ? es[Math.floor(Math.random() * es.length)]! : list[0]) ?? null
-    u.rate = job.rate
-    u.volume = job.volume
-    u.onend = u.onerror = () => {
-      speaking.current = false
-      pump()
+    if (job.audio) {
+      playAudio(job.audio, job.effect ?? 'none', job.volume).then(done, done)
+      return
     }
+    const u = utterance(job.text, job.voice, job.rate, job.volume, job.random)
+    u.onend = u.onerror = done
     try {
       window.speechSynthesis.speak(u)
     } catch {
@@ -776,7 +777,15 @@ export function TtsOverlay() {
   useOnAction((a) => {
     if (a.kind !== 'tts.speak') return
     const max = Number(a.params.maxQueue ?? 25)
-    queue.current.push({ text: String(a.params.text ?? ''), voice: String(a.params.voice ?? ''), rate: Number(a.params.rate ?? 1), volume: Number(a.params.volume ?? 1), max })
+    queue.current.push({
+      text: String(a.params.text ?? ''),
+      voice: String(a.params.voice ?? ''),
+      rate: Number(a.params.rate ?? 1),
+      volume: Number(a.params.volume ?? 1),
+      random: !!a.params.random,
+      audio: a.params.audio ? String(a.params.audio) : undefined,
+      effect: (a.params.effect as VoiceEffect) ?? 'none',
+    })
     if (queue.current.length > max) queue.current.splice(0, queue.current.length - max)
     pump()
   })
