@@ -10,6 +10,8 @@ interface CineStatus {
   mcDir: string | null
   launcher: boolean
   neoforge: boolean
+  profile: boolean
+  launcherOpen: boolean
   mod: 'missing' | 'installed' | 'outdated'
   geckolib: boolean
   bundled: boolean
@@ -69,7 +71,7 @@ export function CinematicsPage() {
       const s = await api<CineStatus>('POST', '/api/cine/install')
       setStatus(s)
       if (s.error) toast(s.error, 'error')
-      else toast('Listo: abre el launcher de Minecraft y elige el perfil «NeoForge»')
+      else toast('Listo: abre el launcher y elige «LiveArena · NeoForge» en Instalaciones')
     } catch (e) {
       toast((e as Error).message, 'error')
     }
@@ -98,7 +100,7 @@ export function CinematicsPage() {
   }
 
   const s = status
-  const ready = !!s && s.neoforge && s.geckolib && s.mod === 'installed'
+  const ready = !!s && s.neoforge && s.profile && s.geckolib && s.mod === 'installed'
 
   return (
     <div className="pb-10">
@@ -126,7 +128,8 @@ export function CinematicsPage() {
             </div>
             <div className="grid gap-x-8 px-5 py-3 md:grid-cols-2">
               <Step ok={!!s?.mcDir && !!s?.launcher} title="Minecraft encontrado" detail={s?.mcDir ?? 'No encuentro .minecraft: abre el launcher oficial una vez'} />
-              <Step ok={!!s?.neoforge} title={`NeoForge ${s?.versions.neoforge ?? ''}`} detail="Crea el perfil «NeoForge» en el launcher" />
+              <Step ok={!!s?.neoforge} title={`NeoForge ${s?.versions.neoforge ?? ''}`} detail="Instalado dentro de tu .minecraft" />
+              <Step ok={!!s?.profile} warn={!!s?.neoforge && !s?.profile} title="Perfil «LiveArena · NeoForge» en el launcher" detail={s?.profile ? 'Búscalo en Instalaciones (marca «Con mods»)' : 'Pulsa «Instalar» con el launcher cerrado para crearlo'} />
               <Step ok={!!s?.geckolib} title="GeckoLib" detail={s?.versions.geckolib.fileName} />
               <Step ok={s?.mod === 'installed'} warn={s?.mod === 'outdated'} title={s?.mod === 'outdated' ? 'Mod LiveArena (hay versión nueva)' : 'Mod LiveArena Cinemáticas'} detail={s?.bundled ? 'Incluido en esta versión de la app' : 'Esta copia no trae el mod (solo la versión de Windows)'} />
               <Step
@@ -148,6 +151,7 @@ export function CinematicsPage() {
                 )}
               </div>
             )}
+            {s?.launcherOpen && <div className="border-t border-line bg-warn/10 px-5 py-3 text-sm text-warn">El launcher de Minecraft está abierto: ciérralo antes de instalar, o al cerrarse borrará el perfil nuevo.</div>}
             {s?.error && <div className="border-t border-line bg-bad/10 px-5 py-3 text-sm text-bad">{s.error}</div>}
             <div className="flex flex-wrap items-center gap-3 border-t border-line px-5 py-4">
               <button className="btn-accent" disabled={!!s?.busy} onClick={() => void install()}>
@@ -158,7 +162,7 @@ export function CinematicsPage() {
                   Quitar el mod
                 </button>
               )}
-              <span className="text-xs text-muted">Después: launcher de Minecraft → perfil «NeoForge» → Jugar → Multijugador → tu servidor.</span>
+              <span className="text-xs text-muted">Después: abre el launcher → Instalaciones → «LiveArena · NeoForge» → Jugar → Multijugador → tu servidor.</span>
             </div>
           </div>
 

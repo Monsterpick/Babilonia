@@ -33,6 +33,9 @@ export interface CineModStatus {
   mcDir: string | null
   launcher: boolean
   neoforge: boolean
+  /** ¿Aparece el perfil de NeoForge en el launcher? */
+  profile: boolean
+  launcherOpen: boolean
   mod: 'missing' | 'installed' | 'outdated'
   geckolib: boolean
   bundled: boolean
@@ -44,6 +47,67 @@ export interface CineModStatus {
 }
 
 const exists = (p: string) => fs.access(p).then(() => true, () => false)
+
+/** Archivos de perfiles: el launcher clásico usa el primero; el de Microsoft Store / Xbox, el segundo. */
+export const PROFILE_FILES = ['launcher_profiles.json', 'launcher_profiles_microsoft_store.json']
+export const PROFILE_KEY = 'livearena-neoforge'
+
+/** ¿Hay algún perfil del launcher que arranque nuestra versión de NeoForge? */
+export async function hasNeoForgeProfile(dir: string): Promise<boolean> {
+  for (const f of PROFILE_FILES) {
+    const j = await fs.readFile(path.join(dir, f), 'utf8').then((t) => JSON.parse(t) as { profiles?: Record<string, { lastVersionId?: string }> }, () => null)
+    if (j?.profiles && Object.values(j.profiles).some((p) => p?.lastVersionId === `neoforge-${CINE.neoforge}`)) return true
+  }
+  return false
+}
+
+/**
+ * Añade (o arregla) el perfil «LiveArena · NeoForge» en todos los archivos de perfiles que existan.
+ * El instalador oficial solo escribe en launcher_profiles.json, pero el launcher nuevo de Microsoft/Xbox lee
+ * launcher_profiles_microsoft_store.json; por eso sin esto el perfil no aparece.
+ */
+export async function ensureNeoForgeProfile(dir: string): Promise<string[]> {
+  const written: string[] = []
+  const now = new Date().toISOString()
+  let any = false
+  for (const f of PROFILE_FILES) {
+    const file = path.join(dir, f)
+    if (await exists(file)) any = true
+  }
+  for (const f of PROFILE_FILES) {
+    const file = path.join(dir, f)
+    if (!(await exists(file)) && !(f === PROFILE_FILES[0] && !any)) continue
+    const j = await fs.readFile(file, 'utf8').then((t) => JSON.parse(t) as Record<string, unknown>, () => ({}) as Record<string, unknown>)
+    const profiles = (j.profiles ?? {}) as Record<string, Record<string, unknown>>
+    const prev = profiles[PROFILE_KEY]
+    profiles[PROFILE_KEY] = {
+      ...(prev ?? {}),
+      name: 'LiveArena · NeoForge',
+      type: 'custom',
+      lastVersionId: `neoforge-${CINE.neoforge}`,
+      icon: 'Furnace_On',
+      created: (prev?.created as string) ?? now,
+      lastUsed: now,
+    }
+    j.profiles = profiles
+    await fs.writeFile(file, JSON.stringify(j, null, 2), 'utf8')
+    written.push(f)
+  }
+  return written
+}
+
+/** ¿Está abierto el launcher de Minecraft? (si lo está, al cerrarse puede borrar el perfil nuevo). */
+export async function launcherRunning(): Promise<boolean> {
+  if (process.platform !== 'win32') return false
+  const out = await new Promise<string>((res) => {
+    const p = spawn('tasklist', ['/FO', 'CSV', '/NH'], { windowsHide: true })
+    let o = ''
+    p.stdout.on('data', (d) => (o += d.toString()))
+    p.on('close', () => res(o))
+    p.on('error', () => res(''))
+  })
+  return /"(MinecraftLauncher|Minecraft)\.exe"/i.test(out)
+}
 
 /**
  * Instala la parte de cliente de las cinemáticas en el Minecraft del streamer:
@@ -66,7 +130,7 @@ export class CineModService {
   async mcDir(): Promise<string | null> {
     const custom = this.cfg.get().minecraft.clientDir
     if (custom && (await exists(custom))) return custom
-    for (const d of minecraftDirs()) if (await exists(path.join(d, 'launcher_profiles.json'))) return d
+    for (const d of minecraftDirs()) for (const f of PROFILE_FILES) if (await exists(path.join(d, f))) return d
     for (const d of minecraftDirs()) if (await exists(d)) return d
     return null
   }
@@ -97,7 +161,9 @@ export class CineModService {
     if (mods && (await exists(path.join(mods, MOD_FILE)))) mod = bundled && !(await this.sameFile(BUNDLED_MOD, path.join(mods, MOD_FILE))) ? 'outdated' : 'installed'
     return {
       mcDir: dir,
-      launcher: !!dir && (await exists(path.join(dir, 'launcher_profiles.json'))),
+      launcher: !!dir && ((await exists(path.join(dir, PROFILE_FILES[0]!))) || (await exists(path.join(dir, PROFILE_FILES[1]!)))),
+      profile: !!dir && (await hasNeoForgeProfile(dir)),
+      launcherOpen: await launcherRunning(),
       neoforge: !!dir && (await exists(path.join(dir, 'versions', `neoforge-${CINE.neoforge}`))),
       mod,
       geckolib: !!mods && (await exists(path.join(mods, CINE.geckolib.fileName))),
@@ -141,8 +207,9 @@ export class CineModService {
     try {
       const dir = await this.mcDir()
       if (!dir) throw new Error('No encuentro tu carpeta .minecraft. Abre el launcher oficial de Minecraft una vez y vuelve a intentarlo.')
-      if (!(await exists(path.join(dir, 'launcher_profiles.json'))))
-        throw new Error('Tu carpeta .minecraft no tiene launcher_profiles.json. Abre el launcher oficial de Minecraft una vez y vuelve a intentarlo.')
+      if (await launcherRunning()) throw new Error('Cierra el launcher de Minecraft antes de instalar (si está abierto, al cerrarse borra el perfil nuevo). Luego pulsa otra vez «Instalar».')
+      // El instalador oficial necesita launcher_profiles.json aunque uses el launcher de Microsoft/Xbox.
+      if (!(await exists(path.join(dir, PROFILE_FILES[0]!)))) await fs.writeFile(path.join(dir, PROFILE_FILES[0]!), JSON.stringify({ profiles: {}, settings: {}, version: 3 }, null, 2), 'utf8')
       if (!(await exists(BUNDLED_MOD))) throw new Error('Esta copia de LiveArena no incluye el mod (solo viene en la versión compilada para Windows).')
       const cache = paths.cache
       await fs.mkdir(cache, { recursive: true })
@@ -155,6 +222,10 @@ export class CineModService {
         await this.run(java, ['-jar', inst, '--install-client', dir], cache)
         this.log.info('cinematicas', `NeoForge ${CINE.neoforge} instalado en ${dir}`)
       }
+      if (!(await exists(path.join(dir, 'versions', `neoforge-${CINE.neoforge}`)))) throw new Error('El instalador de NeoForge no terminó bien. Vuelve a pulsar «Instalar».')
+      this.step('perfil', 'Creando el perfil «LiveArena · NeoForge» en el launcher…')
+      const files = await ensureNeoForgeProfile(dir)
+      this.log.info('cinematicas', `Perfil del launcher añadido en: ${files.join(', ')}`)
 
       const mods = path.join(dir, 'mods')
       await fs.mkdir(mods, { recursive: true })
