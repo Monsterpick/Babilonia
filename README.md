@@ -2,7 +2,15 @@
 
 Plataforma de juegos interactivos para **TikTok LIVE**. Los regalos, likes, comentarios, follows y shares de tu live se convierten en acciones dentro de **Minecraft** (mobs con el nombre de quien los envía, truenos, TNT, items, efectos, kit…) y en **overlays** para OBS / TikTok LIVE Studio.
 
-> Estado: **v0.4 · app de escritorio para Windows** (instalador y portable). Incluye plugin propio LiveArena (tótems apilables, 80+ efectos survival en español, efectos espectaculares, Akaza y Gojo, retos), overlays completos con vista previa, TTS, estudio de escenas y temas de color.
+> Estado: **v0.5 · app de escritorio para Windows** (instalador y portable). Incluye plugin propio LiveArena (tótems apilables, 80+ efectos survival en español, efectos espectaculares, Akaza y Gojo, retos), overlays completos con vista previa, TTS, estudio de escenas y temas de color.
+
+## Novedades v0.5
+
+- **Habilidades cinemáticas** (12, según el kit): escudo, onda de repulsión, corona de espadas, súper rayo, trueno + explosión, carrusel de creepers, ojo del vacío, agujero negro, juicio arcano, esfera de energía, meteorito y mil cortes. El servidor sigue siendo **Paper** (plugin LiveArena: línea de tiempo, daño, destrucción con restauración) y tu PC lleva el mod **LiveArena Cinemáticas** (NeoForge 26.1.2 + GeckoLib 5.5): cámara de cine, FOV, franjas, destellos, cielo especial y modelos animados. La app lo instala en un clic (página **Cinemáticas**). Comandos: `/habilidad <id> <jugador>` o `la efecto cine_<id> {player} {nickname}` en tus reglas.
+- **Kit**: tótems por paquetes (p. ej. 3 × 120 = 360) al contador del plugin, y hasta 99 por hueco en vanilla.
+- **TTS**: voz por usuario, 14 personajes (robótica clásica hombre/mujer, narrador, ardilla…), voces de Windows de 32 y 64 bits (detecta voces instaladas como Loquendo) con efectos, y `!voz` para los espectadores.
+- **Overlays**: catálogo por categorías sin recortes y **probador** a pantalla grande con simulación de eventos (solo overlays).
+- **Estudio**: lienzo a resolución real, guías e imanes, deshacer, alinear, animaciones, texto en vivo, plantillas e importar/exportar.
 
 ## Novedades v0.3–0.4
 
