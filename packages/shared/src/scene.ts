@@ -35,6 +35,18 @@ export const LayerSchema = z.object({
   radius: z.number().default(12),
   // gift
   gift: z.string().default('Rose'),
+  // estilo
+  family: z.enum(['outfit', 'impact', 'mono', 'serif', 'comic', 'pixel']).default('outfit'),
+  textBg: z.string().default(''),
+  border: z.number().min(0).max(40).default(0),
+  borderColor: z.string().default('#ffffff'),
+  shadow: z.boolean().default(false),
+  glow: z.string().default(''),
+  /** Escala del contenido de un overlay dentro de su caja. */
+  scale: z.number().min(0.1).max(6).default(1),
+  /** Animación: de entrada o en bucle. */
+  anim: z.enum(['none', 'fade', 'slide-up', 'slide-left', 'pop', 'pulse', 'float', 'spin', 'shake', 'glow']).default('none'),
+  animSpeed: z.number().min(0.2).max(5).default(1),
 })
 export type Layer = z.infer<typeof LayerSchema>
 
@@ -45,4 +57,11 @@ export const SceneSchema = z.object({
   bg: z.string().default('transparent'),
   layers: z.array(LayerSchema).default([]),
 })
+
+/** Resolución real de la escena (lo que debe medir la fuente de navegador en OBS). */
+export function sceneSize(ratio: Scene['ratio']): { w: number; h: number } {
+  if (ratio === '9:16') return { w: 1080, h: 1920 }
+  if (ratio === '1:1') return { w: 1080, h: 1080 }
+  return { w: 1920, h: 1080 }
+}
 export type Scene = z.infer<typeof SceneSchema>

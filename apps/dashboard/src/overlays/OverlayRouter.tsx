@@ -87,6 +87,8 @@ export function OverlayRouter({ name }: { name: string }) {
         return <div style={{ color: '#fff', font: '20px sans-serif' }}>Overlay desconocido: {name}</div>
     }
   })()
+  // La escena ocupa toda la ventana y se escala sola: sin envoltorio (el transform rompería position: fixed).
+  if (name === 'escena') return el
   return <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: `${100 / scale}%`, padding: Number(params.get('pad') ?? 14), boxSizing: 'border-box' }}>{el}</div>
 }
 
