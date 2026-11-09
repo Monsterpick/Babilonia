@@ -30,6 +30,17 @@ describe('habilidades.yml desde la app', () => {
     expect(text).toContain('escudo:            { radio: 4.0 }')
   })
 
+  it('cambia la vida del escudo dentro de su línea', async () => {
+    const folder = await mkdtemp(path.join(os.tmpdir(), 'cine-'))
+    await mkdir(path.join(folder, 'plugins', 'LiveArena'), { recursive: true })
+    const file = path.join(folder, 'plugins', 'LiveArena', 'habilidades.yml')
+    await writeFile(file, YML)
+    expect((await readCineSettings(folder)).escudoCorazones).toBe(50)
+    expect((await writeCineSettings(folder, { escudoCorazones: 80 })).escudoCorazones).toBe(80)
+    expect(await readFile(file, 'utf8')).toContain('escudo:            { vidaCorazones: 80, radio: 4.0 }')
+    expect((await writeCineSettings(folder, { escudoCorazones: 120 })).escudoCorazones).toBe(120)
+  })
+
   it('sin servidor devuelve los valores por defecto', async () => {
     expect(await readCineSettings('')).toMatchObject({ exists: false, camaraCinematica: true })
   })

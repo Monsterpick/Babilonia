@@ -12,6 +12,9 @@ import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.boss.BarColor;
+import org.bukkit.boss.BarStyle;
+import org.bukkit.boss.BossBar;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.BlockDisplay;
 import org.bukkit.entity.Creeper;
@@ -118,43 +121,61 @@ final class CineAbilities implements Listener {
     private final Map<UUID, CineEngine.Ctx> shields = new HashMap<>();
 
     private void escudo() {
-        e.register(new CineEngine.Ability("escudo", "ESCUDO DE ENERGÍA", "#5ce1ff", 600, 60, "Cúpula hexagonal que sigue al objetivo, refleja flechas y absorbe golpes") {
+        e.register(new CineEngine.Ability("escudo", "ESCUDO DE ENERGÍA", "#5ce1ff", 1200, 60, "Cúpula de energía con vida propia (50 corazones por defecto) que sigue al objetivo y aguanta los golpes") {
             void start(CineEngine.Ctx c) {
-                c.data.put("dur", c.cfg("durabilidad", 60.0));
+                double hp = c.cfg("vidaCorazones", 50.0) * 2;
+                c.data.put("hp", hp);
+                c.data.put("hpMax", hp);
+                double r = c.cfg("radio", 4.0);
+                ItemDisplay holder = c.actor(fx.itemDisplay(c.feet(), new ItemStack(Material.AIR), 1f, 0));
+                holder.setTeleportDuration(2);
+                c.data.put("holder", holder);
+                c.model(holder, "escudo", "aparicion", (float) (r / 3.0));
+                c.anim(holder, "color:ff5ce1ff");
+                BossBar bar = org.bukkit.Bukkit.createBossBar("§b🛡 ESCUDO §f" + hearts(hp) + " ❤", BarColor.BLUE, BarStyle.SEGMENTED_10);
+                for (Player p : c.w.getPlayers()) if (p.getLocation().distanceSquared(c.feet()) < 120 * 120) bar.addPlayer(p);
+                c.data.put("bar", bar);
                 shields.put(c.target.getUniqueId(), c);
                 CineNet.Shot s = c.shot();
                 s.key(0, c.around(c.feet(), 180, 6, 1.6), c.eye(), 70, LINEAR);
-                orbit(s, c, c.feet(), 8, 8, 4, 4, 180, 360, 10, 60, c.eye(), 72, 80);
+                orbit(s, c, c.feet(), 8, 9, 4, 3, 180, 360, 10, 60, c.eye(), 72, 80);
                 c.cam(s);
                 c.vignette(0x6012a0c0, 5, 40, 15);
+                c.sound(c.feet(), "escudo.activar", 1.5f, 0.8f);
             }
 
             void tick(CineEngine.Ctx c, int t) {
                 double r = c.cfg("radio", 4.0);
                 Location center = c.feet();
+                ItemDisplay holder = get(c, "holder");
+                if (holder != null && holder.isValid() && holder.getLocation().distanceSquared(center) > 0.01) holder.teleport(center);
                 int dur = duracion(c);
                 Integer brokeAt = get(c, "brokeAt");
                 if (brokeAt != null) {
-                    if (t - brokeAt > 20) e.finish(c, false);
+                    if (t - brokeAt > 24) e.finish(c, false);
                     return;
                 }
-                if (t < 40) {
-                    if (t % 2 == 0) CineFx.domeHex(c.w, center, r, t / 40.0, 0x5ce1ff, 0xffffff, t);
-                    if (t % 8 == 0) c.sound(center, "onda.carga", 0.4f, 0.6f + t / 40f);
+                if (t < 20) {
+                    // Formación: chispas que suben a la cúpula (también lo ven los que no tienen el mod).
+                    if (t % 2 == 0) CineFx.domeHex(c.w, center, r, t / 20.0, 0x5ce1ff, 0xffffff, t);
                     return;
                 }
-                if (t == 40) {
-                    c.sound(center, "escudo.activar", 1.2f, 1.2f);
+                if (t == 20) {
                     c.flash(0x5ce1ff, 1, 2, 8);
-                    CineFx.sphereShell(c.w, center.clone().add(0, 0.2, 0), r, 220, 0xffffff, 1.6f);
+                    c.sound(center, "escudo.activar", 1.2f, 1.3f);
+                    CineFx.sphereShell(c.w, center.clone().add(0, 0.2, 0), r, 160, 0xffffff, 1.4f);
                 }
-                if (t >= dur - 20) {
-                    double grow = (dur - t) / 20.0;
-                    if (t % 2 == 0) CineFx.domeHex(c.w, center, r, grow, 0x5ce1ff, 0x5ce1ff, t);
+                if (t >= dur - 18) {
+                    if (t == dur - 18) {
+                        c.anim(holder, "desaparecer");
+                        c.sound(center, "escudo.romper", 0.8f, 1.6f);
+                    }
                     return;
                 }
-                if (t % 4 == 0) CineFx.domeHex(c.w, center, r, 1, (t / 4) % 6 == 0 ? 0x9ff0ff : 0x5ce1ff, 0xffffff, t);
-                // Proyectiles desde fuera: rebotan.
+                // Brillo sutil del borde para todos (con el mod se ve además la cúpula de paneles).
+                if (t % 10 == 0) CineFx.ring(c.w, center.clone().add(0, 0.15, 0), r, 0x5ce1ff, 1.2f, t * 0.05);
+                if (t % 20 == 0) updateBar(c);
+                // Proyectiles desde fuera: rebotan en la cúpula y le restan vida.
                 for (Entity en : c.w.getNearbyEntities(center, r + 2, r + 2, r + 2)) {
                     if (en instanceof Projectile pr) {
                         if (pr.getShooter() == c.target) continue;
@@ -172,6 +193,10 @@ final class CineAbilities implements Listener {
                             Vector out = m.getLocation().toVector().subtract(center.toVector()).setY(0);
                             if (out.lengthSquared() < 0.01) out = new Vector(1, 0, 0);
                             m.setVelocity(out.normalize().multiply(0.8).setY(0.3));
+                            if (t % 10 == 0) {
+                                CineFx.domeImpact(c.w, center.clone().add(0, 0.5, 0), r, m.getLocation().add(0, 1, 0), 0xffffff);
+                                c.sound(m.getLocation(), "escudo.impacto", 0.6f, 1.6f);
+                            }
                         }
                     }
                 }
@@ -179,27 +204,64 @@ final class CineAbilities implements Listener {
 
             void end(CineEngine.Ctx c, boolean cancelled) {
                 shields.remove(c.target.getUniqueId());
+                BossBar bar = get(c, "bar");
+                if (bar != null) bar.removeAll();
             }
         });
     }
 
-    /** Impacto en la cúpula: onda visual, sonido y resta durabilidad (si se agota, se rompe). */
+    private static String hearts(double hp) {
+        double h = Math.max(0, hp) / 2;
+        return h == Math.floor(h) ? String.valueOf((int) h) : String.format(java.util.Locale.ROOT, "%.1f", h);
+    }
+
+    /** Barra de vida del escudo y color de la cúpula: cian → amarillo → rojo. */
+    private void updateBar(CineEngine.Ctx c) {
+        BossBar bar = get(c, "bar");
+        double hp = (double) c.data.get("hp"), max = (double) c.data.get("hpMax");
+        double f = Math.max(0, Math.min(1, hp / max));
+        String state = f > 0.6 ? "ok" : f > 0.3 ? "mid" : "low";
+        if (bar != null) {
+            bar.setProgress(f);
+            bar.setColor(f > 0.6 ? BarColor.BLUE : f > 0.3 ? BarColor.YELLOW : BarColor.RED);
+            bar.setTitle((f > 0.6 ? "§b" : f > 0.3 ? "§e" : "§c") + "🛡 ESCUDO §f" + hearts(hp) + " / " + hearts(max) + " ❤");
+            for (Player p : c.w.getPlayers()) if (!bar.getPlayers().contains(p) && p.getLocation().distanceSquared(c.feet()) < 120 * 120) bar.addPlayer(p);
+        }
+        if (!state.equals(c.data.get("tint"))) {
+            c.data.put("tint", state);
+            c.anim(get(c, "holder"), "color:" + (f > 0.6 ? "ff5ce1ff" : f > 0.3 ? "ffffd34d" : "ffff4a4a"));
+        }
+    }
+
+    /** Impacto en la cúpula: onda visual, sonido y resta vida (si se agota, se rompe en pedazos). */
     private void impact(CineEngine.Ctx c, Location at, double dmg) {
         double r = c.cfg("radio", 4.0);
         Location center = c.feet();
         CineFx.domeImpact(c.w, center.clone().add(0, 0.5, 0), r, at, 0xffffff);
         c.sound(at, "escudo.impacto", 1f, 1.2f);
-        double dur = (double) c.data.getOrDefault("dur", 60.0) - dmg;
-        c.data.put("dur", dur);
-        if (dur <= 0 && !c.data.containsKey("brokeAt")) {
+        double hp = (double) c.data.get("hp") - dmg;
+        c.data.put("hp", hp);
+        Integer last = get(c, "lastHitAnim");
+        if (last == null || c.t - last > 7) {
+            c.anim(get(c, "holder"), "impacto");
+            c.data.put("lastHitAnim", c.t);
+        }
+        updateBar(c);
+        if (hp <= 0 && !c.data.containsKey("brokeAt")) {
             c.data.put("brokeAt", c.t);
-            c.sound(center, "escudo.romper", 1.5f, 0.8f);
-            for (int i = 0; i < 40; i++) {
+            c.anim(get(c, "holder"), "romper");
+            c.sound(center, "escudo.romper", 1.6f, 0.7f);
+            c.flash(0xffffff, 0, 2, 10);
+            c.shake(0.8, 10, 0.8);
+            CineFx.part(c.w, Particle.FLASH, center.clone().add(0, r * 0.6, 0), 1, 0, 0);
+            for (int i = 0; i < 60; i++) {
                 double a = Math.random() * Math.PI * 2, y = Math.random() * r;
                 Location l = center.clone().add(Math.cos(a) * r * 0.9, y, Math.sin(a) * r * 0.9);
-                world.flyVisual(l, Material.LIGHT_BLUE_STAINED_GLASS.createBlockData(), CineWorld.Path.LAUNCH, null,
-                        new Vector(Math.cos(a) * 0.2, 0.1, Math.sin(a) * 0.2), 30, 0);
+                world.flyVisual(l, (i % 3 == 0 ? Material.LIGHT_BLUE_STAINED_GLASS : i % 3 == 1 ? Material.CYAN_STAINED_GLASS : Material.WHITE_STAINED_GLASS).createBlockData(), CineWorld.Path.LAUNCH, null,
+                        new Vector(Math.cos(a) * 0.35, 0.2 + Math.random() * 0.3, Math.sin(a) * 0.35), 30, 0);
             }
+            BossBar bar = get(c, "bar");
+            if (bar != null) bar.removeAll();
             shields.remove(c.target.getUniqueId());
         }
     }
@@ -208,17 +270,15 @@ final class CineAbilities implements Listener {
     public void onShieldDamage(EntityDamageEvent ev) {
         if (!(ev.getEntity() instanceof Player p)) return;
         CineEngine.Ctx c = shields.get(p.getUniqueId());
-        if (c == null || c.ended || c.t < 40) return;
+        if (c == null || c.ended || c.t < 20) return;
         EntityDamageEvent.DamageCause cause = ev.getCause();
-        boolean outside = switch (cause) {
-            case PROJECTILE, ENTITY_EXPLOSION, BLOCK_EXPLOSION, LIGHTNING, MAGIC, SONIC_BOOM -> true;
-            case ENTITY_ATTACK, ENTITY_SWEEP_ATTACK -> ev instanceof EntityDamageByEntityEvent be
-                    && be.getDamager().getLocation().distance(p.getLocation()) > c.cfg("radio", 4.0) - 0.5;
-            default -> false; // caída, hambre, ahogo… no se bloquean
+        boolean blocked = switch (cause) {
+            case PROJECTILE, ENTITY_EXPLOSION, BLOCK_EXPLOSION, LIGHTNING, MAGIC, SONIC_BOOM, ENTITY_ATTACK, ENTITY_SWEEP_ATTACK, THORNS, DRAGON_BREATH, FALLING_BLOCK, FIRE -> true;
+            default -> false; // caída, hambre, ahogo, vacío… no se bloquean
         };
-        if (!outside) return;
+        if (!blocked) return;
         ev.setCancelled(true);
-        Location at = ev instanceof EntityDamageByEntityEvent be ? be.getDamager().getLocation() : p.getLocation().add(0, 3, 0);
+        Location at = ev instanceof EntityDamageByEntityEvent be ? be.getDamager().getLocation().add(0, 1, 0) : p.getLocation().add(0, 3, 0);
         impact(c, at, ev.getDamage());
     }
 

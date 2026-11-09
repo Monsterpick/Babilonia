@@ -224,6 +224,10 @@ final class CineWorld {
         restoring.clear();
     }
 
+    boolean busy() {
+        return !queue.isEmpty() || !flyers.isEmpty();
+    }
+
     int pending() {
         return queue.size();
     }

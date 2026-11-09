@@ -410,6 +410,19 @@ final class CineEngine implements Listener, TabExecutor {
         world.tick(tick);
         for (Ctx c : new ArrayList<>(running.values())) step(c);
         for (Ctx c : new ArrayList<>(persistent.values())) step(c);
+        if (!running.isEmpty() || !persistent.isEmpty() || world.busy()) lastActiveTick = tick;
+    }
+
+    /** Último tick con alguna habilidad (o bloques voladores) en marcha. */
+    private long lastActiveTick = -100000;
+
+    /**
+     * Las habilidades levantan y sostienen a los jugadores en el aire (ojo del vacío, agujero negro…). Con
+     * allow-flight=false, Paper los expulsaría por «volar»: durante una habilidad y 20 s después se ignora.
+     */
+    @EventHandler(ignoreCancelled = true)
+    public void onFlyKick(org.bukkit.event.player.PlayerKickEvent e) {
+        if (e.getCause() == org.bukkit.event.player.PlayerKickEvent.Cause.FLYING_PLAYER && tick - lastActiveTick < 400) e.setCancelled(true);
     }
 
     private void step(Ctx c) {

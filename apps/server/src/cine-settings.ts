@@ -10,10 +10,12 @@ export const CineSettingsSchema = z.object({
   segundosRestauracion: z.number().int().min(1).max(3600),
   bloquesPorTick: z.number().int().min(20).max(5000),
   colaMax: z.number().int().min(0).max(100),
+  /** Vida del escudo de energía en corazones (escudo.vidaCorazones). */
+  escudoCorazones: z.number().min(1).max(2000),
 })
 export type CineSettings = z.infer<typeof CineSettingsSchema>
 
-const DEFAULTS: CineSettings = { camaraCinematica: true, romperBloques: true, restaurarBloques: true, segundosRestauracion: 60, bloquesPorTick: 400, colaMax: 10 }
+const DEFAULTS: CineSettings = { camaraCinematica: true, romperBloques: true, restaurarBloques: true, segundosRestauracion: 60, bloquesPorTick: 400, colaMax: 10, escudoCorazones: 50 }
 
 const file = (folder: string) => path.join(folder, 'plugins', 'LiveArena', 'habilidades.yml')
 
@@ -23,7 +25,10 @@ export async function readCineSettings(folder: string): Promise<CineSettings & {
   const text = await fs.readFile(file(folder), 'utf8').catch(() => null)
   if (text == null) return { ...DEFAULTS, exists: false }
   const out: Record<string, unknown> = { ...DEFAULTS }
+  const shield = text.match(/^escudo:.*\bvidaCorazones:\s*([\d.]+)/m)
+  if (shield) out.escudoCorazones = Number(shield[1])
   for (const key of Object.keys(DEFAULTS) as (keyof CineSettings)[]) {
+    if (key === 'escudoCorazones') continue
     const m = text.match(new RegExp(`^\\s+${key}:\\s*([^#\\n]+)`, 'm'))
     if (!m) continue
     const raw = m[1]!.trim()
@@ -38,6 +43,12 @@ export async function writeCineSettings(folder: string, patch: Partial<CineSetti
   if (text == null) throw new Error('Arranca el servidor una vez para que el plugin cree habilidades.yml.')
   for (const [key, value] of Object.entries(patch)) {
     if (value === undefined) continue
+    if (key === 'escudoCorazones') {
+      text = text.replace(/^(escudo:\s*\{)(.*)$/m, (_m, a: string, rest: string) =>
+        /\bvidaCorazones:/.test(rest) ? `${a}${rest.replace(/\bvidaCorazones:\s*[\d.]+/, `vidaCorazones: ${Number(value)}`)}` : `${a} vidaCorazones: ${Number(value)},${rest}`,
+      )
+      continue
+    }
     const re = new RegExp(`^(\\s+${key}:\\s*)([^#\\n]+?)(\\s*(#.*)?)$`, 'm')
     if (re.test(text)) text = text.replace(re, (_m, a: string, _v: string, c: string) => `${a}${String(value)}${c ?? ''}`)
     else text = text.replace(/^general:\s*$/m, `general:\n  ${key}: ${String(value)}`)

@@ -29,13 +29,19 @@ import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 public final class CineModels {
     private CineModels() {}
 
-    static final Set<String> LOOPS = Set.of("idle", "girar", "rotar", "alzar_brazos");
+    static final Set<String> LOOPS = Set.of("idle", "girar", "rotar", "alzar_brazos", "cargar", "arder");
+    /** Modelos de energía: translúcidos y a plena luz (escudo, disco del agujero negro, círculos…). */
+    static final Set<String> TRANSLUCENT = Set.of("escudo", "agujero_negro", "circulo_arcano", "aura");
+    /** Modelos con partes que brillan: llevan además textures/entity/<modelo>_glowmask.png. */
+    static final Set<String> GLOW = Set.of("meteorito", "ojo_vacio", "guerrero", "santuario");
 
     /** Una instancia animada por actor del servidor. */
     public static final class Inst implements GeoAnimatable {
         final String model;
         final float scale;
         volatile RawAnimation anim;
+        /** Color ARGB que tiñe el modelo (el servidor lo cambia con la «animación» color:AARRGGBB). */
+        volatile int color = 0xFFFFFFFF;
         private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
         Inst(String model, String anim, float scale) {
@@ -59,8 +65,7 @@ public final class CineModels {
         if (anim == null || anim.isBlank()) return RawAnimation.begin().thenLoop("idle");
         if (LOOPS.contains(anim)) return RawAnimation.begin().thenLoop(anim);
         return switch (anim) {
-            case "abrir", "latido" -> RawAnimation.begin().thenPlay(anim).thenLoop("idle");
-            case "aparicion" -> RawAnimation.begin().thenPlay(anim).thenLoop("alzar_brazos");
+            case "abrir", "latido", "impacto", "aparicion", "golpe" -> RawAnimation.begin().thenPlay(anim).thenLoop("idle");
             default -> RawAnimation.begin().thenPlayAndHold(anim);
         };
     }
@@ -92,8 +97,22 @@ public final class CineModels {
 
     /** Renderizador de objeto sin el desplazamiento de medio bloque que GeckoLib pone por defecto. */
     static final class Renderer extends GeoObjectRenderer<Inst, Void, GeoRenderState> {
+        private final boolean translucent;
+
         Renderer(String name) {
             super(new Model(name));
+            translucent = TRANSLUCENT.contains(name);
+            if (GLOW.contains(name)) withRenderLayer(com.geckolib.renderer.layer.builtin.AutoGlowingGeoLayer::new);
+        }
+
+        @Override
+        public net.minecraft.client.renderer.rendertype.RenderType getRenderType(GeoRenderState state, Identifier texture) {
+            return translucent ? net.minecraft.client.renderer.rendertype.RenderTypes.entityTranslucentEmissive(texture) : super.getRenderType(state, texture);
+        }
+
+        @Override
+        public int getRenderColor(Inst animatable, Void data, float partialTick) {
+            return animatable.color;
         }
 
         @Override
@@ -117,7 +136,15 @@ public final class CineModels {
 
     static void anim(int entityId, String anim) {
         Inst i = active.get(entityId);
-        if (i != null) i.anim = raw(anim);
+        if (i == null) return;
+        if (anim.startsWith("color:")) {
+            try {
+                i.color = (int) Long.parseLong(anim.substring(6), 16);
+            } catch (NumberFormatException ignored) {
+            }
+            return;
+        }
+        i.anim = raw(anim);
     }
 
     static void remove(int entityId) {

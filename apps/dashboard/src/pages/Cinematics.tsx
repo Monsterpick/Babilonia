@@ -30,6 +30,7 @@ interface CineSettings {
   segundosRestauracion: number
   bloquesPorTick: number
   colaMax: number
+  escudoCorazones: number
   exists: boolean
 }
 
@@ -239,6 +240,10 @@ export function CinematicsPage() {
                 <label className="flex items-center justify-between gap-3">
                   <span>Habilidades en cola por jugador</span>
                   <input type="number" className="input w-24" min={0} max={100} value={settings.colaMax} onChange={(e) => void patch({ colaMax: Math.max(0, Number(e.target.value)) })} />
+                </label>
+                <label className="flex items-center justify-between gap-3">
+                  <span>Vida del escudo (corazones ❤)</span>
+                  <input type="number" className="input w-24" min={1} max={2000} value={settings.escudoCorazones} onChange={(e) => void patch({ escudoCorazones: Math.max(1, Number(e.target.value)) })} />
                 </label>
               </div>
             )}

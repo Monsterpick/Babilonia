@@ -361,6 +361,8 @@ export class MinecraftService extends EventEmitter {
       await enableRcon(mc.server.folder)
       props = await readProperties(propsFile)
     }
+    // Las cinemáticas sostienen al jugador en el aire: sin allow-flight Paper lo expulsa por «volar».
+    if (props.size > 0 && props.get('allow-flight') !== 'true') await updateProperties(propsFile, { 'allow-flight': true })
     if (props.size > 0) await this.ensurePortsFree(mc.server.folder, props)
     props = await readProperties(propsFile)
     this.serverPort = Number(props.get('server-port') ?? 25565) || 25565

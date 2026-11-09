@@ -15,7 +15,7 @@ general:
   colaMax: 10                  # habilidades en espera por jugador mientras está en otra
   bloquesProtegidos: []        # ej: [DIAMOND_BLOCK, BEACON]
 
-escudo:            { radio: 4.0, duracionTicks: 600, durabilidad: 60.0, reflejarProyectiles: true, empujarMobs: true }
+escudo:            { radio: 4.0, duracionTicks: 1200, vidaCorazones: 50.0, reflejarProyectiles: true, empujarMobs: true }
 onda_repulsion:    { radio: 20.0, fuerzaMax: 3.0, danio: 8.0, ticksExpansion: 15, romperFragiles: true, bloquesVoladoresVisuales: true }
 corona_espadas:    { numeroEspadas: 12, danioPorEspada: 5.0, intervaloDisparoTicks: 3, velocidad: 1.8, romperBloqueAlImpactar: true }
 super_rayo:        { danio: 25.0, radioArea: 4.0, radioCrater: 3, ignorarArmadura: false, crearFulguritas: true, grosor: 0.9 }

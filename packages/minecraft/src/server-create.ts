@@ -177,6 +177,8 @@ export async function createServer(o: CreateServerOptions, progress: Progress = 
     'rcon.password': rconPassword,
     'broadcast-rcon-to-ops': false,
     'enable-command-block': true,
+    // Las habilidades cinemáticas sostienen al jugador en el aire: sin esto Paper lo expulsa por «volar».
+    'allow-flight': true,
     'spawn-protection': 0,
     'view-distance': 10,
     'simulation-distance': 8,
