@@ -32,7 +32,15 @@ Los actuales los generan los scripts de `mod/tools/` (diseños propios).
 | `gojo` | vacio_purpura | `cabeza`, `mano_izquierda`, `mano_derecha`, `mano_proyectil` | `aparicion`, `carga`, `disparo`, `pose_final` | 2 bloques |
 | `akaza` | akaza | `cabeza`, `cuerpo`, `puno_derecho` | `aparicion`, `despliegue_tecnica`, `golpe_suelo`, `pose_final` | 2 bloques |
 
-Los modelos incluidos los completan `mod/tools/gen_personajes.py` y `gen_santuario.py` (diseños propios con el
+**Skins**: goku, gojo, sukuna y akaza usan las skins de Minecraft (64×64) de `mod/tools/referencias/skins/`
+(`gen_skins.py`: geometría de jugador con capa exterior y los huesos del contrato). Para cambiar un personaje basta con
+sustituir su PNG y volver a ejecutar el script.
+
+**Santuario**: es la construcción `referencias/santuario_obj/sukuna-temple.zip` (exportada con Mineways) convertida en
+malla por `gen_mesh.py` (`assets/livearena/mesh/santuario.bin.gz`); el mod la dibuja tal cual con sus texturas de
+bloques y la anima en código (emerger / hundirse). Ajustes: `alturaSantuario`, `enterrarSantuario`, `distanciaSantuario`.
+
+Antes, los modelos se completaban con `mod/tools/gen_personajes.py` y `gen_santuario.py` (diseños propios con el
 esqueleto del contrato). Para usar los tuyos de Blockbench:
 
 ```

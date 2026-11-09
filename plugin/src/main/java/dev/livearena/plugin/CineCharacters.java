@@ -46,7 +46,7 @@ final class CineCharacters {
     static final String A_CARGA = "carga", A_DISPARO = "disparo";
     static final String A_DESPLIEGUE = "despliegue_tecnica", A_GOLPE_SUELO = "golpe_suelo";
     /** Altura del modelo en bloques a escala 1 (los personajes miden 2 bloques; el santuario ≈ 5). */
-    static final float ALTO_PERSONAJE = 2.0f, ALTO_SANTUARIO = 5.0f;
+    static final float ALTO_PERSONAJE = 2.0f, ALTO_SANTUARIO = 51.0f; // el santuario es una construcción de 51 bloques (malla)
     /** Posición de los huesos de anclaje en reposo (bloques, escala 1; el modelo mira hacia delante). */
     static final double MANOS_ALTO = 2.5, PROY_ALTO = 17 / 16.0, PROY_DELANTE = 6 / 16.0;
 
@@ -365,7 +365,7 @@ final class CineCharacters {
                 c.data.put("skAt", at);
                 c.data.put("yaw", yaw);
                 // Santuario 6 bloques detrás del rey (lejos del objetivo), mirando también al objetivo.
-                Location sh = c.ground(at.clone().add(forward(yaw).multiply(-6)).add(0, 4, 0));
+                Location sh = c.ground(at.clone().add(forward(yaw).multiply(-c.cfg("distanciaSantuario", 14.0))).add(0, 4, 0));
                 c.data.put("shAt", sh);
                 c.target.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 230, 9, false, false));
                 Vector face = forward(yaw);
@@ -393,7 +393,12 @@ final class CineCharacters {
                     c.say("mil_cortes_dominio", "Conoce tu lugar, maldito insecto... Expansión de Dominio: Santuario Malévolo.", 0xff4040, 80);
                 }
                 if (t == 60) {
-                    ItemDisplay santuario = character(c, shAt, (float) c.data.get("yaw"), SANTUARIO, A_EMERGER, 14f / ALTO_SANTUARIO, 0x3a0000);
+                    // La construcción tiene raíces de netherrack bajo el templo: se entierran para que quede asentado.
+                    double alto = c.cfg("alturaSantuario", 20.0);
+                    Location shBase = shAt.clone().add(0, -alto * c.cfg("enterrarSantuario", 0.3), 0);
+                    ItemDisplay santuario = character(c, shBase, (float) c.data.get("yaw"), SANTUARIO, A_EMERGER, (float) (alto / ALTO_SANTUARIO), 0x3a0000);
+                    santuario.setDisplayWidth((float) alto * 2.5f); // caja de dibujo grande: que no desaparezca al salir de cuadro
+                    santuario.setDisplayHeight((float) alto * 2f);
                     c.data.put("santuario", santuario);
                     c.sky(CineNet.SKY_TINT, 0x3a0000, 240);
                     c.vignette(0xc0200000, 15, 200, 25);

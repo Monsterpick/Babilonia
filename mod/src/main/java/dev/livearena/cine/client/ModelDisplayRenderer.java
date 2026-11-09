@@ -53,6 +53,12 @@ public final class ModelDisplayRenderer extends DisplayRenderer.ItemDisplayRende
         if (state.renderState != null) poseStack.mulPose(state.renderState.transformation().get(state.interpolationProgress));
         poseStack.scale(inst.scale, inst.scale, inst.scale);
         float partial = Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(false);
+        CineMeshes.Mesh mesh = CineMeshes.get(inst.model);
+        if (mesh != null) {
+            CineMeshes.render(mesh, inst, poseStack, collector, state.lightCoords);
+            poseStack.popPose();
+            return;
+        }
         CineModels.current = inst;
         CineModels.currentPose = new org.joml.Matrix4f(poseStack.last().pose());
         CineModels.currentCam = camera.pos;

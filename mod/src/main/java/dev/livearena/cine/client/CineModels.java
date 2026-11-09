@@ -40,6 +40,9 @@ public final class CineModels {
         final String model;
         final float scale;
         volatile RawAnimation anim;
+        /** Nombre y momento de la última animación (para las mallas, que se animan en código). */
+        volatile String animName = "";
+        volatile long animStart = System.currentTimeMillis();
         /** Color ARGB que tiñe el modelo (el servidor lo cambia con la «animación» color:AARRGGBB). */
         volatile int color = 0xFFFFFFFF;
         /** Huesos cuya posición en el mundo hay que seguir (otros modelos se anclan a ellos). */
@@ -56,6 +59,7 @@ public final class CineModels {
             this.model = model;
             this.scale = scale;
             this.anim = raw(model, anim);
+            this.animName = anim == null ? "" : anim;
         }
 
         @Override
@@ -212,6 +216,8 @@ public final class CineModels {
             return;
         }
         i.anim = raw(i.model, anim);
+        i.animName = anim;
+        i.animStart = System.currentTimeMillis();
     }
 
     static void remove(int entityId) {

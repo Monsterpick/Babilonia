@@ -26,7 +26,7 @@ agujero_negro:     { radioAtraccion: 25.0, radioArranque: 10.0, radioHorizonte: 
 juicio_arcano:     { radioZona: 15.0, numeroRayos: 33, danioRayo: 8.0, danioFinal: 40.0, radioCraterFinal: 5 }
 genkidama:         { alturaVuelo: 16.0, radioMax: 12.0, velocidad: 0.4, danio: 50.0, radioCrater: 14, profundidadCrater: 8, energiaDeJugadores: true, distanciaGokuSinLanzador: 30.0 }
 meteorito:         { radioCrater: 18, profundidadCrater: 10, radioLetal: 6.0, radioDanio: 30.0, danioMax: 100.0, bloquesEyeccion: 80, radioSacudida: 150 }
-mil_cortes:        { radio: 10.0, cortesPorTick: 3, danioCorte: 1.0, danioFinal: 30.0, romperBloques: true, distanciaSukunaSinLanzador: 12.0 }
+mil_cortes:        { alturaSantuario: 20.0, enterrarSantuario: 0.3, distanciaSantuario: 14.0, radio: 10.0, cortesPorTick: 3, danioCorte: 1.0, danioFinal: 30.0, romperBloques: true, distanciaSukunaSinLanzador: 12.0 }
 vacio_purpura:     { velocidad: 0.6, radioDestruccion: 3.0, radioAtraccion: 10.0, radioNucleo: 1.5, danioTick: 2.0, ticksMax: 100, distanciaMax: 60.0, radioDetonacion: 7, danioFinal: 30.0 }
 akaza:             { distanciaAparicion: 8.0, radioCopo: 10.0, radioCrater: 6, danio: 20.0, knockbackHorizontal: 2.5, knockbackVertical: 1.2, tickImpacto: 85 }
 
