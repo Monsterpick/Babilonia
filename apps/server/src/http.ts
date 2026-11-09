@@ -422,7 +422,7 @@ export async function buildHttp(app: App): Promise<FastifyInstance> {
       z.object({
         folder: z.string().min(3),
         software: z.enum(['paper', 'vanilla']).default('paper'),
-        mcVersion: z.string().regex(/^\d+\.\d+(\.\d+)?$/).default('1.20.1'),
+        mcVersion: z.string().regex(/^\d+\.\d+(\.\d+)?$/).default('26.1.2'),
         eulaAccepted: z.literal(true, { errorMap: () => ({ message: 'Debes aceptar el EULA de Minecraft' }) }),
         name: z.string().min(1).max(59).default('Servidor LiveArena'),
         difficulty: z.enum(['peaceful', 'easy', 'normal', 'hard']).default('normal'),

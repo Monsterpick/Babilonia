@@ -5,6 +5,7 @@ import { useLiveState } from '../lib/live'
 import { CINE_ABILITIES } from '../lib/cine'
 import { PageHeader, Toggle } from '../components/ui'
 import { toast } from '../components/Toast'
+import { VersionWarning } from './Server'
 
 interface CineStatus {
   mcDir: string | null
@@ -116,6 +117,7 @@ export function CinematicsPage() {
 
       <div className="grid gap-4 px-8 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className="space-y-4">
+          <VersionWarning />
           <div className="card overflow-hidden">
             <div className="flex items-center gap-3 border-b border-line bg-gradient-to-r from-violet-600/20 via-fuchsia-500/10 to-transparent px-5 py-4">
               <Clapperboard className="text-violet-300" />

@@ -22,6 +22,33 @@ const run = async <T,>(fn: () => Promise<T>): Promise<T | undefined> => {
   }
 }
 
+/** Versión de Minecraft para la que está hecho el plugin LiveArena (tótems, cinemáticas) y el mod. */
+export const LIVEARENA_MC = '26.1.2'
+
+/** Aviso si el servidor no es de la versión del plugin LiveArena: Paper no lo cargaría. */
+export function VersionWarning({ onInstall }: { onInstall?: () => void }) {
+  const { state } = useApp()
+  const mc = useLiveState<any>('minecraft')
+  const v = state?.config.minecraft.version
+  if (!mc?.server?.folder || !v || v === LIVEARENA_MC) return null
+  return (
+    <div className="card flex items-start gap-3 border-warn/40 bg-warn/10 p-4 text-sm">
+      <AlertTriangle size={18} className="mt-0.5 shrink-0 text-warn" />
+      <div className="min-w-0 flex-1">
+        <div className="font-bold text-warn">Tu servidor es Paper {v}, pero LiveArena necesita Paper {LIVEARENA_MC}</div>
+        <div className="mt-0.5 text-muted">
+          Con {v} el plugin LiveArena no se carga: no hay tótems apilables ni cinemáticas, y el mod no puede conectarse. Instala un servidor nuevo con Paper {LIVEARENA_MC} en otra carpeta (el viejo queda intacto).
+        </div>
+      </div>
+      {onInstall && (
+        <button className="btn btn-primary shrink-0" onClick={onInstall}>
+          Instalar Paper {LIVEARENA_MC}
+        </button>
+      )}
+    </div>
+  )
+}
+
 export function ServerPage() {
   const mc = useLiveState<any>('minecraft')
   const [modal, setModal] = useState<ModalId>(null)
@@ -36,6 +63,7 @@ export function ServerPage() {
           <PlayerCard />
         </div>
         <div className="space-y-4">
+          <VersionWarning onInstall={() => setModal('install')} />
           {!hasServer && (
             <div className="card p-6">
               <h2 className="text-lg font-bold">Aún no tienes servidor</h2>
@@ -221,7 +249,7 @@ function InstallModal({ onClose }: { onClose: () => void }) {
   const [o, setO] = useState({
     folder: isWin ? 'C:\\minecraft-server' : '',
     software: 'paper' as 'paper' | 'vanilla',
-    mcVersion: '1.20.1',
+    mcVersion: LIVEARENA_MC,
     name: 'Servidor LiveArena',
     gamemode: 'survival' as 'survival' | 'creative' | 'adventure',
     difficulty: 'normal' as 'peaceful' | 'easy' | 'normal' | 'hard',
@@ -242,7 +270,7 @@ function InstallModal({ onClose }: { onClose: () => void }) {
   const loadLib = () => api('GET', '/api/minecraft/plugins').then(setLibrary).catch(() => undefined)
 
   useEffect(() => {
-    api<string[]>('GET', '/api/minecraft/versions').then(setVersions).catch(() => setVersions(['1.20.1']))
+    api<string[]>('GET', '/api/minecraft/versions').then(setVersions).catch(() => setVersions([LIVEARENA_MC]))
     void loadLib()
   }, [])
   useEffect(() => {
@@ -255,7 +283,7 @@ function InstallModal({ onClose }: { onClose: () => void }) {
   }, [o.folder])
 
   const busy = !!creating && !['done', 'error'].includes(creating.step)
-  const list = versions.length ? versions : ['1.20.1']
+  const list = versions.length ? versions : [LIVEARENA_MC]
   const newest = list[0]
   const javaOk = !!java?.java
   return (
@@ -286,7 +314,7 @@ function InstallModal({ onClose }: { onClose: () => void }) {
           >
             {list.map((v) => (
               <option key={v} value={`paper|${v}`}>
-                PaperMC ({v}){v === '1.20.1' ? ' · compatible con tus plugins MiniLive' : v === newest ? ' · Recomendado (el más nuevo)' : ''}
+                PaperMC ({v}){v === LIVEARENA_MC ? ' · Recomendado: plugin LiveArena, tótems y cinemáticas' : v === '1.20.1' ? ' · solo plugins viejos (sin LiveArena ni cinemáticas)' : v === newest ? ' · el más nuevo (sin cinemáticas)' : ''}
               </option>
             ))}
             {list.slice(0, 6).map((v) => (
