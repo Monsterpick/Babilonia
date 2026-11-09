@@ -3,25 +3,31 @@
 Estos nombres son un contrato entre el código y los modelos de Blockbench. No se cambian.
 Blockbench: última versión + plugin "GeckoLib Models & Animations" (GeckoLib 5).
 
-Rutas:
-- Modelos: `assets/cinematicas/geckolib/models/<nombre>.geo.json`
-- Animaciones: `assets/cinematicas/geckolib/animations/<nombre>.animation.json`
-- Texturas: `assets/cinematicas/textures/entity/<nombre>.png`
-- Sonidos: `assets/cinematicas/sounds/<grupo>/<nombre>.ogg` + `assets/cinematicas/sounds.json`
-(Claude Code debe confirmar las rutas exactas que espera GeckoLib 5 en el código fuente y corregir esta tabla si difieren.)
+Rutas (confirmadas en el mod, espacio de nombres `livearena`):
+- Modelos: `assets/livearena/geckolib/models/<nombre>.geo.json`
+- Animaciones: `assets/livearena/geckolib/animations/<nombre>.animation.json`
+- Texturas: `assets/livearena/textures/entity/<nombre>.png` (+ `<nombre>_glowmask.png` en los que brillan)
+- Sonidos: ids de `habilidades.yml → sonidos` (vanilla por defecto; admite varios separados por comas o `livearena:...` de un resource pack)
+
+Todos se pueden sustituir con un **paquete de recursos** con las mismas rutas (no hace falta recompilar el mod).
+Los actuales los generan los scripts de `mod/tools/` (diseños propios).
 
 ## Modelos GeckoLib
-| Modelo | Habilidad | Animaciones | Huesos obligatorios | Escala aprox. |
+| Modelo | Habilidad | Animaciones | Render | Escala usada |
 |---|---|---|---|---|
-| `espada_espectral` | corona_espadas | `aparecer`, `girar`, `desvanecer` | `punta` | 1.5 bloques |
-| `ojo_vacio` | ojo_vacio | `abrir`, `idle`, `latido`, `cerrar` | `parpado_superior`, `parpado_inferior`, `iris`, `pupila` | 16 bloques |
-| `invocador` | esfera_energia | `aparicion`, `alzar_brazos`, `lanzar` | `manos` | 2 bloques |
-| `meteorito` | meteorito | `rotar` | `nucleo` | 8 bloques |
+| `escudo` | escudo | `aparicion`, `idle`, `impacto`, `romper`, `desaparecer` | translúcido + emisivo, tinte por vida | radio/3 |
+| `circulo_arcano` | juicio_arcano | `aparicion`, `idle`, `disparo`, `desaparecer` | translúcido + emisivo | 8 (principal), 2.2 (menores) |
+| `ojo_vacio` | ojo_vacio | `cerrado`, `abrir`, `idle`, `latido`, `cerrar` (huesos `parpado_a`, `parpado_b`, `iris`, `pupila`) | glowmask | 16 |
+| `agujero_negro` | agujero_negro | `aparicion`, `idle`, `colapso` | translúcido + emisivo | 3.6 |
+| `guerrero` | esfera_energia (sin lanzador) | `aparicion`, `idle`, `cargar`, `alzar_brazos`, `lanzar` (hueso `manos`) | glowmask (ojos) | 2.2 |
+| `aura` | esfera_energia | `aparicion`, `idle`, `desaparecer` | translúcido + emisivo, tinte | 2.4 |
+| `esfera` | esfera_energia | `idle` | translúcido + emisivo; el tamaño lo da el servidor | radio en bloques |
+| `meteorito` | meteorito | `rotar`, `idle` | glowmask (grietas de lava) | 6.5 |
+| `santuario` | mil_cortes | `aparicion`, `idle`, `desaparecer` | glowmask (faroles, grietas) | 3.2 |
 
-Modelos de los eventos anteriores (si se migran): `reaper`, `akaza`, `gojo`, `orbital_cannon`
-(ver guía v2).
-
-`creeper_actor` reutiliza el modelo vanilla del creeper (no necesita archivo).
+La corona de espadas usa las espadas de Minecraft (madera, piedra, hierro, oro, diamante, netherita) y el
+carrusel usa creepers cargados reales: no necesitan archivo.
+El servidor puede teñir cualquier modelo con la animación especial `color:AARRGGBB`.
 
 ## Sonidos
 | Grupo | Sonidos |
@@ -34,10 +40,10 @@ Modelos de los eventos anteriores (si se migran): `reaper`, `akaza`, `gojo`, `or
 | carrusel | `musica`, `siseo`, `explosion` |
 | ojo | `abrir`, `latido`, `zumbido` |
 | agujero | `formacion`, `zumbido`, `colapso` |
-| juicio | `carga`, `rayo`, `final` |
-| esfera | `carga`, `lanzar`, `detonar` |
+| juicio | `inicio`, `carga`, `rayo`, `final` |
+| esfera | `inicio`, `carga`, `lanzar`, `detonar` |
 | meteorito | `entrada`, `estampido`, `impacto` |
-| cortes | `tajo` (3 variaciones), `final` |
+| cortes | `dominio`, `ambiente`, `tajo`, `final` |
 
 Mientras falte un `.ogg`, el `SoundEvent` apunta a un sonido vanilla parecido (anotado en `PROGRESO.md`).
 

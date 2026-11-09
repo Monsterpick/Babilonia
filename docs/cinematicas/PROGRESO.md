@@ -12,17 +12,18 @@ Probado en Minecraft 26.1.2 real (NeoForge 26.1.2.126 + GeckoLib 5.5.2 contra Pa
 | F1 Motor núcleo | ✅ | `/habilidad`, línea de tiempo por ticks, cola por jugador, cancelación (desconexión, muerte, cambio de mundo, detener, apagado), cámara por fotogramas con Catmull-Rom y curvas, salvavidas de 10 s en el cliente |
 | F2 Primitivas y servicios | ✅ | BEAM, SPHERE, RING_WAVE, LIGHTNING, SLASH, MARKER, GLYPH, DISK, DOME_HEX, PARTICLE_STREAM; destrucción con presupuesto y restauración; bloques voladores; fuerzas; daño; `/habilidad debug` |
 | 02 onda_repulsion | ✅ | |
-| 01 escudo | ✅ | Persistente 30 s tras 3 s de cinemática |
+| 01 escudo | ✅ | Vida propia en corazones (50 por defecto, editable en la app), barra de vida, cúpula de paneles hexagonales |
 | 04 super_rayo | ✅ | |
 | 05 trueno_explosion | ✅ | |
-| 03 corona_espadas | ✅ | Modelo GeckoLib `espada_espectral` (provisional) |
-| 06 carrusel_creepers | ✅ | Creepers reales sin IA ni explosión (no funcionan en dificultad pacífica) |
-| 09 juicio_arcano | ✅ | Sin el glifo vertical delante del lanzador |
-| 10 esfera_energia | ✅ | Modelo GeckoLib `invocador` (provisional) si no hay lanzador |
-| 11 meteorito | ✅ | Modelo GeckoLib `meteorito` (provisional); nace a 70 bloques para estar en zona cargada |
-| 08 agujero_negro | ✅ | Sin lente gravitacional (viñeta oscura) |
-| 07 ojo_vacio | ✅ | Modelo GeckoLib `ojo_vacio` (provisional) |
-| 12 mil_cortes | ✅ | |
+| 03 corona_espadas | ✅ | Espadas de Minecraft de madera a netherita |
+| 06 carrusel_creepers | ✅ | Creepers cargados por rayos; explosiones con onda, tierra volando y gran final (no funcionan en pacífico) |
+| 09 juicio_arcano | ✅ | Círculos arcanos animados (modelo) y sonido desde el inicio |
+| 10 esfera_energia | ✅ | Guerrero propio con aura (si no hay lanzador) y esfera redonda brillante; sonidos en capas |
+| 11 meteorito | ✅ | Roca de basalto con grietas de lava que brillan; nace a 70 bloques para estar en zona cargada |
+| 08 agujero_negro | ✅ | Horizonte, disco de acreción, anillo de fotones y chorros (modelo) |
+| 07 ojo_vacio | ✅ | Ojo con párpados, iris brillante, pupila rasgada, tentáculos y cristales |
+| 12 mil_cortes | ✅ | Dominio: cielo carmesí y santuario maldito (diseño propio) que surge del suelo; luego los cortes |
 
-Provisional: los 4 modelos GeckoLib (cubos con los huesos y animaciones exactos de ASSETS.md) y los sonidos
-(vanilla parecidos; se cambian en `habilidades.yml → sonidos`).
+Los modelos son diseños propios generados por `mod/tools/` y se pueden sustituir por modelos de Blockbench con un
+paquete de recursos (ver ASSETS.md). Los sonidos son vanilla en capas; se cambian en `habilidades.yml → sonidos`.
+Durante las habilidades Paper no expulsa por «volar» (y la app pone allow-flight=true).

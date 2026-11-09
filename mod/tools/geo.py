@@ -25,12 +25,15 @@ class Geo:
 
     def cube(self, bone, origin, size, sw, rotation=None, pivot=None, inflate=0, faces=None):
         """sw = (u, v, w, h): región de la textura que se estira sobre cada cara."""
-        u, v, w, h = sw
         fs = faces or FACES
+        if isinstance(sw, dict):
+            per = {f: sw.get(f, sw.get('*')) for f in fs}
+        else:
+            per = {f: sw for f in fs}
         c = {
             'origin': [round(x, 4) for x in origin],
             'size': [round(max(x, 0.0001), 4) for x in size],
-            'uv': {f: {'uv': [u, v], 'uv_size': [w, h]} for f in fs},
+            'uv': {f: {'uv': [q[0], q[1]], 'uv_size': [q[2], q[3]]} for f, q in per.items() if q},
         }
         if inflate:
             c['inflate'] = inflate
@@ -115,3 +118,17 @@ def dir_to_angles(d):
     pitch = math.degrees(math.acos(max(-1, min(1, y))))
     yaw = math.degrees(math.atan2(x, z))
     return yaw, pitch
+
+
+def sphere_panels(g, parent, prefix, R, n, W, sw, thick=0.4, ymin=-2.0):
+    """Esfera lisa: n paneles tangentes (hueso de giro + hueso de inclinación por panel)."""
+    count = 0
+    for i, d in enumerate(fib_sphere(n)):
+        if d[1] < ymin:
+            continue
+        yaw, pitch = dir_to_angles(d)
+        g.bone(f'{prefix}{i}y', parent, rotation=(0, yaw, 0))
+        b = g.bone(f'{prefix}{i}', f'{prefix}{i}y', rotation=(pitch, 0, 0))
+        g.cube(b, (-W / 2, R - thick, -W / 2), (W, thick, W), sw)
+        count += 1
+    return count

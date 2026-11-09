@@ -53,14 +53,18 @@ sonidos:
   agujero.formacion: block.portal.trigger
   agujero.zumbido: block.beacon.ambient
   agujero.colapso: entity.warden.sonic_boom
-  juicio.carga: block.beacon.power_select
+  juicio.inicio: block.end_portal.spawn,block.enchantment_table.use
+  juicio.carga: block.beacon.power_select,block.respawn_anchor.charge
   juicio.rayo: entity.lightning_bolt.impact
-  juicio.final: entity.wither.spawn
-  esfera.carga: block.beacon.ambient
-  esfera.lanzar: entity.wither.shoot
-  esfera.detonar: entity.generic.explode
+  juicio.final: entity.lightning_bolt.thunder,entity.generic.explode,block.beacon.deactivate
+  esfera.inicio: block.conduit.activate,block.beacon.activate
+  esfera.carga: block.respawn_anchor.charge,block.conduit.ambient.short
+  esfera.lanzar: entity.warden.sonic_boom,entity.ender_dragon.shoot
+  esfera.detonar: entity.generic.explode,entity.lightning_bolt.thunder,item.totem.use
   meteorito.entrada: item.firecharge.use
   meteorito.estampido: entity.lightning_bolt.thunder
   meteorito.impacto: entity.generic.explode
   cortes.tajo: entity.player.attack.sweep
-  cortes.final: entity.wither.break_block
+  cortes.final: entity.wither.break_block,entity.generic.explode
+  cortes.dominio: entity.warden.emerge,block.end_portal.spawn
+  cortes.ambiente: ambient.crimson_forest.mood,entity.warden.heartbeat

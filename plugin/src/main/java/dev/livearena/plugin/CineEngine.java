@@ -167,15 +167,27 @@ final class CineEngine implements Listener, TabExecutor {
         /* --- sonido --- */
 
         void sound(Location at, String cue, float vol, float pitch) {
-            String key = cfgFile.getString("sonidos." + cue, DEFAULT_SOUNDS.getOrDefault(cue, "entity.experience_orb.pickup"));
-            Key k;
-            try {
-                k = key.contains(":") ? Key.key(key) : Key.key("minecraft", key);
-            } catch (Exception e) {
-                return;
+            String keys = cfgFile.getString("sonidos." + cue, DEFAULT_SOUNDS.getOrDefault(cue, "entity.experience_orb.pickup"));
+            // Archivos de versiones anteriores: si el valor es el sonido viejo por defecto, se usa el nuevo.
+            if (keys.equals(OLD_SOUNDS.get(cue))) keys = DEFAULT_SOUNDS.get(cue);
+            // Se pueden poner varios sonidos separados por comas: suenan juntos (capas).
+            for (String key : keys.split(",")) {
+                key = key.trim();
+                if (key.isEmpty()) continue;
+                Key k;
+                try {
+                    k = key.contains(":") ? Key.key(key) : Key.key("minecraft", key);
+                } catch (Exception e) {
+                    continue;
+                }
+                // Volumen > 1 solo amplía el alcance: se oye a cualquier distancia del jugador como si estuviera cerca.
+                Sound s = Sound.sound(k, Sound.Source.MASTER, Math.min(1f, vol), pitch);
+                for (Player p : w.getPlayers()) {
+                    if (p.getLocation().distanceSquared(at) > 160 * 160) continue;
+                    Location near = p.getLocation().distanceSquared(at) > 12 * 12 ? p.getLocation().add(at.toVector().subtract(p.getLocation().toVector()).normalize().multiply(6)) : at;
+                    p.playSound(s, near.getX(), near.getY(), near.getZ());
+                }
             }
-            Sound s = Sound.sound(k, Sound.Source.MASTER, vol, pitch);
-            for (Player p : w.getPlayers()) if (p.getLocation().distanceSquared(at) < 160 * 160) p.playSound(s, at.getX(), at.getY(), at.getZ());
         }
 
         /* --- cámara y efectos de cliente --- */
@@ -282,6 +294,11 @@ final class CineEngine implements Listener, TabExecutor {
     }
 
     static final Map<String, String> DEFAULT_SOUNDS = new LinkedHashMap<>();
+    /** Sonidos por defecto de versiones anteriores (se sustituyen solos por los nuevos). */
+    static final Map<String, String> OLD_SOUNDS = Map.of(
+            "juicio.carga", "block.beacon.power_select", "juicio.final", "entity.wither.spawn",
+            "esfera.carga", "block.beacon.ambient", "esfera.lanzar", "entity.wither.shoot", "esfera.detonar", "entity.generic.explode",
+            "cortes.final", "entity.wither.break_block");
 
     static {
         String[][] s = {
@@ -293,10 +310,13 @@ final class CineEngine implements Listener, TabExecutor {
             {"carrusel.musica", "block.note_block.bell"}, {"carrusel.siseo", "entity.creeper.primed"}, {"carrusel.explosion", "entity.generic.explode"},
             {"ojo.abrir", "entity.elder_guardian.curse"}, {"ojo.latido", "entity.warden.heartbeat"}, {"ojo.zumbido", "block.beacon.ambient"},
             {"agujero.formacion", "block.portal.trigger"}, {"agujero.zumbido", "block.beacon.ambient"}, {"agujero.colapso", "entity.warden.sonic_boom"},
-            {"juicio.carga", "block.beacon.power_select"}, {"juicio.rayo", "entity.lightning_bolt.impact"}, {"juicio.final", "entity.wither.spawn"},
-            {"esfera.carga", "block.beacon.ambient"}, {"esfera.lanzar", "entity.wither.shoot"}, {"esfera.detonar", "entity.generic.explode"},
+            {"juicio.inicio", "block.end_portal.spawn,block.enchantment_table.use"}, {"juicio.carga", "block.beacon.power_select,block.respawn_anchor.charge"},
+            {"juicio.rayo", "entity.lightning_bolt.impact"}, {"juicio.final", "entity.lightning_bolt.thunder,entity.generic.explode,block.beacon.deactivate"},
+            {"esfera.inicio", "block.conduit.activate,block.beacon.activate"}, {"esfera.carga", "block.respawn_anchor.charge,block.conduit.ambient.short"},
+            {"esfera.lanzar", "entity.warden.sonic_boom,entity.ender_dragon.shoot"}, {"esfera.detonar", "entity.generic.explode,entity.lightning_bolt.thunder,item.totem.use"},
             {"meteorito.entrada", "item.firecharge.use"}, {"meteorito.estampido", "entity.lightning_bolt.thunder"}, {"meteorito.impacto", "entity.generic.explode"},
-            {"cortes.tajo", "entity.player.attack.sweep"}, {"cortes.final", "entity.wither.break_block"},
+            {"cortes.tajo", "entity.player.attack.sweep"}, {"cortes.final", "entity.wither.break_block,entity.generic.explode"},
+            {"cortes.dominio", "entity.warden.emerge,block.end_portal.spawn"}, {"cortes.ambiente", "ambient.crimson_forest.mood,entity.warden.heartbeat"},
         };
         for (String[] e : s) DEFAULT_SOUNDS.put(e[0], e[1]);
     }
@@ -596,6 +616,23 @@ final class CineEngine implements Listener, TabExecutor {
                 debug(p, args.length >= 2 ? args[1].toLowerCase(Locale.ROOT) : "");
                 return true;
             }
+            case "modelo" -> {
+                // /habilidad modelo <jugador> <modelo> [animación] [escala]: muestra un modelo 15 s delante del jugador.
+                Player p = args.length >= 2 ? Bukkit.getPlayerExact(args[1]) : null;
+                if (p == null || args.length < 3) {
+                    reply(sender, "Uso: /habilidad modelo <jugador> <modelo> [animación] [escala]", NamedTextColor.RED);
+                    return true;
+                }
+                String anim = args.length >= 4 ? args[3] : "idle";
+                float scale = args.length >= 5 ? Float.parseFloat(args[4]) : 1f;
+                Location at = p.getLocation().add(p.getLocation().getDirection().setY(0).normalize().multiply(6));
+                at.setY(p.getLocation().getY());
+                org.bukkit.entity.ItemDisplay d = fx.itemDisplay(at, new org.bukkit.inventory.ItemStack(Material.AIR), 1f, 300);
+                d.setRotation(p.getLocation().getYaw() + 180, 0);
+                for (Player v : p.getWorld().getPlayers()) if (CineNet.hasMod(v)) net.send(v, CineNet.model(d.getEntityId(), args[2], anim, scale));
+                reply(sender, "MODELO " + args[2] + " " + anim, NamedTextColor.GREEN);
+                return true;
+            }
             case "mod" -> {
                 Player p = args.length >= 2 ? Bukkit.getPlayerExact(args[1]) : sender instanceof Player sp ? sp : null;
                 reply(sender, p == null ? "Jugador no conectado" : "MOD " + p.getName() + " " + (CineNet.hasMod(p) ? "si" : "no"), NamedTextColor.GOLD);
@@ -627,7 +664,7 @@ final class CineEngine implements Listener, TabExecutor {
         List<String> out = new ArrayList<>();
         if (args.length == 1) {
             out.addAll(abilities.keySet());
-            out.addAll(List.of("lista", "detener", "debug", "recargar", "mod"));
+            out.addAll(List.of("lista", "detener", "debug", "recargar", "mod", "modelo"));
         } else if (args.length == 2 && args[0].equalsIgnoreCase("debug"))
             out.addAll(List.of("beam", "sphere", "ring", "lightning", "slash", "marker", "glyph", "disk", "dome", "stream", "crater", "flying", "camara", "flash", "sky"));
         else if (args.length == 2 || args.length == 3) {
