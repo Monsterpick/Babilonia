@@ -102,6 +102,8 @@ final class CineEngine implements Listener, TabExecutor {
         final Set<Integer> models = new HashSet<>();
         int t;
         boolean cameraOn;
+        /** Si la cinemática se llevó al jugador a un sitio despejado, dónde estaba (se le devuelve al acabar). */
+        Location returnTo;
         Key voiceKey;
         boolean ended;
 
@@ -394,8 +396,7 @@ final class CineEngine implements Listener, TabExecutor {
             int k = Math.min(n, tm.get(p.getName()));
             if (k <= 0) return 0;
             tm.add(p.getName(), -k);
-            p.playEffect(org.bukkit.EntityEffect.PROTECTED_FROM_DEATH);
-            p.playSound(Sound.sound(Key.key("minecraft", "item.totem.use"), Sound.Source.MASTER, 1f, 1f), Sound.Emitter.self());
+            popTotems(p, k);
             tm.announceRemoved(p, k, viewer);
             return k;
         }
@@ -610,7 +611,18 @@ final class CineEngine implements Listener, TabExecutor {
     private void start(Ability a, Player target, Player launcher, String viewer, boolean announce) {
         if (!target.isOnline() || target.isDead()) return;
         if (launcher != null && (!launcher.isOnline() || launcher.getWorld() != target.getWorld())) launcher = null;
+        Location back = null;
+        if (cfgFile.getBoolean("general.escenarioDespejado", true)) {
+            Location stage = stage(target);
+            if (stage != null) {
+                back = target.getLocation().clone();
+                if (CineNet.hasMod(target)) net.send(target, CineNet.screen(CineNet.FLASH, 0xff000000, 0, 3, 10));
+                target.setFallDistance(0);
+                target.teleport(stage);
+            }
+        }
         Ctx c = new Ctx(a, target, launcher, viewer);
+        c.returnTo = back;
         c.cameraOn = cameraEnabled() && CineNet.hasMod(target);
         running.put(target.getUniqueId(), c);
         if (c.cameraOn) net.send(target, CineNet.screen(CineNet.LETTERBOX, 0xff000000, 8, Math.max(1, a.duracionCamara - 16), 8));
@@ -678,6 +690,100 @@ final class CineEngine implements Listener, TabExecutor {
     private void endCamera(Ctx c) {
         if (c.cameraOn) net.send(c.target, CineNet.end());
         c.cameraOn = false;
+        // de vuelta al sitio donde estaba antes del escenario despejado
+        if (c.returnTo != null) {
+            Location back = c.returnTo;
+            c.returnTo = null;
+            Player p = c.target;
+            if (p.isOnline() && !p.isDead() && p.getWorld() == back.getWorld()) {
+                if (CineNet.hasMod(p)) net.send(p, CineNet.screen(CineNet.FLASH, 0xff000000, 0, 2, 10));
+                back.setYaw(p.getLocation().getYaw());
+                back.setPitch(p.getLocation().getPitch());
+                p.setVelocity(new Vector());
+                p.setFallDistance(0);
+                p.teleport(back);
+            }
+        }
+    }
+
+    /* ---------------------------- tótems: explosión escalonada ---------------------------- */
+
+    /**
+     * Animación de n tótems gastados, repartida en el tiempo (una ráfaga fluida en vez de un único golpe): uno cada
+     * pocos ticks, con el sonido variando de tono y un estallido de partículas alrededor del jugador. Con muchos, la
+     * ráfaga se acelera (y se agrupan) para no durar más de ~2,5 s.
+     */
+    void popTotems(Player p, int n) {
+        if (n <= 0) return;
+        int maxTicks = 50;
+        int gap = Math.max(1, Math.min(5, maxTicks / Math.max(1, n)));
+        int perPop = (int) Math.ceil(n / (double) Math.max(1, maxTicks / gap));
+        int pops = (int) Math.ceil(n / (double) perPop);
+        for (int i = 0; i < pops; i++) {
+            final int idx = i;
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (!p.isOnline()) return;
+                p.playEffect(org.bukkit.EntityEffect.PROTECTED_FROM_DEATH);
+                // el cliente ya suena el tótem con cada animación; aquí solo un «tic» ascendente que da ritmo a la ráfaga
+                float pitch = 0.9f + 0.9f * idx / Math.max(1, pops - 1);
+                if (idx > 0) p.playSound(Sound.sound(Key.key("minecraft", "block.amethyst_block.chime"), Sound.Source.MASTER, 0.9f, pitch), Sound.Emitter.self());
+            }, (long) i * gap);
+        }
+    }
+
+    /* ---------------------------- escenario despejado ---------------------------- */
+
+    /**
+     * Las cinemáticas se pensaron en terreno abierto. Si el jugador está en un hueco, una cueva o pegado a paredes,
+     * se busca cerca un sitio abierto y plano (en la superficie) donde hacerla; null si ya está bien o no hay sitio.
+     */
+    Location stage(Player p) {
+        Location here = p.getLocation();
+        if (enclosure(here) < 0.14) return null;
+        World w = here.getWorld();
+        Location best = null;
+        double bestScore = Double.MAX_VALUE;
+        int[] radii = {0, 4, 8, 12, 16, 22, 28, 34};
+        for (int r : radii) {
+            int dirs = r == 0 ? 1 : 12;
+            for (int i = 0; i < dirs; i++) {
+                double ang = i * Math.PI * 2 / dirs;
+                int x = here.getBlockX() + (int) Math.round(Math.cos(ang) * r), z = here.getBlockZ() + (int) Math.round(Math.sin(ang) * r);
+                if (!w.isChunkLoaded(x >> 4, z >> 4)) continue;
+                int y = w.getHighestBlockYAt(x, z);
+                org.bukkit.block.Block ground = w.getBlockAt(x, y, z);
+                Material gm = ground.getType();
+                if (ground.isLiquid() || gm == Material.LAVA || org.bukkit.Tag.LEAVES.isTagged(gm) || !gm.isSolid()) continue;
+                Location cand = new Location(w, x + 0.5, y + 1, z + 0.5, here.getYaw(), here.getPitch());
+                double sc = enclosure(cand) + r * 0.002;
+                if (sc < bestScore) {
+                    bestScore = sc;
+                    best = cand;
+                }
+            }
+            if (best != null && bestScore < 0.05) break;
+        }
+        return best != null && bestScore < 0.12 ? best : null;
+    }
+
+    /** 0 = campo abierto; cuanto más alto, más encerrado (bloques alrededor a la altura del cuerpo y techo encima). */
+    static double enclosure(Location feet) {
+        World w = feet.getWorld();
+        int fx = feet.getBlockX(), fy = feet.getBlockY(), fz = feet.getBlockZ();
+        int solid = 0, total = 0;
+        for (int dx = -6; dx <= 6; dx += 2)
+            for (int dz = -6; dz <= 6; dz += 2)
+                for (int dy = 0; dy <= 6; dy++) {
+                    total++;
+                    if (w.getBlockAt(fx + dx, fy + dy, fz + dz).getType().isOccluding()) solid++;
+                }
+        double f = solid / (double) total;
+        for (int dy = 2; dy <= 24; dy++)
+            if (w.getBlockAt(fx, fy + dy, fz).getType().isOccluding()) {
+                f += 0.5; // techo encima (cueva, interior)
+                break;
+            }
+        return f;
     }
 
     /** Termina una habilidad (una sola vez) y limpia todo. */

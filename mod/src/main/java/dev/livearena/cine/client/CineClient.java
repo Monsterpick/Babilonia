@@ -121,6 +121,7 @@ public final class CineClient {
                     }
                     keys.sort((a, b) -> Integer.compare(a.tick(), b.tick()));
                     shotStart = ticks;
+                    clipDist = -1;
                     if (!keys.isEmpty()) begin();
                 }
                 case 2 -> end(); // END
@@ -330,6 +331,7 @@ public final class CineClient {
             Entity en = mc.level.getEntity(lookEntity);
             if (en != null) look = en.getPosition(partial).add(0, en.getBbHeight() * 0.5, 0);
         }
+        pos = avoidTerrain(mc, look, pos);
         float yaw, pitch;
         Vec3 d = look.subtract(pos);
         double hz = Math.sqrt(d.x * d.x + d.z * d.z);
@@ -346,6 +348,76 @@ public final class CineClient {
         }
         currentFov = fov;
         return new Pose(pos, yaw, Math.max(-90, Math.min(90, pitch)), roll);
+    }
+
+    /* ---------------------- tótem pequeño (sustituye a la animación gigante) ---------------------- */
+
+    private record Pop(net.minecraft.world.item.ItemStack stack, long start, float dx) {}
+
+    private static final List<Pop> pops = new ArrayList<>();
+
+    public static void totemPop(net.minecraft.world.item.ItemStack stack) {
+        if (pops.size() > 12) pops.remove(0);
+        pops.add(new Pop(stack, ticks, (float) (Math.random() * 2 - 1)));
+    }
+
+    /** Arriba en el centro, bajo la barra de tótems: salta, gira un poco, sube y se encoge hasta desaparecer (16 ticks). */
+    private static void drawPops(GuiGraphicsExtractor g, float now, int w) {
+        for (Iterator<Pop> it = pops.iterator(); it.hasNext(); ) {
+            Pop p = it.next();
+            float t = (now - p.start()) / 16f;
+            if (t >= 1) {
+                it.remove();
+                continue;
+            }
+            if (t < 0) continue;
+            float s = t < 0.2f ? 0.6f + t / 0.2f * 0.6f : 1.2f * (1 - (t - 0.2f) / 0.8f);
+            if (s <= 0.02f) continue;
+            float x = w / 2f + p.dx() * 24 * t + 46, y = 24 - 14 * t;
+            var pose = g.pose();
+            pose.pushMatrix();
+            pose.translate(x, y);
+            pose.rotate((float) Math.toRadians(p.dx() * 25 * t));
+            pose.scale(s, s);
+            g.item(p.stack(), -8, -8);
+            pose.popMatrix();
+        }
+    }
+
+    /** Distancia foco→cámara recortada por el terreno (-1 = sin recorte). */
+    private static double clipDist = -1;
+
+    /**
+     * La cámara no atraviesa el terreno: si entre el foco y la cámara hay bloques (hueco, cueva, pared), se acerca
+     * hasta justo delante del bloque; cuando el paso queda libre vuelve a su sitio poco a poco (sin saltos).
+     * En el espacio y en planos muy lejanos (cámaras en el cielo) no se aplica.
+     */
+    private static Vec3 avoidTerrain(Minecraft mc, Vec3 look, Vec3 pos) {
+        if (skyMode == 1 || mc.player == null) return pos;
+        Vec3 off = pos.subtract(look);
+        double len = off.length();
+        if (len < 0.6 || len > 48) {
+            clipDist = -1;
+            return pos;
+        }
+        net.minecraft.world.phys.BlockHitResult hit = mc.level.clip(new net.minecraft.world.level.ClipContext(look, pos,
+                net.minecraft.world.level.ClipContext.Block.VISUAL, net.minecraft.world.level.ClipContext.Fluid.NONE, mc.player));
+        boolean blocked = hit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK;
+        double want = len;
+        if (blocked) {
+            double h = hit.getLocation().distanceTo(look);
+            // el foco está dentro de un bloque: no hay recorte que tenga sentido
+            if (h < 0.35) blocked = false;
+            else want = Math.max(0.5, h - 0.4);
+        }
+        if (!blocked) {
+            if (clipDist < 0 || clipDist >= len - 1e-3) {
+                clipDist = -1;
+                return pos;
+            }
+            clipDist = Math.min(len, clipDist + Math.max(0.04, (len - clipDist) * 0.12));
+        } else clipDist = clipDist < 0 ? want : Math.min(want, clipDist + Math.max(0.04, (want - clipDist) * 0.12));
+        return look.add(off.scale(clipDist / len));
     }
 
     /** Sacudida también fuera de la cinemática (para los que miran cerca). */
@@ -516,5 +588,6 @@ public final class CineClient {
                 if (!capSub.isEmpty()) g.centeredText(mc.font, capSub, w / 2, y + 12, alpha | 0xdddddd);
             }
         }
+        if (!pops.isEmpty()) drawPops(g, now, w);
     }
 }

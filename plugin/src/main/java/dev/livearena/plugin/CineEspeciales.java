@@ -120,7 +120,7 @@ final class CineEspeciales {
     /* ===================================== SANGRE PERFORANTE ===================================== */
 
     private void sangrePerforante() {
-        e.register(new CineEngine.Ability("sangre_perforante", "SANGRE PERFORANTE", "#c0101c", 260, 260,
+        e.register(new CineEngine.Ability("sangre_perforante", "SANGRE PERFORANTE", "#c0101c", 320, 320,
                 "Un hechicero de sangre surge del suelo, comprime su sangre entre las manos y dispara un haz perforante que atraviesa al objetivo y todo lo que hay detrás") {
             void start(CineEngine.Ctx c) {
                 Location at = c.ground(c.feet().add(forward(c.yaw0).multiply(c.cfg("distancia", 9.0))).add(0, 4, 0));
@@ -235,7 +235,30 @@ final class CineEspeciales {
                 imp = get(c, "imp");
                 if (imp != null) {
                     int since = t - imp;
-                    if (since == 34) {
+                    int hold = holdTicks(c);
+                    Location impAt = get(c, "impAt");
+                    boolean pinned = Boolean.TRUE.equals(c.data.get("pinned"));
+                    if (since < hold && pinned) {
+                        // Clavado por la flecha: no se mueve y la sangre gotea por el haz.
+                        c.target.setVelocity(new Vector(0, Math.min(0, c.target.getVelocity().getY()), 0));
+                        if (since % 3 == 0) CineFx.part(c.w, Particle.DUST, impAt, 8, 0.15, 0.25, 0.15, 0, CineFx.dust(0x8a0010, 1.3f));
+                        if (since % 10 == 0) CineFx.part(c.w, Particle.DAMAGE_INDICATOR, impAt, 2, 0.2, 0.2, 0.2, 0.05, null);
+                        if (since % 16 == 8) c.sound(impAt, "choso.compresion", 0.8f, 1.4f);
+                    }
+                    if (since == 24) {
+                        // Plano detalle: la punta clavada en el objetivo con el haz que llega desde las manos.
+                        Location from = get(c, "from");
+                        Vector dir = get(c, "dir");
+                        Vector lat = lateral(at, c.feet());
+                        CineNet.Shot s = c.shot();
+                        Location p0 = impAt.clone().add(lat.clone().multiply(2.2)).add(dir.clone().multiply(-2.6)).add(0, 0.35, 0);
+                        s.key(0, p0, impAt.clone().add(dir.clone().multiply(-0.8)), 50, CUT);
+                        s.key(hold - 24, p0.clone().add(lat.clone().multiply(0.6)).add(dir.clone().multiply(-0.8)), impAt.clone().add(dir.clone().multiply(-1.2)), 46, EASE_IN_OUT);
+                        c.cam(s);
+                        c.shake(0.3, 10, 0.9);
+                    }
+                    if (since == hold) release(c, t);
+                    if (since == hold + 30) {
                         c.anim(ch, "pose_final");
                         Vector face = forward(yaw);
                         CineNet.Shot s = c.shot();
@@ -243,10 +266,14 @@ final class CineEspeciales {
                         s.key(50, at.clone().add(face.clone().multiply(2.6)).add(0, 1.65, 0), at.clone().add(0, 1.5, 0), 52, LINEAR);
                         c.cam(s);
                     }
-                    if (since == 58) k.vanish(c, CHOSO, ch, 0xc0101c, 28, (Entity) get(c, "aura"), (Entity) get(c, "ojos"));
-                    if (since == 70) c.skyReset();
-                    if (since >= 92) e.finish(c, false);
+                    if (since == hold + 54) k.vanish(c, CHOSO, ch, 0xc0101c, 28, (Entity) get(c, "aura"), (Entity) get(c, "ojos"));
+                    if (since == hold + 66) c.skyReset();
+                    if (since >= hold + 88) e.finish(c, false);
                 }
+            }
+
+            int holdTicks(CineEngine.Ctx c) {
+                return (int) Math.round(Math.max(0.5, c.cfg("segundosClavada", 3.0)) * 20);
             }
 
             /** Disparo: el haz sale de las manos hacia el objetivo y sigue hasta `distanciaDestruccion` bloques detrás. */
@@ -259,10 +286,14 @@ final class CineEspeciales {
                 dir.normalize();
                 double len = from.distance(aim) + c.cfg("distanciaDestruccion", 28.0);
                 Location to = from.clone().add(dir.clone().multiply(len));
-                double speed = c.cfg("velocidadFlecha", 2.25); // bloques por tick (×20 = bloques/s)
+                double speed = Math.max(0.2, c.cfg("velocidadRayo", 0.8)); // bloques por tick (×20 = bloques/s)
                 c.data.put("speed", speed);
-                ItemDisplay beam = axis(c, from, to, "fx_perforante", (float) c.cfg("grosor", 0.22), null, "disparar");
-                setAxis(beam, from, to, (float) c.cfg("grosor", 0.22), (float) (speed * 20 / 100.0), 0);
+                // El rayo visible acaba justo atravesando al objetivo: la punta se queda clavada y el haz unido a las
+                // manos de Choso durante «segundosClavada»; luego se apaga (el tramo de detrás sale al soltarlo).
+                Location rayEnd = aim.clone().add(dir.clone().multiply(1.4));
+                double holdS = holdTicks(c) / 20.0 + 0.3;
+                ItemDisplay beam = axis(c, from, rayEnd, "fx_perforante", (float) c.cfg("grosor", 0.22), null, "rayo:" + String.format(java.util.Locale.ROOT, "%.2f", holdS));
+                setAxis(beam, from, rayEnd, (float) c.cfg("grosor", 0.22), (float) (speed * 20 / 100.0), 0);
                 c.data.put("beam", beam);
                 c.data.put("from", from);
                 c.data.put("dir", dir);
@@ -284,6 +315,55 @@ final class CineEspeciales {
                 Location cam1 = from.clone().add(dir.clone().multiply(hit - 1.8)).add(lat.clone().multiply(3.6)).add(0, 0.4, 0);
                 s.key(flight, cam1, from.clone().add(dir.clone().multiply(hit - 0.6)), 58, LINEAR);
                 s.key(flight + 8, cam1.clone().add(lat.clone().multiply(0.8)), from.clone().add(dir.clone().multiply(hit + 0.5)), 66, LINEAR);
+                c.cam(s);
+            }
+
+            /** Se suelta la flecha: sale despedido, el haz sigue de largo por detrás y abre el túnel. */
+            void release(CineEngine.Ctx c, int t) {
+                Location p = get(c, "impAt");
+                Vector dir = get(c, "dir");
+                if (p == null || dir == null) return;
+                boolean pinned = Boolean.TRUE.equals(c.data.get("pinned"));
+                if (pinned) {
+                    double push = c.cfg("empuje", 2.8);
+                    c.target.setVelocity(dir.clone().setY(0).normalize().multiply(push).setY(0.45));
+                    c.target.setFallDistance(0);
+                }
+                Location end = p.clone().add(dir.clone().multiply(c.cfg("distanciaDestruccion", 28.0)));
+                ItemDisplay through = axis(c, p, end, "fx_perforante", (float) c.cfg("grosor", 0.22) * 0.8f, null, "disparar");
+                setAxis(through, p, end, (float) c.cfg("grosor", 0.22) * 0.8f, (float) (2.4 * 20 / 100.0), 0);
+                c.sound(p, "choso.disparo", 1.6f, 1.4f);
+                c.shake(1.2, 14, 0.88);
+                c.tint(0x40ff2030, 0, 2, 6);
+                k.once(c, p, CineCharacters.FX_ONDA, 6, "ffff2030", 22);
+                // Destrucción en línea DETRÁS del objetivo: un túnel que avanza desde el impacto.
+                if (c.cfgB("romperBloques", true)) {
+                    double r = c.cfg("radioDestruccion", 1.4), dist = c.cfg("distanciaDestruccion", 28.0);
+                    List<Block> tube = new ArrayList<>();
+                    Set<Block> seen = new LinkedHashSet<>();
+                    for (double s = 0.6; s <= dist; s += 0.5) {
+                        Location q = p.clone().add(dir.clone().multiply(s));
+                        int R = (int) Math.ceil(r);
+                        for (int x = -R; x <= R; x++)
+                            for (int y = -R; y <= R; y++)
+                                for (int z = -R; z <= R; z++) {
+                                    if (x * x + y * y + z * z > r * r) continue;
+                                    Block b = q.clone().add(x, y, z).getBlock();
+                                    if (!b.getType().isAir() && seen.add(b)) tube.add(b);
+                                }
+                    }
+                    world.enqueueSorted(tube, p, true, Material.AIR);
+                    for (int i = 0; i < 14 && i < tube.size(); i += 2) {
+                        Block b = tube.get(i);
+                        world.flyVisual(b.getLocation().add(0.5, 0.5, 0.5), b.getBlockData(), CineWorld.Path.LAUNCH, null, dir.clone().multiply(0.8).add(new Vector(0, 0.35, 0)), 30, 0);
+                    }
+                }
+                // Cámara: tras el objetivo que sale despedido, de lado.
+                Vector lat = dir.clone().setY(0).normalize().crossProduct(new Vector(0, 1, 0)).normalize().multiply(6.5);
+                CineNet.Shot s = c.shot().followPos(c.target.getEntityId()).followLook(c.target.getEntityId());
+                Location off = lat.add(new Vector(0, 1.2, 0)).add(dir.clone().multiply(-1.5)).toLocation(c.w);
+                s.key(0, off, off, 66, CUT);
+                s.key(30, off.clone().add(dir.clone().multiply(-2)), off, 72, EASE_OUT_EXPO);
                 c.cam(s);
             }
 
@@ -322,11 +402,11 @@ final class CineEspeciales {
             void impact(CineEngine.Ctx c, int t, Location p, Vector dir) {
                 c.data.put("imp", t);
                 c.data.put("impAt", p.clone());
+                c.data.put("pinned", true);
                 piercing(c, c.target, c.cfg("danio", 30.0), c.cfg("perforacion", 0.6));
                 int lvl = Math.max(1, c.cfgI("witherNivel", 2));
                 c.target.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, c.cfgI("witherSegundos", 4) * 20, lvl - 1, false, true));
-                double push = c.cfg("empuje", 2.8);
-                c.target.setVelocity(dir.clone().setY(0).normalize().multiply(push).setY(0.45));
+                c.target.setVelocity(dir.clone().setY(0).normalize().multiply(0.25).setY(0.05));
                 c.target.setFallDistance(0);
                 k.once(c, p, CineCharacters.FX_ONDA, 7, "ffff2030", 26);
                 CineFx.part(c.w, Particle.DUST, p, 50, 0.6, 0.6, 0.6, 0, CineFx.dust(0x8a0010, 1.8f));
@@ -335,34 +415,16 @@ final class CineEspeciales {
                 c.shake(1.7, 18, 0.88);
                 c.screenFx(CineNet.SPEEDLINES, 0xffffffff, 0, 8, 6);
                 c.sound(p, "choso.impacto", 2.5f, 0.9f);
-                // Destrucción en línea DETRÁS del objetivo: un túnel que avanza desde el impacto.
-                if (c.cfgB("romperBloques", true)) {
-                    double r = c.cfg("radioDestruccion", 1.4), dist = c.cfg("distanciaDestruccion", 28.0);
-                    List<Block> tube = new ArrayList<>();
-                    Set<Block> seen = new LinkedHashSet<>();
-                    for (double s = 0.6; s <= dist; s += 0.5) {
-                        Location q = p.clone().add(dir.clone().multiply(s));
-                        int R = (int) Math.ceil(r);
-                        for (int x = -R; x <= R; x++)
-                            for (int y = -R; y <= R; y++)
-                                for (int z = -R; z <= R; z++) {
-                                    if (x * x + y * y + z * z > r * r) continue;
-                                    Block b = q.clone().add(x, y, z).getBlock();
-                                    if (!b.getType().isAir() && seen.add(b)) tube.add(b);
-                                }
-                    }
-                    world.enqueueSorted(tube, p, true, Material.AIR);
-                    for (int i = 0; i < 14 && i < tube.size(); i += 2) {
-                        Block b = tube.get(i);
-                        world.flyVisual(b.getLocation().add(0.5, 0.5, 0.5), b.getBlockData(), CineWorld.Path.LAUNCH, null, dir.clone().multiply(0.8).add(new Vector(0, 0.35, 0)), 30, 0);
-                    }
-                }
-                // Cámara: tras el objetivo que sale despedido, de lado.
-                Vector lat = dir.clone().setY(0).normalize().crossProduct(new Vector(0, 1, 0)).normalize().multiply(6.5);
-                CineNet.Shot s = c.shot().followPos(c.target.getEntityId()).followLook(c.target.getEntityId());
-                Location off = lat.add(new Vector(0, 1.2, 0)).add(dir.clone().multiply(-1.5)).toLocation(c.w);
-                s.key(0, off, off, 66, CUT);
-                s.key(30, off.clone().add(dir.clone().multiply(-2)), off, 72, EASE_OUT_EXPO);
+                // Plano general de perfil: Choso, el haz entero y la punta clavada (como la viñeta del manga).
+                Location from = get(c, "from");
+                Location at = get(c, "at");
+                Location m = mid(from, p, 0.5);
+                Vector lat = lateral(at, c.feet());
+                double sep = from.distance(p);
+                CineNet.Shot s = c.shot();
+                Location w0 = m.clone().add(lat.clone().multiply(sep * 0.7 + 3.5)).add(0, 0.9, 0);
+                s.key(0, w0, m.clone().add(0, 0.2, 0), 64, CUT);
+                s.key(24, w0.clone().add(lat.clone().multiply(-0.8)).add(0, 0.2, 0), m.clone().add(0, 0.25, 0), 60, EASE_OUT_EXPO);
                 c.cam(s);
             }
         });

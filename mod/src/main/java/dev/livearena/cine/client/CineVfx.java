@@ -699,13 +699,27 @@ public final class CineVfx {
             formar(s, c, new Vector3f(z).div(L), L, wx, wy, wz, W, t, dt, al);
             return;
         }
-        if (!("disparar".equals(s.anim))) return;
+        // «rayo[:segundos]»: la flecha llega, se queda clavada con el haz unido a las manos y luego se apaga.
+        boolean ray = s.anim != null && s.anim.startsWith("rayo");
+        if (!("disparar".equals(s.anim)) && !ray) return;
+        float hold = 0.35f;
+        if (ray) {
+            hold = 2.5f;
+            int ci = s.anim.indexOf(':');
+            if (ci > 0) try {
+                hold = Float.parseFloat(s.anim.substring(ci + 1));
+            } catch (NumberFormatException ignored) {
+            }
+        }
         Vector3f d = new Vector3f(z).div(L);
         float ta = t - s.animAt, travel = L / speed;
         float head = Math.min(L, ta * speed);
-        float fade = ta < travel + 0.35f ? 1f : Math.max(0, 1 - (ta - travel - 0.35f) / 0.45f);
+        float fadeLen = ray ? 0.6f : 0.45f;
+        float fade = ta < travel + hold ? 1f : Math.max(0, 1 - (ta - travel - hold) / fadeLen);
         if (fade <= 0) return;
-        float a = al * fade, w = W * (0.55f + 0.45f * fade);
+        // mientras está clavada el haz late (sangre a presión)
+        float pulse = ray && ta > travel ? 0.82f + 0.18f * (float) Math.sin(t * 22f) : 1f;
+        float a = al * fade * pulse, w = W * (0.55f + 0.45f * fade) * (ray && ta > travel ? 0.9f + 0.1f * pulse : 1f);
         float hx = c.x + d.x * head, hy = c.y + d.y * head, hz = c.z + d.z * head;
         Vector3f[] uv = perp(d);
         // Asta: un hilo de sangre comprimida, fino y denso (vaina oscura + núcleo rojo vivo).
@@ -730,7 +744,7 @@ public final class CineVfx {
             }
             px = x; py = y; pz = zz;
         }
-        if (head < L) {
+        if (head < L || ray) {
             // Punta de flecha: alargada y afilada, con el núcleo al rojo blanco.
             float hl = Math.max(2.6f, w * 15f), hw = w * 2.8f;
             float bx = hx - d.x * hl, by = hy - d.y * hl, bz = hz - d.z * hl;
@@ -758,7 +772,7 @@ public final class CineVfx {
             ringAround(A, c.x + d.x * k, c.y + d.y * k, c.z + d.z * k, uv, w * (1.5f + f * 6), (1 - f) * a * 0.6f, 0xff2030, 0xffffff, s.seed, 0.05f);
         }
         // Gotas que salen despedidas a los lados de la punta.
-        s.emit += dt * (head < L ? 200 : 30) * fade;
+        s.emit += dt * (head < L ? 200 : ray ? 70 : 30) * fade;
         while (s.emit >= 1) {
             s.emit -= 1;
             float k = Math.max(0, head - s.rnd.nextFloat() * Math.min(head, 6f));
