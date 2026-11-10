@@ -189,7 +189,7 @@ final class CineEspeciales {
                     if (t % 8 == 0) c.sound(at, "choso.compresion", 1.2f, 0.9f + (t - 80) / 30f);
                 }
                 if (t == 76) {
-                    // Voz (6,5 s): «Sangre Perforante» 0–1,3 s y el disparo justo después (1,35 s = tick 103).
+                    // Voz (1,6 s): «Sangre Perforante» 0–1,3 s y el arranque del disparo (1,35 s = tick 103).
                     c.data.put("voiced", c.voice("choso"));
                     c.say("choso_perforante", "¡Sangre Perforante!", 0xff2a3a, 48);
                 }
@@ -241,8 +241,8 @@ final class CineEspeciales {
                 c.data.put("prog", 0.0);
                 c.data.put("fired", c.t);
                 c.data.put("hitSet", new LinkedHashSet<Entity>());
-                // Con la voz ya suena el disparo dentro del audio: solo se añade el silbido, más bajo.
-                if (Boolean.TRUE.equals(c.data.get("voiced"))) c.sound(from, "choso.disparo", 0.7f, 1f);
+                // La voz termina justo al disparar: el silbido y la onda de la flecha suenan completos.
+                if (Boolean.TRUE.equals(c.data.get("voiced"))) c.sound(from, "choso.disparo", 1f, 1f);
                 else c.sound(from, "choso.disparo", 2.5f, 1.7f);
                 c.target.removePotionEffect(PotionEffectType.SLOWNESS);
                 // La cámara acompaña a la flecha de lado durante el vuelo (se ve la punta entera).
