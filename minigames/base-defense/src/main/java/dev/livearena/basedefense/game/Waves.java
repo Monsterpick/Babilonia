@@ -42,6 +42,11 @@ public final class Waves {
     }
 
     public void reset(boolean announce) {
+        reset(announce, true);
+    }
+
+    /** relock: volver a dejar solo las armas de la fase 1 (al empezar y al caer la base; al ganar se conservan). */
+    public void reset(boolean announce, boolean relock) {
         phase = 1;
         wave = 0;
         long now = plugin.tick();
@@ -49,6 +54,7 @@ public final class Waves {
         nextSupply = now + plugin.settings.supplyEvery * 20L;
         warned = false;
         if (announce) announcePhase(1);
+        if (relock) plugin.weapons.relock(1);
     }
 
     public double healthMult() {
@@ -72,6 +78,7 @@ public final class Waves {
         if (ph > phase) {
             phase = ph;
             announcePhase(ph);
+            plugin.weapons.unlockPhase(ph);
             if (plugin.settings.supplyOnPhase) plugin.loot.dropSupply("fase " + ph);
         }
         if (plugin.settings.waves) {
@@ -93,7 +100,9 @@ public final class Waves {
 
     private void launchWave() {
         wave++;
-        int n = plugin.settings.waveSize + (phase - 1) * plugin.settings.waveGrowth;
+        int base = plugin.settings.waveSize + (phase - 1) * plugin.settings.waveGrowth;
+        // más grandes en cada ronda superada y con la amenaza de los espectadores
+        int n = (int) Math.round(base * (1 + plugin.settings.perRound * (plugin.game.round() - 1)) * plugin.threat.waveMult());
         if (n <= 0) return;
         enqueueMix(n, null);
         // las oleadas son frecuentes: aviso pequeño abajo (los carteles grandes quedan para fases y jefes)

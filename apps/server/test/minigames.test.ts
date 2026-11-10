@@ -25,7 +25,9 @@ likes:
 describe('Base Defense (app)', () => {
   it('lee el estado de /bd status', () => {
     const g = parseBdStatus('BDSTATUS running=1 arena=1 generating=0 round=3 time=754 paused=0 hp=1200 max=1500 wins=-2 mobs=120 queue=30 bosses=1 kills=55 likes=1234 likesMissing=3766 streamer=Juan tps=19.8')
-    expect(g).toMatchObject({ running: true, round: 3, hp: 1200, max: 1500, wins: -2, mobs: 120, queue: 30, bosses: 1, streamer: 'Juan', tps: 19.8 })
+    expect(g).toMatchObject({ running: true, round: 3, hp: 1200, max: 1500, wins: -2, ganadas: 0, perdidas: 2, amenaza: 1, mobs: 120, queue: 30, bosses: 1, streamer: 'Juan', tps: 19.8 })
+    const g4 = parseBdStatus('BDSTATUS running=1 wins=1 ganadas=5 perdidas=4 amenaza=3')
+    expect(g4).toMatchObject({ ganadas: 5, perdidas: 4, amenaza: 3 })
     expect(parseBdStatus('Unknown or incomplete command')).toBeNull()
   })
 

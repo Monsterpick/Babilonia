@@ -517,7 +517,10 @@ def main():
               open(os.path.join(OUT, 'pack.mcmeta'), 'w'), indent=1)
     blocks()
     shaders(client)
-    guns()
+    import gen_guns
+    gen_guns.guns()
+    import gen_post
+    gen_post.post()
     gun_sounds()
     import gen_hud
     gen_hud.build()

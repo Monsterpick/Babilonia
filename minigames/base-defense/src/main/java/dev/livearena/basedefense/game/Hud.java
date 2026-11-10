@@ -217,8 +217,14 @@ public final class Hud {
         l.put("basedefense:ab_r2", 9, font.g("i_flag"), NamedTextColor.WHITE);
         l.put("basedefense:ab_r2", 20, plugin.waves.phase() + "/" + plugin.settings.phases, AMBER, -1);
         l.put("basedefense:ab_r2", 53, font.g("i_trophy"), NamedTextColor.WHITE);
-        int v = g.victories();
-        l.put("basedefense:ab_r2", 64, (v > 0 ? "+" : "") + v, v < 0 ? BAD : v > 0 ? GOOD : NamedTextColor.WHITE, -1);
+        // marcador: rondas sobrevividas (verde) - bases destruidas (rojo)
+        String ws = String.valueOf(g.wins()), ls = String.valueOf(g.losses());
+        int wx = 64;
+        l.put("basedefense:ab_r2", wx, ws, GOOD, -1);
+        wx += font.width("basedefense:ab_r2", ws, -1) + 1;
+        l.put("basedefense:ab_r2", wx, "-", DIM, -1);
+        wx += font.width("basedefense:ab_r2", "-", -1) + 1;
+        l.put("basedefense:ab_r2", wx, ls, BAD, -1);
 
         // munición de cada hueco + lectura grande del arma en mano
         List<Weapons.Slot> slots = plugin.weapons.slots(p);
@@ -226,8 +232,8 @@ public final class Hud {
         for (Weapons.Slot s : slots) {
             int i = s.def().slot();
             if (i < 0 || i > 5) continue;
-            String n = s.infinite() ? "∞" : String.valueOf(s.ammo());
-            TextColor c = s.reloading() >= 0 ? DIM : s.ammo() == 0 ? BAD : s.ammo() <= Math.max(1, s.def().magazine() / 5) ? MID : NamedTextColor.WHITE;
+            String n = s.locked() ? "-" : s.infinite() ? "∞" : String.valueOf(s.ammo());
+            TextColor c = s.locked() ? DIM : s.reloading() >= 0 ? DIM : s.ammo() == 0 ? BAD : s.ammo() <= Math.max(1, s.def().magazine() / 5) ? MID : NamedTextColor.WHITE;
             l.right("basedefense:ab_slot", -72 + 20 * i, n, c, -2);
             if (i == held) ammoReadout(l, s, now);
         }
@@ -242,6 +248,11 @@ public final class Hud {
     }
 
     private void ammoReadout(HudFont.Line l, Weapons.Slot s, long now) {
+        if (s.locked()) {
+            l.right("basedefense:ab_amm_label", 88, "BLOQUEADA", DIM, -1);
+            l.right("basedefense:ab_amm_small", 88, "FASE " + s.def().unlockPhase(), AMBER, -1);
+            return;
+        }
         if (s.reloading() >= 0) {
             l.right("basedefense:ab_amm_label", 88, "RECARGA", MID, -1);
             l.put("basedefense:ab_amm_label", 34, font.step("b_reload", s.reloading()), MID);
@@ -293,6 +304,21 @@ public final class Hud {
         l.put(f, 2, font.g("i_like"), NamedTextColor.WHITE);
         l.put(f, 13, compact(lg.total()), PINK, -1);
         l.put(f, 49, font.step("b_mini", lg.progress()), PINK);
+
+        // amenaza (sube con las donaciones): solo se ve desde el nivel 2
+        int lv = plugin.threat.level();
+        if (lv >= 2) {
+            String tf = "basedefense:bb_threat";
+            String tt = "AMENAZA " + lv;
+            TextColor tc = lv >= 4 ? (now / 6 % 2 == 0 ? BAD : TextColor.color(0xFF8A40)) : lv == 3 ? TextColor.color(0xFF8A40) : MID;
+            int inner = 12 + font.width(tf, tt, 0) + 4 + 38;
+            int w = HudFont.Line.plateWidth(inner + 8);
+            int x0 = -w / 2;
+            l.plate(tf, "pill", x0, w);
+            l.put(tf, x0 + 4, font.g("i_warn"), NamedTextColor.WHITE);
+            l.put(tf, x0 + 16, tt, tc);
+            l.put(tf, x0 + 16 + font.width(tf, tt, 0) + 4, font.step("b_mini", plugin.threat.progress()), tc);
+        }
 
         // placas de jefes (hasta 2)
         List<GameMob> bs = new ArrayList<>(plugin.bosses.all());

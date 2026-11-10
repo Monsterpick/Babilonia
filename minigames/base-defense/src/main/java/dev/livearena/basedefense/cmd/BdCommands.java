@@ -148,6 +148,7 @@ public final class BdCommands {
                         String who = user(ctx);
                         if (mix) plugin.waves.enqueueMix(capped, who);
                         else plugin.mobs.enqueue(def, capped, who);
+                        plugin.threat.addMobs(capped);
                         if (capped >= plugin.settings.bigHorde)
                             plugin.game.banner(plugin.settings.msg("hordaTitulo"), plugin.settings.msg("hordaSubtitulo"), org.bukkit.Sound.EVENT_RAID_HORN, 1f, "usuario", who, "cantidad", capped, "tipo", mix ? "monstruos" : def.name());
                         else plugin.hud.notify("gift", plain(plugin.settings.msg("hordaSubtitulo"), "usuario", who, "cantidad", capped, "tipo", mix ? "monstruos" : def.name()), RED);
@@ -169,6 +170,7 @@ public final class BdCommands {
                     if (def == null) return err(ctx, "jefe desconocido '" + type + "'. Jefes: " + String.join(", ", plugin.settings.bosses.keySet()));
                     String who = user(ctx);
                     if (!plugin.bosses.spawn(def, who)) return err(ctx, "no se pudo invocar el jefe");
+                    plugin.threat.addBoss();
                     return ok(ctx, "ttboss " + type + " de " + who);
                 })));
     }
@@ -216,7 +218,8 @@ public final class BdCommands {
                     String who = user(ctx);
                     plugin.game.addVictories(d);
                     int v = plugin.game.victories();
-                    plugin.hud.notify("trophy", plain(plugin.settings.msg("victoriasCambio"), "usuario", who, "signo", d > 0 ? "+" : "-", "n", Math.abs(d), "victorias", v), d > 0 ? GREEN : RED);
+                    String que = d > 0 ? "+" + d + " victoria" + (d == 1 ? "" : "s") : "+" + (-d) + " derrota" + (d == -1 ? "" : "s");
+                    plugin.hud.notify("trophy", plain(plugin.settings.msg("victoriasCambio"), "usuario", who, "que", que, "ganadas", plugin.game.wins(), "perdidas", plugin.game.losses(), "victorias", v), d > 0 ? GREEN : RED);
                     for (Player vp : plugin.game.viewers()) vp.playSound(vp.getLocation(), d > 0 ? org.bukkit.Sound.ENTITY_PLAYER_LEVELUP : org.bukkit.Sound.ENTITY_VILLAGER_NO, 1f, 1f);
                     return ok(ctx, "ttwin " + (d > 0 ? "+" : "") + d + " de " + who + " · victorias " + v);
                 })));
@@ -294,6 +297,10 @@ public final class BdCommands {
                 return ok(ctx, "config.yml recargada");
             }))
             .then(Commands.literal("status").executes(this::status))
+            .then(Commands.literal("marcador").then(Commands.literal("reiniciar").executes(ctx -> {
+                plugin.game.resetScore();
+                return ok(ctx, "marcador a 0-0");
+            })))
             .then(Commands.literal("pack").executes(ctx -> {
                 // vuelve a leer el pack (plugins/BaseDefense/pack.zip si existe) y se lo manda al streamer
                 plugin.pack.start();
@@ -361,7 +368,7 @@ public final class BdCommands {
             + " round=" + g.round() + " time=" + g.secondsLeft() + " paused=" + (g.paused() ? 1 : 0)
             + " phase=" + plugin.waves.phase() + " wave=" + plugin.waves.wave()
             + " hp=" + (int) Math.ceil(g.baseHp()) + " max=" + g.baseMax()
-            + " wins=" + g.victories() + " mobs=" + plugin.mobs.alive() + " queue=" + plugin.mobs.queued()
+            + " wins=" + g.victories() + " ganadas=" + g.wins() + " perdidas=" + g.losses() + " amenaza=" + plugin.threat.level() + " mobs=" + plugin.mobs.alive() + " queue=" + plugin.mobs.queued()
             + " bosses=" + plugin.bosses.all().size() + " kills=" + plugin.mobs.kills
             + " likes=" + plugin.likes().total() + " likesMissing=" + plugin.likes().missing()
             + " streamer=" + (g.streamer() == null ? "-" : g.streamer().getName())
@@ -420,6 +427,9 @@ public final class BdCommands {
         CommandSender sender = ctx.getSource().getSender();
         plugin.placer.rebuild(w, old, gen.canvas(), plugin.biome(), plugin.settings.blocksPerTick, () -> {
             plugin.saveArena(data);
+            plugin.data().set("arenaLargo", plugin.settings.length);
+            plugin.data().set("arenaAncho", plugin.settings.width);
+            plugin.saveData();
             sender.sendMessage(Component.text("[BaseDefense] OK arena lista (semilla " + fseed + "). /bd tp para verla, /bd start para jugar.", NamedTextColor.GREEN));
         });
         return ok(ctx, "generando arena (semilla " + seed + ", " + gen.canvas().size() + " bloques, diseño en " + ms + " ms)…");
@@ -469,7 +479,7 @@ public final class BdCommands {
     // ───────────────────────────── test ─────────────────────────────
 
     private LiteralArgumentBuilder<CommandSourceStack> test() {
-        List<String> events = List.of("horda", "jefe", "suministro", "municion", "curar", "ganar", "perder", "likes", "caer", "victoria", "lleno", "ronda", "meta", "aviso", "misil", "bombardeo", "rayo");
+        List<String> events = List.of("horda", "jefe", "suministro", "municion", "curar", "ganar", "perder", "likes", "caer", "victoria", "lleno", "ronda", "meta", "aviso", "misil", "bombardeo", "rayo", "armas", "amenaza");
         return Commands.literal("test")
             .executes(ctx -> err(ctx, "uso: /bd test <" + String.join("|", events) + "> [tipo/cantidad]"))
             .then(word("evento").suggests(suggest(() -> {
@@ -513,6 +523,8 @@ public final class BdCommands {
             case "likes" -> Bukkit.dispatchCommand(console, "ttlikes " + (plugin.likes().total() + (extra == null ? plugin.settings.likesGoal / 4 : parse(extra, 1000))));
             case "caer" -> plugin.game.forceFall();
             case "ronda" -> plugin.game.forceWin();
+            case "armas" -> plugin.weapons.unlockPhase(99);
+            case "amenaza" -> plugin.threat.add(plugin.settings.threatPerLevel);
             case "misil", "bombardeo", "rayo" -> Bukkit.dispatchCommand(console, "ttaliado " + e + " " + user);
             case "meta" -> {
                 int left = plugin.loot.goalTarget() - plugin.loot.goalKills();

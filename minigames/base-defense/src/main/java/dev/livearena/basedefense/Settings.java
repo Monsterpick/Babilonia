@@ -19,7 +19,8 @@ public final class Settings {
 
     /** Jefe: se queda a `attackDistance` bloques de la base y ataca cada `attackEvery` s (y embiste si llega). */
     public record BossDef(String id, EntityType entity, double health, double speed, double scale, double height, String name,
-                          double attackDistance, double attackEvery, int attackDamage, int returnDamage, int ramDamage, double ramEvery) {
+                          double attackDistance, double attackEvery, int attackDamage, int returnDamage, int ramDamage, double ramEvery,
+                          double armor, String summonType, int summonCount, double summonEvery) {
         public boolean flying() {
             return entity == EntityType.WITHER || entity == EntityType.ENDER_DRAGON || entity == EntityType.GHAST
                 || entity == EntityType.BLAZE || entity == EntityType.PHANTOM || entity == EntityType.VEX
@@ -36,7 +37,7 @@ public final class Settings {
     public record WeaponDef(String id, int slot, ItemType item, String model, String name, WeaponKind kind, boolean automatic,
                             double damage, double rate, double range, double spread, int magazine, double reload,
                             double radius, double speed, int bounces, double fuse, String sound, float pitch,
-                            int reserve, int shotsPerTick, double warmup) {
+                            int reserve, int shotsPerTick, double warmup, int unlockPhase) {
         /** Sonido del pack (antes de «|») o el vanilla de respaldo (después). */
         public String sound(boolean pack) {
             int i = sound.indexOf('|');
@@ -78,6 +79,12 @@ public final class Settings {
     public final boolean supplyOnPhase;
     public final int supplyEvery;
     public final int rewardKills, rewardGrowth, rewardBoostSeconds;
+    public final double ammoBoxMags, supplyMags;
+    // dificultad
+    public final boolean siege;
+    public final double siegeEvery, eliteBase, elitePerPhase, eliteHp, eliteSpeed, perRound;
+    public final double threatPerMob, threatPerBoss, threatPerLevel, threatDecay, threatHp, threatSpeed, threatWave, threatElite;
+    public final int threatLevels;
     // pack
     public final boolean packEnabled, packRequired;
     public final int packPort;
@@ -148,6 +155,24 @@ public final class Settings {
         ammoChanceBoss = Math.max(0, Math.min(1, c.getDouble("municion.probabilidadCajaJefe", 1.0)));
         supplyOnPhase = c.getBoolean("municion.suministroAlEmpezarFase", true);
         supplyEvery = Math.max(0, c.getInt("municion.suministroCada", 150));
+        ammoBoxMags = Math.max(0.05, c.getDouble("municion.cajaCargadores", 0.35));
+        supplyMags = Math.max(0.1, c.getDouble("municion.suministroCargadores", 1.0));
+        siege = c.getBoolean("dificultad.asedio", true);
+        siegeEvery = Math.max(0.3, c.getDouble("dificultad.golpeCada", 1.4));
+        eliteBase = Math.max(0, c.getDouble("dificultad.eliteBase", 0.04));
+        elitePerPhase = Math.max(0, c.getDouble("dificultad.elitePorFase", 0.04));
+        eliteHp = Math.max(1, c.getDouble("dificultad.eliteVida", 2.6));
+        eliteSpeed = Math.max(1, c.getDouble("dificultad.eliteVelocidad", 1.2));
+        perRound = Math.max(0, c.getDouble("dificultad.porRonda", 0.35));
+        threatPerMob = Math.max(0, c.getDouble("dificultad.amenaza.porMob", 1));
+        threatPerBoss = Math.max(0, c.getDouble("dificultad.amenaza.porJefe", 30));
+        threatPerLevel = Math.max(1, c.getDouble("dificultad.amenaza.porNivel", 35));
+        threatLevels = clamp(c.getInt("dificultad.amenaza.niveles", 5), 1, 10);
+        threatDecay = Math.max(0, c.getDouble("dificultad.amenaza.bajadaPorSegundo", 0.6));
+        threatHp = Math.max(0, c.getDouble("dificultad.amenaza.vida", 0.18));
+        threatSpeed = Math.max(0, c.getDouble("dificultad.amenaza.velocidad", 0.06));
+        threatWave = Math.max(0, c.getDouble("dificultad.amenaza.oleada", 0.3));
+        threatElite = Math.max(0, c.getDouble("dificultad.amenaza.elite", 0.05));
         rewardKills = Math.max(0, c.getInt("recompensa.bajas", 40));
         rewardGrowth = Math.max(0, c.getInt("recompensa.incremento", 10));
         rewardBoostSeconds = Math.max(0, c.getInt("recompensa.danioDobleSegundos", 20));
@@ -167,7 +192,9 @@ public final class Settings {
                 Math.max(0.02, s.getDouble("velocidad", 0.15)), Math.max(0.2, Math.min(6, s.getDouble("escala", 1))),
                 s.getDouble("altura", 8), s.getString("nombre", id.toUpperCase(Locale.ROOT)),
                 Math.max(2, s.getDouble("distanciaAtaque", 24)), Math.max(0.3, s.getDouble("ataqueCada", 3)), Math.max(0, s.getInt("danioAtaque", 40)),
-                Math.max(0, s.getInt("danioDevuelta", 80)), Math.max(0, s.getInt("danioEmbestida", s.getInt("danio", 80))), Math.max(0.3, s.getDouble("embestidaCada", 2.5))));
+                Math.max(0, s.getInt("danioDevuelta", 80)), Math.max(0, s.getInt("danioEmbestida", s.getInt("danio", 80))), Math.max(0.3, s.getDouble("embestidaCada", 2.5)),
+                Math.max(0.05, Math.min(1, s.getDouble("blindaje", 1))), s.getString("invocar.tipo", ""), Math.max(0, s.getInt("invocar.cantidad", 0)),
+                Math.max(2, s.getDouble("invocar.cada", 15))));
         }
 
         likesGoal = Math.max(1, c.getInt("likes.meta", 5000));
@@ -195,7 +222,8 @@ public final class Settings {
                 Math.max(5, s.getDouble("alcance", 100)), Math.max(0, s.getDouble("dispersion", 1)), Math.max(1, s.getInt("cargador", 10)),
                 Math.max(0, s.getDouble("recarga", 1.5)), Math.max(0.5, s.getDouble("radio", 4)), Math.max(0.2, s.getDouble("velocidad", 1.5)),
                 Math.max(0, s.getInt("rebotes", 2)), Math.max(0.2, s.getDouble("mecha", 2.5)), s.getString("sonido", "entity.firework_rocket.blast"),
-                (float) s.getDouble("tono", 1.0), s.getInt("reserva", -1), clamp(s.getInt("balasPorTick", 1), 1, 5), Math.max(0, s.getDouble("calentamiento", 0))));
+                (float) s.getDouble("tono", 1.0), s.getInt("reserva", -1), clamp(s.getInt("balasPorTick", 1), 1, 5), Math.max(0, s.getDouble("calentamiento", 0)),
+                clamp(s.getInt("desbloqueo", 1), 1, 50)));
         }
 
         particlesPerTick = clamp(c.getInt("rendimiento.particulasPorTick", 900), 50, 20000);

@@ -69,8 +69,50 @@ public final class Game implements Listener {
         return plugin.settings.baseHealth;
     }
 
+    /** Rondas sobrevividas (se cuentan solas: la ronda llega a 0 con la base en pie). */
+    public int wins() {
+        migrateScore();
+        return plugin.data().getInt("ganadas", 0);
+    }
+
+    /** Bases destruidas (se cuentan solas al caer la base). */
+    public int losses() {
+        migrateScore();
+        return plugin.data().getInt("perdidas", 0);
+    }
+
+    /** Balance (compatibilidad con la v3: ganadas − perdidas). */
     public int victories() {
-        return plugin.data().getInt("victorias", 0);
+        return wins() - losses();
+    }
+
+    /** La v3 guardaba un único número (+1 al ganar, −1 al perder): se reparte en ganadas/perdidas. */
+    private void migrateScore() {
+        var d = plugin.data();
+        if (d.contains("ganadas") || d.contains("perdidas")) return;
+        int v = d.getInt("victorias", 0);
+        d.set("ganadas", Math.max(0, v));
+        d.set("perdidas", Math.max(0, -v));
+        d.set("victorias", null);
+    }
+
+    public void addWins(int n) {
+        plugin.data().set("ganadas", Math.max(0, wins() + n));
+        plugin.saveData();
+        plugin.hud.update();
+    }
+
+    public void addLosses(int n) {
+        plugin.data().set("perdidas", Math.max(0, losses() + n));
+        plugin.saveData();
+        plugin.hud.update();
+    }
+
+    public void resetScore() {
+        plugin.data().set("ganadas", 0);
+        plugin.data().set("perdidas", 0);
+        plugin.saveData();
+        plugin.hud.update();
     }
 
     public UUID streamerId() {
@@ -99,6 +141,11 @@ public final class Game implements Listener {
         if (plugin.placer.busy()) return "la arena se está generando, espera a que termine";
         if (plugin.arena == null || !plugin.arena.valid()) return "no hay arena: usa /bd arena generate";
         if (who == null) return "no hay ningún jugador conectado para defender la base";
+        // la arena es de otro tamaño que el de la config (p. ej. de la versión anterior): se reconstruye sola
+        if (plugin.data().getInt("arenaLargo", -1) != plugin.settings.length || plugin.data().getInt("arenaAncho", -1) != plugin.settings.width) {
+            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "bd arena regen");
+            return "la arena se está reconstruyendo con el tamaño nuevo (" + plugin.settings.length + " bloques); espera unos segundos y vuelve a pulsar Iniciar";
+        }
         World w = plugin.world(true);
         streamer = who.getUniqueId();
         plugin.data().set("streamer", streamer.toString());
@@ -113,6 +160,7 @@ public final class Game implements Listener {
         prepare(who, true);
         plugin.waves.reset();
         plugin.loot.resetGoal();
+        plugin.threat.reset();
         plugin.pack.send(who);
         plugin.hud.show();
         banner("&c&lBASE DEFENSE", "&7¡Defiende la base! &eRonda 1", Sound.EVENT_RAID_HORN, 1f);
@@ -213,7 +261,8 @@ public final class Game implements Listener {
         baseHp -= amount;
         long now = plugin.tick();
         Player p = streamer();
-        if (p != null && now - lastHitFx > 6) {
+        // golpes pequeños (asedio) con efecto como mucho cada 1,2 s; los grandes siempre
+        if (p != null && now - lastHitFx > (amount < 20 ? 24 : 6)) {
             lastHitFx = now;
             p.playSound(p.getLocation(), Sound.BLOCK_ANVIL_LAND, 0.6f, 0.6f);
             p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_HURT, 0.9f, 0.8f);
@@ -266,8 +315,8 @@ public final class Game implements Listener {
     }
 
     private void baseFallen() {
-        int v = victories() - 1;
-        plugin.data().set("victorias", v);
+        addLosses(1);
+        int v = victories();
         plugin.saveData();
         World w = plugin.world(false);
         if (w != null) {
@@ -277,7 +326,7 @@ public final class Game implements Listener {
             w.playSound(gate, Sound.ENTITY_GENERIC_EXPLODE, 6f, 0.5f);
             w.playSound(gate, Sound.ENTITY_WITHER_DEATH, 2f, 0.6f);
         }
-        banner(plugin.settings.msg("baseCaidaTitulo"), plugin.settings.msg("baseCaidaSubtitulo"), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 0.6f, "victorias", v);
+        banner(plugin.settings.msg("baseCaidaTitulo"), plugin.settings.msg("baseCaidaSubtitulo"), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 0.6f, "victorias", v, "ganadas", wins(), "perdidas", losses());
         plugin.mobs.removeAll(true);
         plugin.bosses.removeAllBalls();
         if (plugin.settings.clearQueueOnFall) plugin.mobs.clearQueue();
@@ -287,17 +336,17 @@ public final class Game implements Listener {
         roundStartedTick = plugin.tick();
         plugin.waves.reset(false);
         plugin.mobs.kills = 0;
-        plugin.getLogger().info("BASE CAÍDA → victorias " + v);
+        plugin.getLogger().info("BASE CAÍDA → " + wins() + "-" + losses());
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (running) banner("&6Ronda " + round, "&7¡La base vuelve a estar en pie!", Sound.EVENT_RAID_HORN, 1f);
         }, Math.max(1, plugin.settings.fallPause * 20L));
     }
 
     private void roundWon() {
-        int v = victories() + 1;
-        plugin.data().set("victorias", v);
+        addWins(1);
+        int v = victories();
         plugin.saveData();
-        banner(plugin.settings.msg("rondaGanadaTitulo"), plugin.settings.msg("rondaGanadaSubtitulo"), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1f, "victorias", v);
+        banner(plugin.settings.msg("rondaGanadaTitulo"), plugin.settings.msg("rondaGanadaSubtitulo"), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1f, "victorias", v, "ganadas", wins(), "perdidas", losses());
         fireworks();
         if (plugin.settings.clearOnWin) {
             plugin.mobs.removeAll(true);
@@ -307,7 +356,7 @@ public final class Game implements Listener {
         round++;
         ticksLeft = plugin.settings.roundSeconds * 20;
         roundStartedTick = plugin.tick();
-        plugin.waves.reset(false);
+        plugin.waves.reset(false, false); // las armas desbloqueadas se conservan al ganar
         plugin.mobs.kills = 0;
         pausedUntil = plugin.tick() + 100;
     }
@@ -329,8 +378,8 @@ public final class Game implements Listener {
     }
 
     public void addVictories(int delta) {
-        plugin.data().set("victorias", victories() + delta);
-        plugin.saveData();
+        if (delta > 0) addWins(delta);
+        else addLosses(-delta);
         plugin.hud.update();
     }
 

@@ -109,3 +109,26 @@ Decisiones:
 - La rueda del ratón salta de la 6.ª arma a la 1.ª (no se seleccionan huecos vacíos) y el HUD dice el nombre del arma.
 - Desarrollo del pack sin reiniciar: `plugins/BaseDefense/pack.zip` sustituye al del .jar; `/bd pack` lo reenvía.
 - `copyDefaults`: las claves nuevas de config.yml se añaden solas al del servidor (lo cambiado por el usuario se queda).
+
+## v4 (dificultad de verdad)
+
+- **Asedio** (`dificultad.asedio`): el mob que llega a la base se queda golpeándola cada `golpeCada` s (daño = `danio` del
+  tipo) hasta que lo matan; los creepers explotan una vez. Antes cada mob restaba una vez y desaparecía.
+- **Élites**: probabilidad `eliteBase + elitePorFase·(fase−1)` (+ amenaza): ×`eliteVida`, ×`eliteVelocidad`, armadura de
+  netherita, golpean ×1,6 y llevan «ÉLITE» sobre la barra.
+- **Escalado**: vida = base × fase × (1 + `porRonda`·(ronda−1)) × amenaza; las oleadas también crecen por ronda y amenaza.
+- **Amenaza** (`game/Threat`): puntos por mob/jefe donado (`/ttspawn`, `/ttboss`), bajan solos; niveles 1..5 → vida,
+  velocidad, tamaño de oleada y élites. HUD: píldora «AMENAZA N» bajo la franja de arriba (desde el nivel 2).
+- **Armas por fase** (`armas.*.desbloqueo`): las bloqueadas salen con candado (`basedefense:bloqueada`); se desbloquean al
+  llegar a su fase (cartel «¡NUEVA ARMA!» y cargador lleno). Al caer la base vuelven a la fase 1; al ganar se conservan.
+- **Munición escasa**: reservas pequeñas, cajas al 5 %, suministro cada 240 s con 1 cargador por arma desbloqueada.
+- **Jefes**: más vida y el doble de rápidos, ataques más seguidos (Wither ráfagas de 2-4 calaveras, Dragón 2-3 bolas),
+  `blindaje` (las balas hacen menos; explosivos completo) e `invocar` (esbirros cada X s con portal y rayo).
+- **Arena** 55×13 (antes 80×15): si el tamaño de la config no coincide con el de la arena construida, `bd start` la
+  reconstruye sola y pide volver a iniciar.
+- **Marcador**: `ganadas` (ronda sobrevivida) y `perdidas` (base destruida) en datos.yml, contados solos; HUD «G-P»;
+  `bd marcador reiniciar`. La v3 guardaba un solo número: se reparte al leerlo.
+- **Migración**: config sin `dificultad.version` (ignorando los valores por defecto del .jar) → `config-v3.yml` + nueva.
+- **Shader de cámara**: `post_effect basedefense:apocalipsis` en el pack (grano, aberración, gradación, viñeta); lo
+  activa el mod LiveArena mientras el pack está cargado (`CineClient.minigamePost`).
+- **Armas**: `tools/gen_guns.py` (modelos con más piezas y texturas de materiales 128×128 sin estirar).

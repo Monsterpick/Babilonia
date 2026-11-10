@@ -20,6 +20,11 @@ export interface BaseDefenseGame {
   hp: number
   max: number
   wins: number
+  /** Rondas sobrevividas y bases destruidas (el plugin las cuenta solo). */
+  ganadas: number
+  perdidas: number
+  /** Nivel de amenaza por donaciones (1 = sin donaciones). */
+  amenaza: number
   mobs: number
   queue: number
   bosses: number
@@ -145,6 +150,9 @@ export function parseBdStatus(line: string): BaseDefenseGame | null {
     hp: n('hp'),
     max: n('max'),
     wins: n('wins'),
+    ganadas: kv.ganadas !== undefined ? n('ganadas') : Math.max(0, n('wins')),
+    perdidas: kv.perdidas !== undefined ? n('perdidas') : Math.max(0, -n('wins')),
+    amenaza: n('amenaza') || 1,
     mobs: n('mobs'),
     queue: n('queue'),
     bosses: n('bosses'),
@@ -161,6 +169,7 @@ export function parseBdStatus(line: string): BaseDefenseGame | null {
 /** Comandos que la app puede mandar por el panel (nada arbitrario). */
 const ALLOWED = [
   /^bd (start|stop|reload|status|tp|armas)( [A-Za-z0-9_]{1,16})?$/,
+  /^bd marcador reiniciar$/,
   /^bd arena (generate|regen|clear)( -?\d{1,18})?$/,
   /^bd test [a-z_]{1,20}( [a-z0-9_]{1,20})?$/,
 ]

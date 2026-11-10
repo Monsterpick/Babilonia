@@ -26,6 +26,11 @@ public final class GameMob {
     public BossBar bar;
     public boolean dead;
     public boolean warned;
+    /** Élite: más vida, más rápido, con armadura y golpea más fuerte. */
+    public boolean elite;
+    /** Asediando la base: quieto en la puerta golpeándola hasta que lo matan. */
+    public boolean sieging;
+    public long nextHit;
 
     GameMob(Mob entity, String donor, Settings.MobDef def, Settings.BossDef boss, double maxHp, double offset) {
         this.entity = entity;
@@ -42,7 +47,7 @@ public final class GameMob {
     }
 
     public int baseDamage() {
-        return boss != null ? boss.damage() : def.damage();
+        return boss != null ? boss.damage() : (int) Math.round(def.damage() * (elite ? 1.6 : 1));
     }
 
     public String typeName() {

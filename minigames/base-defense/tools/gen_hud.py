@@ -637,11 +637,13 @@ def build():
     def bb(y):
         return 10 - y
     font('bb_strip', 1, [('p_strip', bb(2)), ('txto', bb(3)), ('i_skull', bb(5)), ('i_like', bb(5)), ('i_trophy', bb(5)), ('b_mini', bb(11))])
-    for i, y0 in enumerate((22, 50)):
+    # amenaza (nivel por donaciones): píldora bajo la franja
+    font('bb_threat', 1, [('pill_l', bb(18)), ('pill_m', bb(18)), ('pill_r', bb(18)), ('txt', bb(19)), ('i_warn', bb(20)), ('b_mini', bb(24))])
+    for i, y0 in enumerate((35, 63)):
         font(f'bb_boss{i}', 1, [('p_boss', bb(y0)), ('boss_wither', bb(y0 + 3)), ('boss_dragon', bb(y0 + 3)), ('boss_warden', bb(y0 + 3)),
                                 ('txto', bb(y0 + 1)), ('b_boss', bb(y0 + 15))])
-    font('bb_ban', 1, [('ban_l', bb(82)), ('ban_m', bb(82)), ('ban_r', bb(82)), ('txto2', bb(82 + 2))])
-    font('bb_bansub', 1, [('txto', bb(82 + 25))])
+    font('bb_ban', 1, [('ban_l', bb(94)), ('ban_m', bb(94)), ('ban_r', bb(94)), ('txto2', bb(94 + 2))])
+    font('bb_bansub', 1, [('txto', bb(94 + 25))])
 
     # ── título (×4): marcador de impacto centrado en la mira ──
     SETS['hit'].scale = 1

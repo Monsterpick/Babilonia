@@ -222,6 +222,7 @@ public final class CineClient {
             if (ticks - f.start() > f.total()) it.remove();
         }
         if (mc.player == null) resetAll();
+        if (ticks % 10 == 0) minigamePost(mc);
         CineModels.tick();
     }
 
@@ -348,6 +349,35 @@ public final class CineClient {
         }
         currentFov = fov;
         return new Pose(pos, yaw, Math.max(-90, Math.min(90, pitch)), roll);
+    }
+
+    /* ---------------------- shader de cámara de Base Defense ---------------------- */
+
+    private static final Identifier BD_POST = Identifier.fromNamespaceAndPath("basedefense", "apocalipsis");
+    private static final Identifier BD_POST_FILE = Identifier.fromNamespaceAndPath("basedefense", "post_effect/apocalipsis.json");
+
+    /**
+     * Mientras el pack de Base Defense está cargado (solo durante la partida) se pone su efecto de pantalla completa
+     * (grano, aberración, gradación y viñeta); al quitarse el pack se quita. Si el juego cambia de efecto (p. ej. al
+     * mirar como un creeper en espectador) no se pisa.
+     */
+    private static long packSeenAt = -1;
+
+    private static void minigamePost(Minecraft mc) {
+        var gr = mc.gameRenderer;
+        Identifier cur = gr.currentPostEffect();
+        // durante la recarga de recursos el shader aún no existe: se espera a que termine (y 2 s más)
+        boolean reloading = mc.getOverlay() != null;
+        boolean packOn = !reloading && mc.player != null && mc.getResourceManager().getResource(BD_POST_FILE).isPresent();
+        if (!packOn) packSeenAt = -1;
+        else if (packSeenAt < 0) packSeenAt = ticks;
+        if (packOn && ticks - packSeenAt >= 40 && cur == null) {
+            try {
+                ((dev.livearena.cine.mixin.GameRendererInvoker) gr).livearena$setPostEffect(BD_POST);
+            } catch (RuntimeException ex) {
+                org.slf4j.LoggerFactory.getLogger("livearena").warn("No se pudo poner el shader de Base Defense: {}", ex.toString());
+            }
+        } else if (!packOn && !reloading && BD_POST.equals(cur)) gr.clearPostEffect();
     }
 
     /* ---------------------- tótem pequeño (sustituye a la animación gigante) ---------------------- */

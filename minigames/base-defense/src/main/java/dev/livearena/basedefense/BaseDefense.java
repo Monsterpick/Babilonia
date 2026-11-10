@@ -56,6 +56,7 @@ public final class BaseDefense extends JavaPlugin {
     public Loot loot;
     public Alerts alerts;
     public dev.livearena.basedefense.game.Allies allies;
+    public dev.livearena.basedefense.game.Threat threat;
     public PackServer pack;
     public BlockPlacer placer;
     private BukkitTask loop;
@@ -79,12 +80,21 @@ public final class BaseDefense extends JavaPlugin {
         projKey = new NamespacedKey(this, "proyectil");
         saveDefaultConfig();
         // config.yml de la versión 1 (sin fases, sin minigun, jefes antiguos): se guarda aparte y se pone la nueva
-        if (!getConfig().contains("oleadas")) {
+        if (!getConfig().contains("oleadas", true)) {
             File cfg = new File(getDataFolder(), "config.yml");
             if (cfg.renameTo(new File(getDataFolder(), "config-v1.yml"))) {
                 saveDefaultConfig();
                 reloadConfig();
                 getLogger().info("config.yml actualizada a la v2 (la anterior queda en config-v1.yml)");
+            }
+        }
+        // v4 (dificultad nueva): la config anterior se guarda aparte y se pone la nueva (los valores de antes eran demasiado fáciles)
+        if (getConfig().contains("oleadas", true) && !getConfig().contains("dificultad.version", true)) {
+            File cfg = new File(getDataFolder(), "config.yml");
+            if (cfg.renameTo(new File(getDataFolder(), "config-v3.yml"))) {
+                saveDefaultConfig();
+                reloadConfig();
+                getLogger().info("config.yml actualizada a la v4 (dificultad nueva; la anterior queda en config-v3.yml)");
             }
         }
         // añade al config.yml del servidor las claves nuevas de esta versión (conserva lo que el usuario cambió)
@@ -104,6 +114,7 @@ public final class BaseDefense extends JavaPlugin {
         loot = new Loot(this);
         alerts = new Alerts(this);
         allies = new dev.livearena.basedefense.game.Allies(this);
+        threat = new dev.livearena.basedefense.game.Threat(this);
         pack = new PackServer(this);
         pack.start();
         game = new Game(this);
@@ -140,7 +151,10 @@ public final class BaseDefense extends JavaPlugin {
             game.tick();
             waves.tick();
             loot.tick();
-            if (tick % 20 == 0) alerts.tick();
+            if (tick % 20 == 0) {
+                alerts.tick();
+                threat.tick();
+            }
             ambience.tick();
         } catch (Throwable t) {
             getLogger().log(java.util.logging.Level.SEVERE, "Error en el bucle de Base Defense", t);

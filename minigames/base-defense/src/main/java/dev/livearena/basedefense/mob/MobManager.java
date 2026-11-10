@@ -141,6 +141,10 @@ public final class MobManager implements Listener {
                 continue;
             }
             Location l = m.getLocation();
+            if (gm.sieging) {
+                if (active) siege(gm, now);
+                continue;
+            }
             boolean inBase = gm.isBoss() && gm.manual
                 ? l.getX() >= base.getMinX() && l.getX() <= base.getMaxX() && l.getZ() >= base.getMinZ() && l.getZ() <= base.getMaxZ()
                 : base.contains(l.getX(), l.getY(), l.getZ());
@@ -184,13 +188,36 @@ public final class MobManager implements Listener {
     // ───────────────────────────── SPAWN ─────────────────────────────
 
     public GameMob spawn(World w, Settings.MobDef def, String donor, boolean label) {
-        Location at = spawnPoint(w);
-        // cada fase los mobs salen con más vida y algo más rápidos
-        double hp = def.health() * plugin.waves.healthMult(), speed = def.speed() * plugin.waves.speedMult();
-        Mob m = spawnEntity(w, at, def.entity(), hp, speed, 1.0, plugin.fx.rnd().nextInt(6) != 0);
+        return spawnAt(w, spawnPoint(w), def, donor, label);
+    }
+
+    /** Multiplicador de vida actual: fase × rondas superadas × amenaza. */
+    public double hpMult() {
+        return plugin.waves.healthMult() * (1 + plugin.settings.perRound * (plugin.game.round() - 1)) * plugin.threat.hpMult();
+    }
+
+    public double speedMult() {
+        return plugin.waves.speedMult() * plugin.threat.speedMult();
+    }
+
+    public GameMob spawnAt(World w, Location at, Settings.MobDef def, String donor, boolean label) {
+        // cada fase, ronda y nivel de amenaza los mobs salen con más vida y más rápidos; algunos son élite
+        double eliteChance = plugin.settings.eliteBase + plugin.settings.elitePerPhase * (plugin.waves.phase() - 1) + plugin.threat.eliteBonus();
+        boolean elite = def.entity() != EntityType.CREEPER && plugin.fx.rnd().nextDouble() < eliteChance;
+        double hp = def.health() * hpMult() * (elite ? plugin.settings.eliteHp : 1);
+        double speed = def.speed() * speedMult() * (elite ? plugin.settings.eliteSpeed : 1);
+        Mob m = spawnEntity(w, at, def.entity(), hp, speed, elite ? 1.15 : 1.0, plugin.fx.rnd().nextInt(6) != 0);
         if (m == null) return null;
         double off = (plugin.fx.rnd().nextDouble() * 2 - 1) * Math.max(1, plugin.arena.laneHalfWidth - 1.5);
         GameMob gm = new GameMob(m, donor, def, null, hp, off);
+        gm.elite = elite;
+        if (elite) {
+            EntityEquipment eq = m.getEquipment();
+            if (eq != null) {
+                eq.setHelmet(new ItemStack(Material.NETHERITE_HELMET));
+                eq.setChestplate(new ItemStack(Material.NETHERITE_CHESTPLATE));
+            }
+        }
         mobs.put(m.getUniqueId(), gm);
         spawned++;
         attachBrain(gm, speed);
@@ -231,7 +258,9 @@ public final class MobManager implements Listener {
     }
 
     private GameMob finishBoss(Mob m, Settings.BossDef def, String donor, Location at) {
-        GameMob gm = new GameMob(m, donor, null, def, def.health(), 0);
+        // los jefes también escalan con las rondas y la amenaza
+        double bhp = def.health() * (1 + plugin.settings.perRound * (plugin.game.round() - 1)) * plugin.threat.hpMult();
+        GameMob gm = new GameMob(m, donor, null, def, bhp, 0);
         gm.speed = def.speed();
         mobs.put(m.getUniqueId(), gm);
         if (def.flying()) {
@@ -391,8 +420,9 @@ public final class MobManager implements Listener {
         if (plugin.hud.fonts().ok() && plugin.pack.loaded(plugin.game.streamer())) {
             var hf = plugin.hud.fonts();
             String g = gm.isBoss() ? hf.step("world_boss", f) : hf.step("world", f > 0.6 ? "g" : f > 0.3 ? "y" : "r", f);
-            return net.kyori.adventure.text.Component.text(g).font(net.kyori.adventure.key.Key.key("basedefense:w_bar"))
+            var bar = net.kyori.adventure.text.Component.text(g).font(net.kyori.adventure.key.Key.key("basedefense:w_bar"))
                 .color(net.kyori.adventure.text.format.NamedTextColor.WHITE).shadowColor(net.kyori.adventure.text.format.ShadowColor.none());
+            return gm.elite ? net.kyori.adventure.text.Component.text("ÉLITE ", net.kyori.adventure.text.format.TextColor.color(0xFF4030)).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD).append(bar) : bar;
         }
         int n = (int) Math.ceil(f * 10);
         String col = f > 0.6 ? "&a" : f > 0.3 ? "&e" : "&c";
@@ -576,12 +606,40 @@ public final class MobManager implements Listener {
     private void reachBase(GameMob gm) {
         Location l = gm.entity.getLocation();
         int dmg = gm.baseDamage();
+        if (plugin.settings.siege && !(gm.entity instanceof Creeper)) {
+            // se queda en la puerta golpeando la base hasta que lo matan
+            gm.sieging = true;
+            gm.nextHit = plugin.tick() + 6 + plugin.fx.rnd().nextInt(10);
+            gm.entity.getPathfinder().stopPathfinding();
+            gm.entity.setVelocity(new Vector(0, Math.min(0, gm.entity.getVelocity().getY()), 0));
+            plugin.game.damageBase(dmg, gm);
+            return;
+        }
+        if (gm.entity instanceof Creeper) {
+            plugin.fx.explosion(l, 3.5, true);
+            plugin.game.shake();
+        }
         discard(gm, true);
         {
             plugin.fx.particle(l.clone().add(0, 1, 0), Particle.LARGE_SMOKE, 8, 0.3, 0.5, 0.3, 0.03, null, false);
             plugin.fx.particle(l.clone().add(0, 1, 0), Particle.DUST, 10, 0.4, 0.6, 0.4, 0, new Particle.DustOptions(Color.RED, 1.6f), false);
         }
         plugin.game.damageBase(dmg, gm);
+    }
+
+    /** Mob asediando: golpea la base cada `golpeCada` s con su animación y un crujido de madera. */
+    private void siege(GameMob gm, long now) {
+        Mob m = gm.entity;
+        if (!gm.manual) m.getPathfinder().stopPathfinding();
+        Vector v = m.getVelocity();
+        if (Math.abs(v.getX()) + Math.abs(v.getZ()) > 0.01) m.setVelocity(new Vector(0, Math.min(0, v.getY()), 0));
+        if (now < gm.nextHit) return;
+        gm.nextHit = now + Math.round(plugin.settings.siegeEvery * 20) + plugin.fx.rnd().nextInt(6);
+        m.swingMainHand();
+        Location l = m.getLocation();
+        plugin.fx.sound(l, org.bukkit.Sound.ENTITY_ZOMBIE_ATTACK_WOODEN_DOOR, 0.9f, 0.8f + plugin.fx.rnd().nextFloat() * 0.3f, false);
+        plugin.fx.particle(l.clone().add(0, 1.2, 0).add(l.getDirection().multiply(0.6)), Particle.BLOCK, 4, 0.2, 0.2, 0.2, 0.05, Material.DARK_OAK_PLANKS.createBlockData(), false);
+        plugin.game.damageBase(gm.baseDamage(), gm);
     }
 
     /** Quita un mob sin muerte (llegó a la base, cayó al vacío o se limpia la ronda). */
@@ -681,12 +739,12 @@ public final class MobManager implements Listener {
 
         @Override
         public boolean shouldActivate() {
-            return !gm.dead && plugin.game.running();
+            return !gm.dead && !gm.sieging && plugin.game.running();
         }
 
         @Override
         public boolean shouldStayActive() {
-            return !gm.dead && plugin.game.running();
+            return !gm.dead && !gm.sieging && plugin.game.running();
         }
 
         @Override

@@ -38,6 +38,9 @@ interface Game {
   paused: boolean
   hp: number
   max: number
+  ganadas?: number
+  perdidas?: number
+  amenaza?: number
   wins: number
   mobs: number
   queue: number
@@ -422,7 +425,7 @@ export function MinigamesPage() {
               </div>
               {g && !g.running ? (
                 <div className="grid grid-cols-3 gap-2 p-5">
-                  <Stat icon={<Trophy size={12} />} label="Victorias guardadas" value={g.wins} tone={g.wins < 0 ? 'text-red-400' : 'text-amber-300'} />
+                  <Stat icon={<Trophy size={12} />} label="Ganadas · perdidas" value={`${g.ganadas ?? 0} – ${g.perdidas ?? 0}`} tone="text-amber-300" />
                   <Stat icon={<Heart size={12} />} label="Likes del directo" value={g.likes.toLocaleString('es')} />
                   <Stat icon={<Zap size={12} />} label="TPS del servidor" value={g.tps.toFixed(1)} tone={g.tps < 18 ? 'text-red-400' : 'text-emerald-300'} />
                 </div>
@@ -441,7 +444,8 @@ export function MinigamesPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     <Stat icon={<Timer size={12} />} label={`Ronda ${g.round} · fase ${g.phase ?? 1} · oleada ${g.wave ?? 0}`} value={g.paused ? 'Pausa' : mmss(g.time)} tone={g.time <= 10 ? 'text-red-400' : 'text-white'} />
-                    <Stat icon={<Trophy size={12} />} label="Victorias" value={g.wins} tone={g.wins < 0 ? 'text-red-400' : 'text-amber-300'} />
+                    <Stat icon={<Trophy size={12} />} label="Ganadas · perdidas" value={`${g.ganadas ?? 0} – ${g.perdidas ?? 0}`} tone="text-amber-300" />
+                    <Stat icon={<Zap size={12} />} label="Amenaza (donaciones)" value={`Nivel ${g.amenaza ?? 1}`} tone={(g.amenaza ?? 1) >= 4 ? 'text-red-400' : (g.amenaza ?? 1) >= 2 ? 'text-orange-300' : 'text-white'} />
                     <Stat icon={<Skull size={12} />} label="Mobs vivos" value={g.mobs} />
                     <Stat icon={<Gamepad2 size={12} />} label="En cola" value={g.queue} />
                     <Stat icon={<Crown size={12} />} label="Jefes" value={g.bosses} tone={g.bosses ? 'text-fuchsia-300' : 'text-white'} />
@@ -516,11 +520,14 @@ export function MinigamesPage() {
                   <button className="btn" disabled={!g?.running || !!busy} onClick={() => void cmd('bd test likes', 'Likes simulados')}>
                     <Heart size={14} /> +¼ de la meta de likes
                   </button>
-                  <button className="btn" disabled={!g?.running || !!busy} onClick={() => void cmd('bd test ganar', '+1 victoria')}>
-                    <Trophy size={14} /> +1 victoria
+                  <button className="btn" disabled={!g?.running || !!busy} onClick={() => void cmd('bd test ganar', '+1 ganada')}>
+                    <Trophy size={14} /> +1 ganada
                   </button>
-                  <button className="btn" disabled={!g?.running || !!busy} onClick={() => void cmd('bd test perder', '−1 victoria')}>
-                    <Trophy size={14} /> −1 victoria
+                  <button className="btn" disabled={!g?.running || !!busy} onClick={() => void cmd('bd test perder', '+1 perdida')}>
+                    <Trophy size={14} /> +1 perdida
+                  </button>
+                  <button className="btn" disabled={!!busy} onClick={() => { if (confirm('¿Poner el marcador de ganadas y perdidas a 0-0?')) void cmd('bd marcador reiniciar', 'Marcador a 0-0') }}>
+                    <Trophy size={14} /> Marcador a 0-0
                   </button>
                   <button className="btn" disabled={!g?.running || !!busy} onClick={() => void cmd('bd test ronda', 'Fin de ronda')}>
                     <Timer size={14} /> Terminar ronda
@@ -635,7 +642,7 @@ export function MinigamesPage() {
                     <b className="text-white">Armas:</b> teclas 1–6 (pistola, subfusil, ametralladora, lanzagranadas, lanzacohetes y minigun). Clic derecho dispara (mantén pulsado para ráfaga; la minigun gira antes de disparar), clic izquierdo o <b>F</b> recarga. A la cabeza hace ×1,6. Munición: cajas que sueltan los mobs, suministros en paracaídas (tócalos) y el cofre dorado de la meta de bajas. Dispara a las calaveras del Wither para romperlas y a las bolas de fuego del Dragón para devolvérselas.
                   </p>
                   <p>
-                    <b className="text-white">Rondas:</b> si el tiempo llega a 0 con la base en pie, +1 victoria. Si la base cae, −1 victoria, se limpian los mobs y la ronda vuelve a empezar con la base al máximo.
+                    <b className="text-white">Rondas:</b> el marcador se lleva solo: si el tiempo llega a 0 con la base en pie suma una <b>ganada</b>; si la base cae suma una <b>perdida</b>, se limpian los mobs y la ronda vuelve a empezar (y las armas vuelven a las de la fase 1). Los mobs que llegan a la puerta se quedan golpeando la base hasta que los matas. Las armas se desbloquean por fase. La <b>amenaza</b> sube con lo que donan y endurece todo (más vida, velocidad, élites y oleadas más grandes).
                   </p>
                   <p>
                     <b className="text-white">Con otra app (TikFinity, etc.) por RCON:</b>

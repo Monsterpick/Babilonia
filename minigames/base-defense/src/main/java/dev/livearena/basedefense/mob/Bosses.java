@@ -78,6 +78,7 @@ public final class Bosses implements Listener {
         boolean atBase;
         int ramPhase;            // 0 = retrocede, 1 = embiste
         long ramUntil;
+        long nextSummon;
     }
 
     private final Map<UUID, Combat> combat = new LinkedHashMap<>();
@@ -104,7 +105,8 @@ public final class Bosses implements Listener {
     private void registered(GameMob gm, Settings.BossDef def, String donor) {
         gm.bar = BossBar.bossBar(barTitle(gm), 1f, color(def), BossBar.Overlay.NOTCHED_10);
         Combat cb = new Combat();
-        cb.nextAttack = plugin.tick() + 60;
+        cb.nextAttack = plugin.tick() + 40;
+        cb.nextSummon = plugin.tick() + (long) (def.summonEvery() * 20);
         combat.put(gm.entity.getUniqueId(), cb);
         bosses.add(gm);
         plugin.hud.relayout();
@@ -260,6 +262,31 @@ public final class Bosses implements Listener {
 
     // ───────────────────────────── TICK ─────────────────────────────
 
+    /** Jefe de invocación: suelta esbirros en el carril bajo él (con portal y rayo). */
+    private void summon(GameMob gm, Location at) {
+        var def = plugin.settings.mobs.get(gm.boss.summonType().toLowerCase(java.util.Locale.ROOT));
+        World w = at.getWorld();
+        if (def == null || w == null) return;
+        Location ground = at.clone();
+        ground.setY(plugin.arena.groundY + 1);
+        // que no caigan dentro de la base
+        if (plugin.arena.baseRegion.clone().expand(3).contains(ground.toVector())) ground = plugin.arena.mobSpawn(w);
+        int n = gm.boss.summonCount() + (gm.furious ? 2 : 0);
+        for (int i = 0; i < n; i++) {
+            Location p = ground.clone().add(plugin.fx.rnd().nextGaussian() * 1.5, 0, plugin.fx.rnd().nextGaussian() * 1.5);
+            plugin.mobs.spawnAt(w, p, def, gm.donor, false);
+        }
+        plugin.fx.portal(ground.clone().add(0, 0.2, 0), Color.fromRGB(180, 30, 30), Color.fromRGB(20, 0, 0), 2.5, 30);
+        w.strikeLightningEffect(ground);
+        plugin.hud.notify("skull", Alerts2.plain(plugin.settings.msg("invocacion"), "jefe", gm.boss.name()), net.kyori.adventure.text.format.TextColor.color(0xE63C32));
+    }
+
+    private static final class Alerts2 {
+        static String plain(String tpl, Object... kv) {
+            return net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(Txt.fmt(tpl, kv));
+        }
+    }
+
     public void tick() {
         if (!plugin.game.running() || plugin.arena == null) return;
         long now = plugin.tick();
@@ -272,11 +299,15 @@ public final class Bosses implements Listener {
             Combat cb = combat.get(gm.entity.getUniqueId());
             if (cb == null || paused) continue;
             double every = gm.boss.attackEvery() * 20 / (gm.furious ? 1.5 : 1);
+            if (now >= cb.nextSummon && gm.boss.summonCount() > 0) {
+                cb.nextSummon = now + (long) (gm.boss.summonEvery() * 20 / (gm.furious ? 1.4 : 1));
+                summon(gm, l);
+            }
             switch (gm.entity.getType()) {
                 case WITHER -> {
                     if (distToBase(gm) <= gm.boss.attackDistance() + 6 && now >= cb.nextAttack) {
                         cb.nextAttack = now + (long) every;
-                        int n = gm.furious ? 3 : 1;
+                        int n = gm.furious ? 4 : 2;
                         for (int i = 0; i < n; i++) shoot(gm, Kind.CALAVERA, i);
                         warn("ataqueWither");
                     }
@@ -285,7 +316,8 @@ public final class Bosses implements Listener {
                     if (distToBase(gm) <= gm.boss.attackDistance() + 12 && now >= cb.nextAttack) {
                         cb.nextAttack = now + (long) every;
                         shoot(gm, Kind.FUEGO, 0);
-                        if (gm.furious) shoot(gm, Kind.FUEGO, 1);
+                        shoot(gm, Kind.FUEGO, 1);
+                        if (gm.furious) shoot(gm, Kind.FUEGO, 2);
                         warn("ataqueDragon");
                         plugin.fx.sound(l, Sound.ENTITY_ENDER_DRAGON_SHOOT, 4f, 0.8f, true);
                     }
@@ -359,7 +391,7 @@ public final class Bosses implements Listener {
             e.setIsIncendiary(false);
             e.setDirection(dir);
             e.setAcceleration(new Vector());
-            e.setVelocity(dir.clone().multiply(kind == Kind.CALAVERA ? 0.55 : 0.42));
+            e.setVelocity(dir.clone().multiply(kind == Kind.CALAVERA ? 0.8 : 0.62));
             e.setPersistent(false);
             if (e instanceof WitherSkull ws) ws.setCharged(gm.furious);
             e.getPersistentDataContainer().set(plugin.projKey, PersistentDataType.STRING, "jefe");

@@ -58,6 +58,40 @@ public final class Weapons implements Listener {
     private final Map<UUID, Long> lastClick = new HashMap<>();
     private final Map<UUID, Proj> projectiles = new HashMap<>();
     private long lastHitSound;
+    /** Fase hasta la que están desbloqueadas las armas (las de `desbloqueo` mayor salen con candado). */
+    private int unlockedPhase = 1;
+
+    public boolean locked(WeaponDef w) {
+        return w.unlockPhase() > unlockedPhase;
+    }
+
+    /** Vuelve a dejar solo las armas de la fase dada (al empezar y al caer la base). Las bloqueadas pierden su munición. */
+    public void relock(int phase) {
+        unlockedPhase = Math.max(1, phase);
+        for (var m : states.values()) m.entrySet().removeIf(e -> {
+            WeaponDef d = plugin.settings.weapons.get(e.getKey());
+            return d == null || locked(d);
+        });
+        refreshItems();
+    }
+
+    /** Nueva fase: se desbloquean sus armas (con el cargador lleno) y se anuncia. */
+    public void unlockPhase(int phase) {
+        if (phase <= unlockedPhase) return;
+        int before = unlockedPhase;
+        unlockedPhase = phase;
+        Player p = plugin.game.streamer();
+        for (WeaponDef w : plugin.settings.weapons.values()) {
+            if (w.unlockPhase() <= before || w.unlockPhase() > phase) continue;
+            if (p != null) {
+                State st = state(p, w);
+                st.ammo = w.magazine();
+            }
+            String name = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(Txt.fmt(w.name()));
+            plugin.game.banner(plugin.settings.msg("armaDesbloqueadaTitulo"), plugin.settings.msg("armaDesbloqueadaSubtitulo"), Sound.ITEM_ARMOR_EQUIP_NETHERITE, 0.8f, "arma", name);
+        }
+        refreshItems();
+    }
     private final Map<UUID, Long> boostUntil = new HashMap<>();
 
     /** Daño doble durante unos ticks (cofre de la meta de bajas). */
@@ -133,11 +167,15 @@ public final class Weapons implements Listener {
         m.lore(lore);
         m.getPersistentDataContainer().set(plugin.weaponKey, PersistentDataType.STRING, w.id());
         // modelo 3D del pack (solo si el jugador lo tiene cargado; si no, se vería sin textura)
-        if (w.model() != null && !w.model().isBlank() && plugin.pack.loaded(p)) m.setItemModel(Settings.key(w.model()));
+        if (locked(w)) {
+            if (plugin.pack.loaded(p)) m.setItemModel(Settings.key("basedefense:bloqueada"));
+            else m.setItemModel(Settings.key("minecraft:barrier"));
+            if (!fancy) m.displayName(Txt.fmt("&8" + Txt.plain(plugin.settings.msg("armaBloqueada"), "fase", w.unlockPhase())).decoration(TextDecoration.ITALIC, false));
+        } else if (w.model() != null && !w.model().isBlank() && plugin.pack.loaded(p)) m.setItemModel(Settings.key(w.model()));
         m.setUnbreakable(false);
         m.setMaxStackSize(1);
         m.addItemFlags(ItemFlag.values());
-        if (!fancy && m instanceof Damageable d) {
+        if (!fancy && !locked(w) && m instanceof Damageable d) {
             d.setMaxDamage(Math.max(2, w.magazine() + 1));
             State s = state(p, w);
             d.setDamage(Math.max(0, w.magazine() - s.ammo));
@@ -147,7 +185,7 @@ public final class Weapons implements Listener {
     }
 
     /** Lo que el HUD necesita de cada arma. reloading/warming: 0..1 mientras dura, -1 si no. */
-    public record Slot(WeaponDef def, int ammo, int reserve, boolean infinite, double reloading, double warming) {}
+    public record Slot(WeaponDef def, int ammo, int reserve, boolean infinite, double reloading, double warming, boolean locked) {}
 
     public List<Slot> slots(Player p) {
         long now = plugin.tick();
@@ -156,7 +194,7 @@ public final class Weapons implements Listener {
             State s = state(p, w);
             double rl = s.reloadUntil > now ? 1 - (s.reloadUntil - now) / Math.max(1.0, w.reload() * 20) : -1;
             double wm = w.warmup() > 0 && s.warmStart >= 0 && now - s.warmStart < w.warmup() * 20 ? (now - s.warmStart) / (w.warmup() * 20) : -1;
-            out.add(new Slot(w, s.ammo, s.reserve, w.infinite(), rl, wm));
+            out.add(new Slot(w, s.ammo, s.reserve, w.infinite(), rl, wm, locked(w)));
         }
         return out;
     }
@@ -197,7 +235,7 @@ public final class Weapons implements Listener {
 
     /** Munición que llega de cajas y suministros. */
     public void addReserve(Player p, WeaponDef w, int amount) {
-        if (w.infinite() || amount <= 0) return;
+        if (w.infinite() || amount <= 0 || locked(w)) return;
         State s = state(p, w);
         boolean wasEmpty = s.ammo == 0 && s.reserve == 0;
         s.reserve += amount;
@@ -226,6 +264,13 @@ public final class Weapons implements Listener {
         if (w == null) return;
         e.setCancelled(true);
         if (!plugin.game.running() || !plugin.inGameWorld(p)) return;
+        if (locked(w)) {
+            if (e.getAction() == Action.RIGHT_CLICK_AIR || e.getAction() == Action.RIGHT_CLICK_BLOCK) {
+                plugin.hud.notify("warn", Txt.plain(plugin.settings.msg("armaBloqueada"), "fase", w.unlockPhase()), net.kyori.adventure.text.format.TextColor.color(0xA8A8B0));
+                play(p, p.getLocation(), "basedefense:arma.vacia|block.dispenser.fail", 0.8f, 0.7f);
+            }
+            return;
+        }
         Action a = e.getAction();
         if (a == Action.RIGHT_CLICK_AIR || a == Action.RIGHT_CLICK_BLOCK) {
             long now = plugin.tick();
@@ -293,7 +338,7 @@ public final class Weapons implements Listener {
                 if (d == w) play(p, p.getLocation(), "basedefense:arma.recarga_fin|item.crossbow.loading_end", 1f, 1.1f);
             }
         }
-        if (w == null) return;
+        if (w == null || locked(w)) return;
         Long lc = lastClick.get(p.getUniqueId());
         boolean holding = lc != null && now - lc <= HOLD_TICKS;
         State s = state(p, w);
@@ -388,7 +433,7 @@ public final class Weapons implements Listener {
             if (gm == null) return;
             Entity e = gm.entity;
             boolean head = hit.getHitPosition().getY() > e.getLocation().getY() + e.getHeight() * 0.78;
-            double dmg = w.damage() * (head ? 1.6 : 1.0) * mult(p);
+            double dmg = w.damage() * (head ? 1.6 : 1.0) * mult(p) * (gm.isBoss() ? gm.boss.armor() : 1);
             plugin.fx.particle(end, Particle.BLOCK, head ? 8 : 4, 0.08, 0.08, 0.08, 0, Material.REDSTONE_BLOCK.createBlockData(), false);
             if (head) plugin.fx.particle(end, Particle.CRIT, 6, 0.1, 0.25, false);
             boolean killed = plugin.mobs.damage(gm, dmg, p);

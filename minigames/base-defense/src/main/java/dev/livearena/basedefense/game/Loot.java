@@ -246,8 +246,8 @@ public final class Loot {
         // munición para todas las armas y la minigun
         List<String> got = new ArrayList<>();
         for (Settings.WeaponDef w : plugin.settings.weapons.values()) {
-            if (w.infinite()) continue;
-            int amount = w.shotsPerTick() > 1 ? w.magazine() : w.magazine() * 2;
+            if (w.infinite() || plugin.weapons.locked(w)) continue;
+            int amount = (int) Math.max(1, Math.round(w.magazine() * plugin.settings.supplyMags * (c.gold ? 1.5 : 1)));
             plugin.weapons.addReserve(p, w, amount);
             got.add(w.id().equals("minigun") ? "&d&lMINIGUN" : w.name());
         }
@@ -265,7 +265,7 @@ public final class Loot {
         Settings.WeaponDef best = null;
         double need = -1;
         for (Settings.WeaponDef w : plugin.settings.weapons.values()) {
-            if (w.infinite()) continue;
+            if (w.infinite() || plugin.weapons.locked(w)) continue;
             double n = 1 - plugin.weapons.reserveRatio(p, w) + plugin.fx.rnd().nextDouble() * 0.3;
             if (n > need) {
                 need = n;
@@ -273,7 +273,7 @@ public final class Loot {
             }
         }
         if (best == null) return;
-        int amount = Math.max(1, (int) Math.round(best.magazine() * (big ? 1.5 : 0.5)));
+        int amount = Math.max(1, (int) Math.round(best.magazine() * (big ? 1.2 : plugin.settings.ammoBoxMags)));
         plugin.weapons.addReserve(p, best, amount);
         p.playSound(p.getLocation(), Sound.ITEM_ARMOR_EQUIP_IRON, 1f, 1.3f);
         plugin.hud.notify("crate", "+" + amount + " " + Alerts.plain(best.name()), net.kyori.adventure.text.format.TextColor.color(0xF0C83C));
