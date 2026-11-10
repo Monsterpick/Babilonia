@@ -303,7 +303,9 @@ public final class Hud {
             l.put(bf, -103, font.g("p_boss"), NamedTextColor.WHITE);
             l.put(bf, -100, font.g("boss_" + bossKind(gm)), NamedTextColor.WHITE);
             String name = font.clean(bf, gm.boss.name() + (gm.donor == null || gm.donor.isBlank() ? "" : " · " + gm.donor));
-            if (name.length() > 22) name = name.substring(0, 21) + ".";
+            String hpTxt = (int) Math.ceil(gm.hp) + (gm.furious ? " FURIA" : "");
+            int room = 172 - font.width(bf, hpTxt, -1) - 6;
+            while (name.length() > 4 && font.width(bf, name, -1) > room) name = name.substring(0, name.length() - 2) + ".";
             l.put(bf, -79, name, gm.furious ? BAD : NamedTextColor.WHITE, -1);
             l.right(bf, 99, (int) Math.ceil(gm.hp) + (gm.furious ? " FURIA" : ""), gm.furious ? BAD : GREY, -1);
             l.put(bf, -79, font.step("b_boss", fr), gm.furious ? ((now / 5) % 2 == 0 ? BAD : TextColor.color(0xFF8A40)) : BOSS);

@@ -156,6 +156,13 @@ recompensa:
   incremento: 10              # cada meta cumplida, la siguiente pide estas bajas más
   danioDobleSegundos: 20
 
+# ── Ataques aliados (/ttaliado <tipo> <usuario>) ─────────────────────
+# Los regalan los espectadores para ayudar. Solo dañan a los mobs del juego (a los jefes, la mitad).
+aliados:
+  misil: { danio: 90, radio: 6 }                  # cae sobre el grupo más denso
+  bombardeo: { bombas: 10, danio: 45, radio: 4 }  # fila de bombas del portal a la base
+  rayo: { danio: 10, ancho: 3, duracion: 3 }      # rayo orbital que barre el carril (daño cada 2 ticks)
+
 # ── Pack de texturas ─────────────────────────────────────────────────
 # Texturas apocalípticas, modelos 3D de las armas y sonidos propios. El plugin lo sirve él mismo.
 paquete:
@@ -223,6 +230,9 @@ mensajes:
   ataqueWither: "&8&l¡CALAVERAS! &7dispárales"
   ataqueDragon: "&5&l¡BOLA DE FUEGO! &7devuélvesela"
   ataqueWarden: "&3&l¡CAÑÓN SÓNICO!"
+  aliadoMisil: "&b{usuario} &7lanza un &fMISIL"
+  aliadoBombardeo: "&b{usuario} &7pide un &fBOMBARDEO"
+  aliadoRayo: "&b{usuario} &7dispara el &fRAYO ORBITAL"
   metaTitulo: "&6&l¡META CUMPLIDA!"
   metaSubtitulo: "&7Cae un cofre dorado en la base"
   metaPremio: "DAÑO DOBLE {segundos} S"

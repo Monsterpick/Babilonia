@@ -55,6 +55,7 @@ public final class BaseDefense extends JavaPlugin {
     public Waves waves;
     public Loot loot;
     public Alerts alerts;
+    public dev.livearena.basedefense.game.Allies allies;
     public PackServer pack;
     public BlockPlacer placer;
     private BukkitTask loop;
@@ -102,6 +103,7 @@ public final class BaseDefense extends JavaPlugin {
         waves = new Waves(this);
         loot = new Loot(this);
         alerts = new Alerts(this);
+        allies = new dev.livearena.basedefense.game.Allies(this);
         pack = new PackServer(this);
         pack.start();
         game = new Game(this);

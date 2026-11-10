@@ -85,3 +85,27 @@ Decisiones:
 
 300 mobs vivos + 94 en cola + jefe + metralleta disparando sin parar: **20 TPS, MSPT medio 7,5 ms
 (máx. 20 ms)**, 458 entidades en el mundo.
+
+## v3 (HUD propio y pantalla limpia)
+
+- **HUD con fuentes del pack** (`tools/gen_hud.py` → fuentes `basedefense:*` + `src/main/resources/hud.json` con el avance
+  de cada carácter). Nada de mods de cliente: el servidor compone texto con fuentes propias y espacios negativos.
+  - Barra de acción (abajo): panel de estado (vida de la base, bajas, tiempo, fase, victorias), munición de cada hueco
+    sobre la hotbar, lectura grande del arma en mano (recarga/giro/sin balas/daño x2) y hasta 2 avisos cortos.
+  - Título de **una sola** BossBar (arriba; las barras nativas del pack son transparentes): meta de bajas, meta de likes,
+    placas de jefe (hasta 2) y carteles grandes.
+  - Título (centro): marcador de impacto (blanco, rojo a la cabeza, dorado si mata).
+  - TextDisplay/nombre: barras de vida dibujadas (verde/amarillo/rojo; moradas en jefes).
+  - Fórmulas medidas en el cliente 26.1.2 (borde superior del glifo): barra de acción `y = H − 65 − ascent`,
+    BossBar 0 `y = 10 − ascent`, título `y = H/2 − 12 − 4·ascent`. Avance bitmap = `round(ancho_recortado·escala) + 1`.
+  - El pack oculta corazones, comida, armadura y experiencia; hotbar y mira propias; viñeta más marcada.
+  - Sin pack (si lo rechaza): versión de texto (BossBar de la base, barras de jefes, munición en la barra de acción).
+  - `Hud.update()` solo marca sucio; `Hud.tick()` (desde `Game.tick`) redibuja cada 2 ticks como mucho.
+- Sin marcador lateral ni varias BossBars: oleadas, regalos pequeños, rachas y avisos de jefe van como avisos cortos;
+  los carteles grandes quedan para fases, jefes, base caída, ronda superada y metas.
+- **Meta de bajas** (`recompensa.*`): cada N bajas cae un cofre dorado (munición, +10 % base, daño doble X s).
+- **Bando aliado** (`/ttaliado misil|bombardeo|rayo <usuario>`, `game/Allies`): daño controlado solo a mobs del juego.
+- Jefes: llegan con portal en espiral + rayo (`Fx.portal`).
+- La rueda del ratón salta de la 6.ª arma a la 1.ª (no se seleccionan huecos vacíos) y el HUD dice el nombre del arma.
+- Desarrollo del pack sin reiniciar: `plugins/BaseDefense/pack.zip` sustituye al del .jar; `/bd pack` lo reenvía.
+- `copyDefaults`: las claves nuevas de config.yml se añaden solas al del servidor (lo cambiado por el usuario se queda).

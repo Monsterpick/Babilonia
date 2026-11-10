@@ -150,6 +150,7 @@ public final class Game implements Listener {
         plugin.weapons.clearProjectiles();
         plugin.fx.clearStains();
         plugin.loot.clear();
+        plugin.allies.clear();
         plugin.hud.hide();
         Player p = streamer();
         if (p != null) {

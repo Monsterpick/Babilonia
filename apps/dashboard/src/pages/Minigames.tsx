@@ -89,7 +89,10 @@ const GIFT_MAP: { gift: string; coins: number; what: string }[] = [
   { gift: 'Hand Hearts', coins: 100, what: 'Horda grande (30)' },
   { gift: 'Confetti', coins: 100, what: '3 esqueletos wither' },
   { gift: 'Corgi', coins: 299, what: '3 piglins brutos' },
+  { gift: 'Cap', coins: 99, what: 'Aliado: misil sobre el grupo más denso' },
+  { gift: 'Sunglasses', coins: 199, what: 'Aliado: bombardeo por el carril' },
   { gift: 'Money Gun', coins: 500, what: 'Caja de suministros (minigun)' },
+  { gift: 'Swan', coins: 699, what: 'Aliado: rayo orbital que barre el carril' },
   { gift: 'Galaxy', coins: 1000, what: 'Jefe: Wither' },
   { gift: '3.000–4.999 monedas', coins: 3000, what: 'Jefe: Warden' },
   { gift: '5.000+ monedas', coins: 5000, what: 'Jefe: Dragón del End' },
@@ -105,6 +108,9 @@ const FIELDS: { key: string; label: string; hint?: string; type: 'int' | 'number
   { key: 'mobs.tope', label: 'Máximo de mobs a la vez', type: 'int', min: 1, max: 2000, hint: 'Lo que pase de aquí espera en la cola' },
   { key: 'mobs.hordaGrande', label: 'Cartel «¡LLEGA LA HORDA!» desde', type: 'int', min: 1 },
   { key: 'mobs.etiqueta', label: 'Nombre sobre los mobs', type: 'text', hint: '{usuario} = el donante · colores con &' },
+  { key: 'recompensa.bajas', label: 'Meta de bajas (cofre dorado)', type: 'int', min: 0, hint: 'Bajas para el primer cofre: munición, +10 % de base y daño doble. 0 = sin metas' },
+  { key: 'recompensa.incremento', label: 'La meta sube por cofre', type: 'int', min: 0 },
+  { key: 'recompensa.danioDobleSegundos', label: 'Segundos de daño doble', type: 'int', min: 0, max: 120 },
   { key: 'likes.meta', label: 'Meta de likes', type: 'int', min: 1, hint: 'Al llegar sale un jefe y la meta se reinicia' },
   { key: 'likes.jefe', label: 'Jefe de la meta de likes', type: 'select', options: BOSSES.map((b) => ({ v: b.id, l: b.name })) },
   { key: 'mundo.hora', label: 'Hora fija', type: 'select', options: [
@@ -299,7 +305,7 @@ export function MinigamesPage() {
                 y con los regalos grandes, jefes que atacan la base: el Wither con sus calaveras, el Dragón del End con bolas de fuego (¡devuélveselas!) y el Warden con su cañón sónico y sus embestidas.
               </p>
               <div className="mt-4 flex flex-wrap gap-2 text-[11px]">
-                {['5 fases por ronda', 'Munición y suministros', 'Vida visible en cada mob', 'Pack de texturas + armas 3D', 'Hasta 300 mobs a 20 TPS', 'Modo separado del survival'].map((t) => (
+                {['HUD propio limpio', 'Meta de bajas → cofre', '5 fases por ronda', 'Munición y suministros', 'Vida visible en cada mob', 'Pack de texturas + armas 3D', 'Hasta 300 mobs a 20 TPS', 'Modo separado del survival'].map((t) => (
                   <span key={t} className="rounded-full bg-white/10 px-2.5 py-1 font-semibold text-white/90 ring-1 ring-white/10">
                     {t}
                   </span>
@@ -476,6 +482,18 @@ export function MinigamesPage() {
                   </button>
                   <button className="btn" disabled={!g?.running || !!busy} onClick={() => void cmd('bd test suministro', 'Suministros en camino')}>
                     <Gift size={14} /> Suministros
+                  </button>
+                  <button className="btn" disabled={!g?.running || !!busy} onClick={() => void cmd('bd test misil', 'Misil aliado')}>
+                    <Zap size={14} /> Misil
+                  </button>
+                  <button className="btn" disabled={!g?.running || !!busy} onClick={() => void cmd('bd test bombardeo', 'Bombardeo aliado')}>
+                    <Zap size={14} /> Bombardeo
+                  </button>
+                  <button className="btn" disabled={!g?.running || !!busy} onClick={() => void cmd('bd test rayo', 'Rayo orbital aliado')}>
+                    <Zap size={14} /> Rayo orbital
+                  </button>
+                  <button className="btn" disabled={!g?.running || !!busy} onClick={() => void cmd('bd test meta', 'Meta de bajas cumplida: cofre dorado')}>
+                    <Trophy size={14} /> Cofre dorado
                   </button>
                   <button className="btn" disabled={!g?.running || !!busy} onClick={() => void cmd('bd test municion', '+3 cargadores para cada arma')}>
                     <Zap size={14} /> Munición

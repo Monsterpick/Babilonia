@@ -59,6 +59,14 @@ export class ProfileStore {
     if (bd && bd.actions.some((a) => a.steps.some((st) => st.type === 'minecraft.command' && st.commands.some((c) => /ttboss (ravager|blaze|ghast)\b/.test(c))))) {
       await this.save(baseDefenseProfile(), true)
     }
+    // Base Defense v3: ataques aliados (/ttaliado). Se añaden al perfil sin tocar lo que el usuario cambió.
+    const bd3 = this.cache.get('base-defense')
+    if (bd3 && !bd3.actions.some((a) => a.steps.some((st) => st.type === 'minecraft.command' && st.commands.some((c) => c.startsWith('ttaliado'))))) {
+      const fresh = baseDefenseProfile()
+      const newActions = fresh.actions.filter((a) => ['bd-misil', 'bd-bombardeo', 'bd-rayo', 'bd-chat-zombi', 'bd-chat-ayuda'].includes(a.id) && !bd3.actions.some((x) => x.id === a.id))
+      const newEvents = fresh.events.filter((e) => ['bd-ev-cap', 'bd-ev-sunglasses', 'bd-ev-swan', 'bd-ev-chat-zombi', 'bd-ev-chat-ayuda'].includes(e.id) && !bd3.events.some((x) => x.id === e.id))
+      await this.save({ ...bd3, actions: [...bd3.actions, ...newActions], events: [...bd3.events, ...newEvents] }, true)
+    }
   }
 
   list(): { id: string; name: string; mode: string; actions: number; events: number }[] {

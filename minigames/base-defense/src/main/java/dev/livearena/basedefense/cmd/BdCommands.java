@@ -48,6 +48,7 @@ public final class BdCommands {
         c.register(ttheal().build(), "Cura la base (app de TikTok)");
         c.register(ttwin().build(), "Suma o resta victorias (app de TikTok)");
         c.register(ttlikes().build(), "Total de likes del directo (app de TikTok)");
+        c.register(ttaliado().build(), "Ataque aliado: misil, bombardeo o rayo (app de TikTok)");
         c.register(ttsuministro().build(), "Caja de suministros para la base (app de TikTok)");
     }
 
@@ -231,6 +232,23 @@ public final class BdCommands {
                 plugin.loot.dropSupply(who);
                 return ok(ctx, "ttsuministro de " + who);
             }));
+    }
+
+    private LiteralArgumentBuilder<CommandSourceStack> ttaliado() {
+        String usage = "uso: ttaliado <" + String.join("|", dev.livearena.basedefense.game.Allies.TYPES) + "> <usuario>";
+        return Commands.literal("ttaliado").requires(BdCommands::app)
+            .executes(ctx -> err(ctx, usage))
+            .then(word("tipo").suggests(suggest(() -> dev.livearena.basedefense.game.Allies.TYPES))
+                .executes(ctx -> err(ctx, "falta el usuario; " + usage))
+                .then(rest("usuario").executes(ctx -> {
+                    String g = needGame();
+                    if (g != null) return err(ctx, g);
+                    String type = arg(ctx, "tipo").toLowerCase(Locale.ROOT);
+                    if (!dev.livearena.basedefense.game.Allies.TYPES.contains(type)) return err(ctx, "tipo desconocido '" + type + "'; " + usage);
+                    String who = user(ctx);
+                    if (!plugin.allies.launch(type, who)) return err(ctx, "no se pudo lanzar");
+                    return ok(ctx, "ttaliado " + type + " de " + who);
+                })));
     }
 
     private LiteralArgumentBuilder<CommandSourceStack> ttlikes() {
@@ -451,7 +469,7 @@ public final class BdCommands {
     // ───────────────────────────── test ─────────────────────────────
 
     private LiteralArgumentBuilder<CommandSourceStack> test() {
-        List<String> events = List.of("horda", "jefe", "suministro", "municion", "curar", "ganar", "perder", "likes", "caer", "victoria", "lleno", "ronda", "meta", "aviso");
+        List<String> events = List.of("horda", "jefe", "suministro", "municion", "curar", "ganar", "perder", "likes", "caer", "victoria", "lleno", "ronda", "meta", "aviso", "misil", "bombardeo", "rayo");
         return Commands.literal("test")
             .executes(ctx -> err(ctx, "uso: /bd test <" + String.join("|", events) + "> [tipo/cantidad]"))
             .then(word("evento").suggests(suggest(() -> {
@@ -495,6 +513,7 @@ public final class BdCommands {
             case "likes" -> Bukkit.dispatchCommand(console, "ttlikes " + (plugin.likes().total() + (extra == null ? plugin.settings.likesGoal / 4 : parse(extra, 1000))));
             case "caer" -> plugin.game.forceFall();
             case "ronda" -> plugin.game.forceWin();
+            case "misil", "bombardeo", "rayo" -> Bukkit.dispatchCommand(console, "ttaliado " + e + " " + user);
             case "meta" -> {
                 int left = plugin.loot.goalTarget() - plugin.loot.goalKills();
                 for (int i = 0; i < left; i++) plugin.loot.countKill();
