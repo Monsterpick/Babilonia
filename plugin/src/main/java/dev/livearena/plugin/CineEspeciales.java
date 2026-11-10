@@ -466,23 +466,32 @@ final class CineEspeciales {
                     s.key(88, rear.clone().add(dir.clone().multiply(1.5 * scale)), hit, 66, LINEAR);
                     // 152–185: el disparo visto de lado y de lejos: el rayo baja del cañón hasta la Tierra.
                     Location wide = sat.clone().add(side.clone().multiply(34 * scale)).add(0, -2, 0).add(dir.clone().multiply(6 * scale));
-                    s.key(89, wide, muzzle.clone().add(dir.clone().multiply(14)), 72, CUT);
+                    // 152–160: de cerca, el rayo sale de la boca del cañón hacia la Tierra
+                    Location near = muzzle.clone().add(side.clone().multiply(9 * scale)).add(upv.clone().multiply(1.5 * scale)).add(dir.clone().multiply(-3 * scale));
+                    s.key(89, near, muzzle.clone().add(dir.clone().multiply(6 * scale)), 62, CUT);
+                    s.key(97, near.clone().add(side.clone().multiply(2 * scale)), muzzle.clone().add(dir.clone().multiply(9 * scale)), 66, LINEAR);
+                    s.key(98, wide, muzzle.clone().add(dir.clone().multiply(14)), 72, CUT);
                     s.key(122, wide.clone().add(side.clone().multiply(-6 * scale)).add(0, 2, 0), muzzle.clone().add(dir.clone().multiply(18)), 66, LINEAR);
                     c.cam(s);
                 }
                 if (t == 103) {
                     c.anim(get(c, "satD"), "activar");
                     c.sound(sat, "orbital.activar", 3f, 0.7f);
-                    ItemDisplay core = k.vfx(c, muzzle.clone().add(dir.clone().multiply(-0.6 * scale)), "fx_nucleo", 0.1f, null);
-                    size(core, 0.7f * scale, 38);
+                    // Carga: haces de energía que entran en la boca y chispas entre los aros (sin esfera que tape el cañón).
+                    ItemDisplay core = c.actor(fx.itemDisplay(muzzle.clone().add(0, -40, 0), new ItemStack(Material.AIR), 1f, 0));
+                    core.setDisplayWidth(120f);
+                    core.setDisplayHeight(120f);
+                    core.setViewRange(16f);
+                    c.model(core, "fx_carga", "idle", 1f);
+                    setAxis(core, muzzle, muzzle.clone().add(dir), 1.25f * scale, 1.25f * scale, 0, 40);
                     c.data.put("core", core);
                 }
-                if (t == 122) c.anim(get(c, "satD"), "cargado");
+                if (t == 122) c.anim(get(c, "satD"), "cargando");
+                if (t == 145) c.anim(get(c, "satD"), "cargado");
                 if (t > 103 && t < 152 && t % 12 == 7) {
                     c.sound(sat, "orbital.carga", 2f, 0.6f + (t - 103) / 60f);
                     c.shake(0.12 + (t - 103) / 48.0 * 0.45, 10, 0.95);
                 }
-                if (t == 140) size(get(c, "core"), 0.95f * scale, 10);
                 if (t == 152) {
                     // ¡Disparo! El rayo sale de la boca del cañón y cruza el vacío hasta la Tierra.
                     c.anim(get(c, "satD"), "disparo");
@@ -490,7 +499,7 @@ final class CineEspeciales {
                     c.shake(1.2, 14, 0.88);
                     c.sound(sat, "orbital.disparo", 4f, 0.6f);
                     c.sound(sat, "orbital.rayo", 3f, 0.9f);
-                    size(get(c, "core"), 0.35f * scale, 4);
+                    c.anim(get(c, "core"), "disparo");
                     float w = (float) (c.cfg("anchoLaser", 6.0) * 0.45);
                     float lift = 160;
                     ItemDisplay sb = c.actor(fx.itemDisplay(muzzle.clone().add(0, -lift, 0), new ItemStack(Material.AIR), 1f, 0));

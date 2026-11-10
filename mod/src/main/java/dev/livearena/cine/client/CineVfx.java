@@ -340,6 +340,7 @@ public final class CineVfx {
             case "fx_marca" -> marca(s, c, R, t, al, col == 0xffffff ? 0xff2030 : col);
             case "fx_espacio" -> espacio(s, c, R, t, al, collector);
             case "fx_domo" -> domo(s, c, wx, wy, wz, R, t, dt, al, col == 0xffffff ? 0xff1020 : col);
+            case "fx_carga" -> carga(s, c, zAxis, wx, wy, wz, R, t, dt, al);
             case "fx_ojos" -> ojos(s, c, m, t, al, col == 0xffffff ? 0xff1424 : col);
             default -> bill(a, c.x, c.y, c.z, R, R, 1, 0, al, col, 0xffffff, GLOW, s.seed, 0, 0);
         }
@@ -860,6 +861,61 @@ public final class CineVfx {
             bill(A, px, py, pz, star * 2.6f, star * 0.16f, 1, 0, a, rgb, 0xffffff, GLOW, 0, 0, 0);
             bill(A, px, py, pz, star * 0.22f, star * 1.6f, 1, 0, a * 0.8f, rgb, 0xffffff, GLOW, 0, 0, 0);
             bill(A, px, py, pz, star * 0.55f, star * 0.55f, 1, 0, a * 0.8f, 0xff4050, 0xffffff, GLOW, 0, 1.2f, 0);
+        }
+    }
+
+    /**
+     * Carga del cañón orbital (sin esfera): haces de energía que entran en la boca desde delante, un núcleo pequeño
+     * metido dentro del cañón, chispas entre los aros y un anillo de luz que se cierra. Eje Z = hacia donde apunta;
+     * escala X (W) = radio de la boca. «disparo»: fogonazo y onda que se abre.
+     */
+    private static void carga(St s, Vector3f c, Vector3f z, double wx, double wy, double wz, float W, float t, float dt, float al) {
+        float L = z.length();
+        if (L < 1e-4f) return;
+        Vector3f d = new Vector3f(z).div(L);
+        Vector3f[] uv = perp(d);
+        float ta = t - s.animAt;
+        if ("disparo".equals(s.anim)) {
+            float f = Math.min(1, ta / 0.5f), a = al * (1 - f);
+            if (a <= 0.01f) return;
+            bill(A, c.x, c.y, c.z, W * (1.2f + 3 * f), W * (1.2f + 3 * f), 1, 0, a, 0xff2030, 0xffffff, GLOW, 0, 1.4f, 0);
+            for (int k = 0; k < 3; k++) {
+                float fk = Math.min(1, ta / (0.25f + k * 0.12f));
+                float bx = c.x + d.x * W * k * 1.5f, by = c.y + d.y * W * k * 1.5f, bz = c.z + d.z * W * k * 1.5f;
+                ringAround(A, bx, by, bz, uv, W * (1.1f + fk * (3 + k * 2)), al * (1 - fk), 0xff3040, 0xffffff, s.seed + k, 0.06f);
+            }
+            return;
+        }
+        float k = Math.min(1, ta / 2.4f);
+        float pulse = 0.8f + 0.2f * (float) Math.sin(t * (8 + 40 * k));
+        // núcleo: dentro de la boca, más pequeño que los aros
+        float cx = c.x - d.x * W * 0.6f, cy = c.y - d.y * W * 0.6f, cz = c.z - d.z * W * 0.6f;
+        bill(A, cx, cy, cz, W * (0.35f + 0.55f * k) * pulse, W * (0.35f + 0.55f * k) * pulse, 1, 0, al * (0.5f + 0.5f * k), 0xff1424, 0xffd0d0, GLOW, 0, 1.3f, 0);
+        bill(A, cx, cy, cz, W * (0.12f + 0.25f * k), W * (0.12f + 0.25f * k), 1, 0, al, 0xffffff, 0xffffff, GLOW, 0, 0, 0);
+        // anillo de luz que se va cerrando delante de la boca
+        float close = 1 - k;
+        ringAround(A, c.x + d.x * W * 0.3f, c.y + d.y * W * 0.3f, c.z + d.z * W * 0.3f, uv, W * (1.05f + close * 2.5f), al * (0.35f + 0.5f * k) * pulse, 0xff2030, 0xffffff, s.seed, 0.05f);
+        // chispas eléctricas entre los aros y el núcleo
+        Random r = new Random(s.seed * 17L + (long) (t * 24));
+        int arcs = (int) (1 + k * 5);
+        for (int i = 0; i < arcs; i++) {
+            float ang = r.nextFloat() * 6.283f, back = -r.nextFloat() * W * 2.4f;
+            float ox = (uv[0].x * (float) Math.cos(ang) + uv[1].x * (float) Math.sin(ang)) * W * 1.15f;
+            float oy = (uv[0].y * (float) Math.cos(ang) + uv[1].y * (float) Math.sin(ang)) * W * 1.15f;
+            float oz = (uv[0].z * (float) Math.cos(ang) + uv[1].z * (float) Math.sin(ang)) * W * 1.15f;
+            arc(A, r, c.x + d.x * back + ox, c.y + d.y * back + oy, c.z + d.z * back + oz, cx, cy, cz, W * 0.35f, W * 0.04f, al * (0.6f + 0.4f * k), 0xff4050, 0xffffff);
+        }
+        // haces de energía que entran en la boca desde delante (cada vez más)
+        s.emit += dt * (40 + 260 * k) * al;
+        while (s.emit >= 1) {
+            s.emit -= 1;
+            float ang = s.rnd.nextFloat() * 6.283f, rad = W * (1.5f + s.rnd.nextFloat() * 4f), ahead = W * (2 + s.rnd.nextFloat() * 7);
+            float ox = (uv[0].x * (float) Math.cos(ang) + uv[1].x * (float) Math.sin(ang)) * rad + d.x * ahead;
+            float oy = (uv[0].y * (float) Math.cos(ang) + uv[1].y * (float) Math.sin(ang)) * rad + d.y * ahead;
+            float oz = (uv[0].z * (float) Math.cos(ang) + uv[1].z * (float) Math.sin(ang)) * rad + d.z * ahead;
+            float life = 0.4f + s.rnd.nextFloat() * 0.3f;
+            P p = spawn(s, wx + ox, wy + oy, wz + oz, -ox / life, -oy / life, -oz / life, life, W * (0.04f + s.rnd.nextFloat() * 0.06f), s.rnd.nextInt(3) == 0 ? 0xffffff : 0xff2a3a, 0xffffff);
+            p.drag = 0;
         }
     }
 

@@ -209,9 +209,18 @@ idle['ala_izquierda'] = {'rotation': {0: [0, 0, 0], 4.0: (0, 0, 3, E_), 8.0: (0,
 idle['ala_derecha'] = {'rotation': {0: [0, 0, 0], 4.0: (0, 0, -3, E_), 8.0: (0, 0, 0, E_)}}
 cargado = {}
 for i in range(3):
-    cargado.update(spin(f'anillo_{i + 1}', 1, 0.5, 1 if i % 2 == 0 else -1))
-cargado['nucleo'] = {'scale': {0: [1, 1, 1], 0.25: [1.5, 1.5, 1], 0.5: [1, 1, 1]}}
-cargado['canon'] = {'position': {0: [0, 0, 12], 0.5: [0, 0, 12]}}
+    cargado.update(spin(f'anillo_{i + 1}', 2, 0.5, 1 if i % 2 == 0 else -1))
+cargado['nucleo'] = {'scale': {0: [1.6, 1.6, 1], 0.25: [2.2, 2.2, 1], 0.5: [1.6, 1.6, 1]}}
+# el cañón entero gira como una ametralladora mientras está cargado
+cargado['canon'] = {'position': {0: [0, 0, 12], 0.5: [0, 0, 12]}, 'rotation': {0: [0, 0, 0], 0.5: [0, 0, 180]}}
+# cargando: los aros y el cañón empiezan a girar cada vez más rápido (1,5 s) y el núcleo se hincha
+cargando = {
+    'canon': {'position': {0: [0, 0, 12], 1.5: [0, 0, 12]}, 'rotation': {0: [0, 0, 0], 0.6: (0, 0, 60, 'easeInQuad'), 1.1: (0, 0, 220, 'linear'), 1.5: (0, 0, 360, 'linear')}},
+    'nucleo': {'scale': {0: [1, 1, 1], 1.5: (1.6, 1.6, 1, 'easeInQuad')}},
+}
+for i in range(3):
+    sg = 1 if i % 2 == 0 else -1
+    cargando[f'anillo_{i + 1}'] = {'rotation': {0: [0, 0, 0], 0.6: (0, 0, sg * 180, 'easeInQuad'), 1.1: (0, 0, sg * 720, 'linear'), 1.5: (0, 0, sg * 1440, 'linear')}}
 activar = {
     'canon': {'position': {0: [0, 0, 0], 1.2: (0, 0, 12, 'easeOutBack'), 2.0: [0, 0, 12]}},
     'nucleo': {'scale': {0: [0.3, 0.3, 1], 2.0: (1, 1, 1, 'easeInQuad')}},
@@ -229,6 +238,7 @@ save_anims(N, {
     'idle': anim(8.0, True, idle),
     'activar': anim(2.0, None, activar),
     'cargado': anim(0.5, True, cargado),
+    'cargando': anim(1.5, None, cargando),
     'disparo': anim(0.6, None, disparo),
 })
 print('satelite ok')
