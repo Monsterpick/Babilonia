@@ -58,3 +58,12 @@ Durante las habilidades Paper no expulsa por «volar» (y la app pone allow-flig
   láser `fx_laser` (fino → ancho), cúpula `fx_domo` y cráter con presupuesto ampliado (`CineWorld.boost`).
 - Efectos de pantalla nuevos: 5 hiperespacio, 6 mancha, 7 líneas de velocidad (manga), 8 retícula de objetivo.
 - **Gojo**: nueva skin «Satoru Gojo» del usuario.
+
+## v5.1 — Voz de Choso y efectos de sonido propios
+
+- Voz de Choso (`sounds/voz/choso.ogg`): «Sangre Perforante» en el tick 76 y el disparo en el 103 (1,35 s del audio).
+- 13 efectos sintetizados desde cero con `tools/gen_sonidos.py` (`sounds/sfx/*.ogg`): carga del cañón, disparo del láser,
+  explosión grave con eco, objetivo fijado, pitido, whoosh, silbido perforante, burbujas de sangre, golpe de impacto,
+  tajo, onda de choque, aura y desvanecer.
+- Sonidos con formato `mod|vanilla` en `habilidades.yml`: lo de la izquierda lo oyen los jugadores con el mod y lo de
+  la derecha el resto. Los archivos antiguos con el valor por defecto anterior se actualizan solos.

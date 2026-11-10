@@ -227,6 +227,7 @@ final class CineCharacters {
                 Location low = at.clone().add(0, -9, 0);
                 ItemDisplay goku = character(c, low, yaw, GOKU, A_APARICION, ALTO_PERSONAJE / 2f, 0xff7a1a);
                 ItemDisplay aura = vfx(c, low, FX_AURA, 2.4f, "ffbfeaff");
+                c.sound(low, "aura.vibrar", 1.5f, 1.1f);
                 c.data.put("aura", aura);
                 c.data.put("goku", goku);
                 c.data.put("base", at);
@@ -486,6 +487,7 @@ final class CineCharacters {
                     if (!voiced) c.sound(skAt, "sukuna.dominio", 3f, 0.55f);
                     c.say("sukuna_dominio", "Extensión de dominio…", 0xff4040, 44);
                     c.data.put("aura", vfx(c, skAt, FX_AURA, 2.3f, "ffff2030"));
+                    c.sound(skAt, "aura.vibrar", 1.5f, 0.85f);
                 }
                 if (t == 60) {
                     c.say("sukuna_templo", "Templo del mal.", 0xffd0d0, 44);
@@ -908,6 +910,7 @@ final class CineCharacters {
                 if (t == 12) {
                     c.say("akaza_muerte", "Muerte destructiva…", 0xff7fae, 80);
                     c.data.put("aura", vfx(c, at, FX_AURA, 2.3f, "ffff5a9a"));
+                    c.sound(at, "aura.vibrar", 1.5f, 1f);
                 }
                 if (t == 105) {
                     c.anim(ak, A_DESPLIEGUE);

@@ -1,6 +1,133 @@
 {
-  "voz.gojo": {"sounds": [{"name": "livearena:voz/gojo", "stream": true}]},
-  "voz.goku": {"sounds": [{"name": "livearena:voz/goku", "stream": true}]},
-  "voz.sukuna": {"sounds": [{"name": "livearena:voz/sukuna", "stream": true}]},
-  "voz.akaza": {"sounds": [{"name": "livearena:voz/akaza", "stream": true}]}
+  "voz.gojo": {
+    "sounds": [
+      {
+        "name": "livearena:voz/gojo",
+        "stream": true
+      }
+    ]
+  },
+  "voz.goku": {
+    "sounds": [
+      {
+        "name": "livearena:voz/goku",
+        "stream": true
+      }
+    ]
+  },
+  "voz.sukuna": {
+    "sounds": [
+      {
+        "name": "livearena:voz/sukuna",
+        "stream": true
+      }
+    ]
+  },
+  "voz.akaza": {
+    "sounds": [
+      {
+        "name": "livearena:voz/akaza",
+        "stream": true
+      }
+    ]
+  },
+  "voz.choso": {
+    "sounds": [
+      {
+        "name": "livearena:voz/choso",
+        "stream": true
+      }
+    ]
+  },
+  "sfx.aura": {
+    "sounds": [
+      {
+        "name": "livearena:sfx/aura"
+      }
+    ]
+  },
+  "sfx.carga_canon": {
+    "sounds": [
+      {
+        "name": "livearena:sfx/carga_canon"
+      }
+    ]
+  },
+  "sfx.desvanecer": {
+    "sounds": [
+      {
+        "name": "livearena:sfx/desvanecer"
+      }
+    ]
+  },
+  "sfx.explosion_grave": {
+    "sounds": [
+      {
+        "name": "livearena:sfx/explosion_grave"
+      }
+    ]
+  },
+  "sfx.golpe_impacto": {
+    "sounds": [
+      {
+        "name": "livearena:sfx/golpe_impacto"
+      }
+    ]
+  },
+  "sfx.laser_disparo": {
+    "sounds": [
+      {
+        "name": "livearena:sfx/laser_disparo"
+      }
+    ]
+  },
+  "sfx.objetivo_fijado": {
+    "sounds": [
+      {
+        "name": "livearena:sfx/objetivo_fijado"
+      }
+    ]
+  },
+  "sfx.onda_choque": {
+    "sounds": [
+      {
+        "name": "livearena:sfx/onda_choque"
+      }
+    ]
+  },
+  "sfx.pitido": {
+    "sounds": [
+      {
+        "name": "livearena:sfx/pitido"
+      }
+    ]
+  },
+  "sfx.sangre_burbujas": {
+    "sounds": [
+      {
+        "name": "livearena:sfx/sangre_burbujas"
+      }
+    ]
+  },
+  "sfx.silbido_perforante": {
+    "sounds": [
+      {
+        "name": "livearena:sfx/silbido_perforante"
+      }
+    ]
+  },
+  "sfx.tajo": {
+    "sounds": [
+      {
+        "name": "livearena:sfx/tajo"
+      }
+    ]
+  },
+  "sfx.whoosh": {
+    "sounds": [
+      {
+        "name": "livearena:sfx/whoosh"
+      }
+    ]
+  }
 }

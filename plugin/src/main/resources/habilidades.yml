@@ -32,6 +32,8 @@ sangre_perforante: { distancia: 9.0, danio: 30.0, perforacion: 0.6, witherSegund
 ataque_orbital:    { altura: 180.0, inclinacion: 72.0, escalaSatelite: 4.0, anchoLaser: 6.0, radioCrater: 22, profundidadCrater: 16, bloquesPorTick: 1500, danio: 60.0, radioDanio: 26.0, impulso: 1.6 }
 akaza:             { distanciaAparicion: 8.0, radioCopo: 10.0, radioCrater: 7, danio: 20.0, danioGolpe: 0.5, impulsoGancho: 1.7, knockbackHorizontal: 2.5, knockbackVertical: 1.2 }
 
+# Formato «sonidos del mod|sonidos de Minecraft»: los livearena:sfx.* son audios propios del mod (los oye quien
+# lo tiene); lo que va después de «|», el resto de jugadores.
 # Sonidos de cada habilidad. Si tienes un resource pack con sonidos propios, pon aquí su id
 # (p. ej. "livearena:cortes.tajo"). Mientras tanto se usan sonidos vanilla parecidos.
 sonidos:
@@ -68,35 +70,36 @@ sonidos:
   meteorito.entrada: item.firecharge.use
   meteorito.estampido: entity.lightning_bolt.thunder
   meteorito.impacto: entity.generic.explode
-  cortes.tajo: entity.player.attack.sweep
-  cortes.final: entity.wither.break_block,entity.generic.explode
+  cortes.tajo: "livearena:sfx.tajo|entity.player.attack.sweep"
+  cortes.final: "livearena:sfx.tajo,livearena:sfx.onda_choque,livearena:sfx.golpe_impacto|entity.wither.break_block,entity.generic.explode"
   cortes.dominio: entity.warden.emerge,block.end_portal.spawn
   cortes.ambiente: ambient.crimson_forest.mood,entity.warden.heartbeat
   genkidama.aparicion: entity.breeze.land,block.beacon.activate
   genkidama.carga: block.respawn_anchor.charge,block.conduit.ambient.short
   genkidama.lanzar: entity.warden.sonic_boom,entity.ender_dragon.shoot
-  genkidama.detonar: entity.generic.explode,entity.lightning_bolt.thunder,item.totem.use
+  genkidama.detonar: "livearena:sfx.explosion_grave,livearena:sfx.onda_choque|entity.generic.explode,entity.lightning_bolt.thunder,item.totem.use"
   sukuna.dominio: block.bell.resonate,entity.warden.emerge,block.end_portal.spawn
   gojo.aparicion: entity.illusioner.mirror_move,block.amethyst_block.resonate
   gojo.carga: block.beacon.power_select,block.respawn_anchor.charge
   gojo.disparo: entity.warden.sonic_boom,entity.wither.shoot
-  gojo.detonacion: entity.generic.explode,entity.lightning_bolt.thunder,block.beacon.deactivate
+  gojo.detonacion: "livearena:sfx.explosion_grave,livearena:sfx.onda_choque|entity.generic.explode,entity.lightning_bolt.thunder,block.beacon.deactivate"
   akaza.aparicion: entity.breeze.land,entity.player.attack.strong
   akaza.despliegue: block.amethyst_block.resonate,block.beacon.activate
-  akaza.golpe: entity.generic.explode,entity.warden.attack_impact,entity.lightning_bolt.thunder
-  personaje.desvanecer: block.amethyst_block.resonate,entity.illusioner.mirror_move
+  akaza.golpe: "livearena:sfx.golpe_impacto,livearena:sfx.onda_choque|entity.generic.explode,entity.warden.attack_impact,entity.lightning_bolt.thunder"
+  aura.vibrar: "livearena:sfx.aura|block.beacon.ambient"
+  personaje.desvanecer: "livearena:sfx.desvanecer|block.amethyst_block.resonate,entity.illusioner.mirror_move"
   choso.aparicion: block.bubble_column.whirlpool_inside,entity.warden.emerge
-  choso.carga: block.bubble_column.whirlpool_inside,block.beacon.ambient
-  choso.compresion: block.respawn_anchor.charge,block.honey_block.break
-  choso.disparo: entity.warden.sonic_boom,item.trident.riptide_3,entity.arrow.shoot
-  choso.impacto: entity.player.attack.crit,entity.generic.explode,block.slime_block.break
-  orbital.fijado: block.beacon.power_select,block.note_block.bit
-  orbital.alarma: block.note_block.pling
-  orbital.subida: entity.firework_rocket.launch,item.elytra.flying
+  choso.carga: "livearena:sfx.sangre_burbujas,livearena:sfx.aura|block.bubble_column.whirlpool_inside,block.beacon.ambient"
+  choso.compresion: "livearena:sfx.sangre_burbujas|block.respawn_anchor.charge,block.honey_block.break"
+  choso.disparo: "livearena:sfx.silbido_perforante,livearena:sfx.onda_choque|entity.warden.sonic_boom,item.trident.riptide_3,entity.arrow.shoot"
+  choso.impacto: "livearena:sfx.golpe_impacto,livearena:sfx.onda_choque|entity.player.attack.crit,entity.generic.explode,block.slime_block.break"
+  orbital.fijado: "livearena:sfx.objetivo_fijado|block.beacon.power_select,block.note_block.bit"
+  orbital.alarma: "livearena:sfx.pitido|block.note_block.pling"
+  orbital.subida: "livearena:sfx.whoosh|entity.firework_rocket.launch,item.elytra.flying"
   orbital.activar: block.beacon.activate,block.conduit.activate,block.respawn_anchor.charge
-  orbital.carga: block.respawn_anchor.set_spawn,block.beacon.ambient
-  orbital.disparo: entity.warden.sonic_boom,entity.lightning_bolt.thunder,block.beacon.deactivate
-  orbital.impacto: entity.generic.explode,entity.lightning_bolt.thunder,entity.dragon_fireball.explode,entity.warden.sonic_boom
+  orbital.carga: "livearena:sfx.carga_canon|block.respawn_anchor.set_spawn,block.beacon.ambient"
+  orbital.disparo: "livearena:sfx.laser_disparo,livearena:sfx.onda_choque|entity.warden.sonic_boom,entity.lightning_bolt.thunder,block.beacon.deactivate"
+  orbital.impacto: "livearena:sfx.explosion_grave,livearena:sfx.onda_choque|entity.generic.explode,entity.lightning_bolt.thunder,entity.dragon_fireball.explode,entity.warden.sonic_boom"
   akaza.punetazo: entity.player.attack.crit,entity.player.attack.knockback
   akaza.rafaga: entity.breeze.shoot,entity.player.attack.sweep
 
@@ -128,3 +131,4 @@ voces:
   gojo: "livearena:voz.gojo"
   sukuna: "livearena:voz.sukuna"
   akaza: "livearena:voz.akaza"
+  choso: "livearena:voz.choso"

@@ -168,28 +168,47 @@ final class CineEngine implements Listener, TabExecutor {
 
         /* --- sonido --- */
 
+        /**
+         * Sonido de una pista. Formato: «sonidos del mod|sonidos de Minecraft». Lo de la izquierda (audios propios de
+         * LiveArena Cinemáticas) lo oye quien tiene el mod; lo de la derecha, el resto. Sin «|», lo oyen todos.
+         * Varias claves separadas por comas suenan juntas (capas).
+         */
         void sound(Location at, String cue, float vol, float pitch) {
-            String keys = cfgFile.getString("sonidos." + cue, DEFAULT_SOUNDS.getOrDefault(cue, "entity.experience_orb.pickup"));
+            String def = DEFAULT_SOUNDS.getOrDefault(cue, "entity.experience_orb.pickup");
+            String keys = cfgFile.getString("sonidos." + cue, def);
             // Archivos de versiones anteriores: si el valor es el sonido viejo por defecto, se usa el nuevo.
-            if (keys.equals(OLD_SOUNDS.get(cue))) keys = DEFAULT_SOUNDS.get(cue);
-            // Se pueden poner varios sonidos separados por comas: suenan juntos (capas).
+            if (keys.equals(OLD_SOUNDS.get(cue))) keys = def;
+            if (def.contains("|") && !keys.contains("|") && keys.equals(def.substring(def.indexOf('|') + 1))) keys = def;
+            String modKeys = keys, plainKeys = keys;
+            int bar = keys.indexOf('|');
+            if (bar >= 0) {
+                modKeys = keys.substring(0, bar);
+                plainKeys = keys.substring(bar + 1);
+            }
+            // Los audios propios están hechos a su tono: solo se varía un poco.
+            List<Sound> mod = sounds(modKeys, vol, bar >= 0 ? 1f + (pitch - 1f) * 0.3f : pitch);
+            List<Sound> plain = sounds(plainKeys, vol, pitch);
+            for (Player p : w.getPlayers()) {
+                if (p.getLocation().distanceSquared(at) > 160 * 160) continue;
+                // Volumen > 1 solo amplía el alcance: se oye a cualquier distancia del jugador como si estuviera cerca.
+                Location near = p.getLocation().distanceSquared(at) > 12 * 12 ? p.getLocation().add(at.toVector().subtract(p.getLocation().toVector()).normalize().multiply(6)) : at;
+                for (Sound snd : CineNet.hasMod(p) ? mod : plain) p.playSound(snd, near.getX(), near.getY(), near.getZ());
+            }
+        }
+
+        private List<Sound> sounds(String keys, float vol, float pitch) {
+            List<Sound> out = new ArrayList<>();
             for (String key : keys.split(",")) {
                 key = key.trim();
                 if (key.isEmpty()) continue;
-                Key k;
                 try {
-                    k = key.contains(":") ? Key.key(key) : Key.key("minecraft", key);
+                    Key k = key.contains(":") ? Key.key(key) : Key.key("minecraft", key);
+                    out.add(Sound.sound(k, Sound.Source.MASTER, Math.min(1f, vol), Math.max(0.5f, Math.min(2f, pitch))));
                 } catch (Exception e) {
-                    continue;
-                }
-                // Volumen > 1 solo amplía el alcance: se oye a cualquier distancia del jugador como si estuviera cerca.
-                Sound s = Sound.sound(k, Sound.Source.MASTER, Math.min(1f, vol), pitch);
-                for (Player p : w.getPlayers()) {
-                    if (p.getLocation().distanceSquared(at) > 160 * 160) continue;
-                    Location near = p.getLocation().distanceSquared(at) > 12 * 12 ? p.getLocation().add(at.toVector().subtract(p.getLocation().toVector()).normalize().multiply(6)) : at;
-                    p.playSound(s, near.getX(), near.getY(), near.getZ());
+                    // clave mal escrita: se ignora
                 }
             }
+            return out;
         }
 
         /* --- cámara y efectos de cliente --- */
@@ -384,24 +403,24 @@ final class CineEngine implements Listener, TabExecutor {
             {"esfera.inicio", "block.conduit.activate,block.beacon.activate"}, {"esfera.carga", "block.respawn_anchor.charge,block.conduit.ambient.short"},
             {"esfera.lanzar", "entity.warden.sonic_boom,entity.ender_dragon.shoot"}, {"esfera.detonar", "entity.generic.explode,entity.lightning_bolt.thunder,item.totem.use"},
             {"meteorito.entrada", "item.firecharge.use"}, {"meteorito.estampido", "entity.lightning_bolt.thunder"}, {"meteorito.impacto", "entity.generic.explode"},
-            {"cortes.tajo", "entity.player.attack.sweep"}, {"cortes.final", "entity.wither.break_block,entity.generic.explode"},
+            {"cortes.tajo", "livearena:sfx.tajo|entity.player.attack.sweep"}, {"cortes.final", "livearena:sfx.tajo,livearena:sfx.onda_choque,livearena:sfx.golpe_impacto|entity.wither.break_block,entity.generic.explode"},
             {"cortes.dominio", "entity.warden.emerge,block.end_portal.spawn"},
             {"genkidama.aparicion", "entity.breeze.land,block.beacon.activate"}, {"genkidama.carga", "block.respawn_anchor.charge,block.conduit.ambient.short"},
-            {"genkidama.lanzar", "entity.warden.sonic_boom,entity.ender_dragon.shoot"}, {"genkidama.detonar", "entity.generic.explode,entity.lightning_bolt.thunder,item.totem.use"},
+            {"genkidama.lanzar", "entity.warden.sonic_boom,entity.ender_dragon.shoot"}, {"genkidama.detonar", "livearena:sfx.explosion_grave,livearena:sfx.onda_choque|entity.generic.explode,entity.lightning_bolt.thunder,item.totem.use"},
             {"sukuna.dominio", "block.bell.resonate,entity.warden.emerge,block.end_portal.spawn"},
             {"gojo.aparicion", "entity.illusioner.mirror_move,block.amethyst_block.resonate"}, {"gojo.carga", "block.beacon.power_select,block.respawn_anchor.charge"},
-            {"gojo.disparo", "entity.warden.sonic_boom,entity.wither.shoot"}, {"gojo.detonacion", "entity.generic.explode,entity.lightning_bolt.thunder,block.beacon.deactivate"},
+            {"gojo.disparo", "entity.warden.sonic_boom,entity.wither.shoot"}, {"gojo.detonacion", "livearena:sfx.explosion_grave,livearena:sfx.onda_choque|entity.generic.explode,entity.lightning_bolt.thunder,block.beacon.deactivate"},
             {"akaza.aparicion", "entity.breeze.land,entity.player.attack.strong"}, {"akaza.despliegue", "block.amethyst_block.resonate,block.beacon.activate"},
-            {"personaje.desvanecer", "block.amethyst_block.resonate,entity.illusioner.mirror_move"},
-            {"choso.aparicion", "block.bubble_column.whirlpool_inside,entity.warden.emerge"}, {"choso.carga", "block.bubble_column.whirlpool_inside,block.beacon.ambient"},
-            {"choso.compresion", "block.respawn_anchor.charge,block.honey_block.break"}, {"choso.disparo", "entity.warden.sonic_boom,item.trident.riptide_3,entity.arrow.shoot"},
-            {"choso.impacto", "entity.player.attack.crit,entity.generic.explode,block.slime_block.break"},
-            {"orbital.fijado", "block.beacon.power_select,block.note_block.bit"}, {"orbital.alarma", "block.note_block.pling"},
-            {"orbital.subida", "entity.firework_rocket.launch,item.elytra.flying"}, {"orbital.activar", "block.beacon.activate,block.conduit.activate,block.respawn_anchor.charge"},
-            {"orbital.carga", "block.respawn_anchor.set_spawn,block.beacon.ambient"}, {"orbital.disparo", "entity.warden.sonic_boom,entity.lightning_bolt.thunder,block.beacon.deactivate"},
-            {"orbital.impacto", "entity.generic.explode,entity.lightning_bolt.thunder,entity.dragon_fireball.explode,entity.warden.sonic_boom"},
+            {"aura.vibrar", "livearena:sfx.aura|block.beacon.ambient"}, {"personaje.desvanecer", "livearena:sfx.desvanecer|block.amethyst_block.resonate,entity.illusioner.mirror_move"},
+            {"choso.aparicion", "block.bubble_column.whirlpool_inside,entity.warden.emerge"}, {"choso.carga", "livearena:sfx.sangre_burbujas,livearena:sfx.aura|block.bubble_column.whirlpool_inside,block.beacon.ambient"},
+            {"choso.compresion", "livearena:sfx.sangre_burbujas|block.respawn_anchor.charge,block.honey_block.break"}, {"choso.disparo", "livearena:sfx.silbido_perforante,livearena:sfx.onda_choque|entity.warden.sonic_boom,item.trident.riptide_3,entity.arrow.shoot"},
+            {"choso.impacto", "livearena:sfx.golpe_impacto,livearena:sfx.onda_choque|entity.player.attack.crit,entity.generic.explode,block.slime_block.break"},
+            {"orbital.fijado", "livearena:sfx.objetivo_fijado|block.beacon.power_select,block.note_block.bit"}, {"orbital.alarma", "livearena:sfx.pitido|block.note_block.pling"},
+            {"orbital.subida", "livearena:sfx.whoosh|entity.firework_rocket.launch,item.elytra.flying"}, {"orbital.activar", "block.beacon.activate,block.conduit.activate,block.respawn_anchor.charge"},
+            {"orbital.carga", "livearena:sfx.carga_canon|block.respawn_anchor.set_spawn,block.beacon.ambient"}, {"orbital.disparo", "livearena:sfx.laser_disparo,livearena:sfx.onda_choque|entity.warden.sonic_boom,entity.lightning_bolt.thunder,block.beacon.deactivate"},
+            {"orbital.impacto", "livearena:sfx.explosion_grave,livearena:sfx.onda_choque|entity.generic.explode,entity.lightning_bolt.thunder,entity.dragon_fireball.explode,entity.warden.sonic_boom"},
             {"akaza.punetazo", "entity.player.attack.crit,entity.player.attack.knockback"}, {"akaza.rafaga", "entity.breeze.shoot,entity.player.attack.sweep"},
-            {"akaza.golpe", "entity.generic.explode,entity.warden.attack_impact,entity.lightning_bolt.thunder"}, {"cortes.ambiente", "ambient.crimson_forest.mood,entity.warden.heartbeat"},
+            {"akaza.golpe", "livearena:sfx.golpe_impacto,livearena:sfx.onda_choque|entity.generic.explode,entity.warden.attack_impact,entity.lightning_bolt.thunder"}, {"cortes.ambiente", "ambient.crimson_forest.mood,entity.warden.heartbeat"},
         };
         for (String[] e : s) DEFAULT_SOUNDS.put(e[0], e[1]);
     }

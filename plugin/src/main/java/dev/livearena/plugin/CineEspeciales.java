@@ -155,13 +155,16 @@ final class CineEspeciales {
                 float yaw = (float) c.data.get("yaw");
                 boolean plain = !CineNet.hasMod(c.target);
                 if (t < 104) c.target.setVelocity(new Vector(0, Math.min(0, c.target.getVelocity().getY()), 0));
-                if (t == 24) c.data.put("aura", k.vfx(c, at, CineCharacters.FX_AURA, 2.3f, "ffb0101c"));
+                if (t == 24) {
+                    c.data.put("aura", k.vfx(c, at, CineCharacters.FX_AURA, 2.3f, "ffb0101c"));
+                    c.sound(at, "aura.vibrar", 1.5f, 0.8f);
+                }
                 if (t == 32) {
                     c.anim(ch, "juntar_manos");
                     c.sky(CineNet.SKY_TINT, 0x2a0006, 220);
                     c.vignette(0xa0200006, 10, 150, 20);
                 }
-                if (t == 40) c.say("choso_tecnica", "Técnica de manipulación de sangre…", 0xff5a64, 58);
+                if (t == 40) c.say("choso_tecnica", "Técnica de manipulación de sangre…", 0xff5a64, 34);
                 if (t == 44) {
                     // Esfera de sangre entre las manos (pegada al hueso «manos»).
                     ItemDisplay sphere = k.vfx(c, hands(at, yaw, 0.7), "fx_sangre", 0.01f, null);
@@ -180,7 +183,11 @@ final class CineEspeciales {
                     c.shake(0.2 + (t - 80) / 20.0 * 0.4, 5, 0.9);
                     if (t % 8 == 0) c.sound(at, "choso.compresion", 1.2f, 0.9f + (t - 80) / 30f);
                 }
-                if (t == 98) c.say("choso_perforante", "¡Sangre Perforante!", 0xff2a3a, 44);
+                if (t == 76) {
+                    // Voz (6,5 s): «Sangre Perforante» 0–1,3 s y el disparo justo después (1,35 s = tick 103).
+                    c.data.put("voiced", c.voice("choso"));
+                    c.say("choso_perforante", "¡Sangre Perforante!", 0xff2a3a, 48);
+                }
                 if (t == 100) {
                     c.anim(ch, "perforar");
                     c.screenFx(CineNet.SPEEDLINES, 0xff000000, 0, 14, 6);
@@ -226,7 +233,9 @@ final class CineEspeciales {
                 c.data.put("prog", 0.0);
                 c.data.put("fired", c.t);
                 c.data.put("hitSet", new LinkedHashSet<Entity>());
-                c.sound(from, "choso.disparo", 2.5f, 1.7f);
+                // Con la voz ya suena el disparo dentro del audio: solo se añade el silbido, más bajo.
+                if (Boolean.TRUE.equals(c.data.get("voiced"))) c.sound(from, "choso.disparo", 0.7f, 1f);
+                else c.sound(from, "choso.disparo", 2.5f, 1.7f);
                 c.target.removePotionEffect(PotionEffectType.SLOWNESS);
                 // Plano de manga: el haz cruza el encuadre lateral.
                 Location m = mid(at, c.feet(), 0.5);
