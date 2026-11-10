@@ -570,7 +570,7 @@ def build():
     names['p_strip'] = single('p_strip', strip_panel())
     names['p_boss'] = single('p_boss', boss_panel())
     # placas de ancho variable (tapa izquierda, tramo de 8 px, tapa derecha)
-    for nm, h, acc in (('pill', 13, AMBER), ('ban', 40, AMBER)):
+    for nm, h, acc in (('pill', 14, AMBER), ('ban', 40, AMBER)):
         l, m, r = plate_pieces(h, acc)
         names[nm + '_l'] = single(nm + '_l', l)
         names[nm + '_m'] = single(nm + '_m', m)
@@ -700,7 +700,7 @@ def plate_pieces(h, acc):
                 c = EDGE_D
             elif y == 1:
                 c = EDGE
-            elif y >= h - 3:
+            elif y >= h - (3 if h >= 20 else 2):
                 c = acc if ((x + y) // 3) % 2 == 0 else BLACK
             else:
                 c = INK
