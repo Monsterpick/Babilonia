@@ -111,11 +111,12 @@ public final class CineMeshes {
         float shake = ("emerger".equals(inst.animName) && secs < 2.5f) || ("hundirse".equals(inst.animName) && secs < 2f) ? 0.15f : 0f;
         float sx = shake * (float) Math.sin(secs * 60), sz = shake * (float) Math.cos(secs * 53);
         int argb = inst.color;
-        int ca = argb >>> 24, cr = (argb >> 16) & 255, cg = (argb >> 8) & 255, cb = argb & 255;
+        float fade = inst.fade();
+        int ca = Math.round((argb >>> 24) * fade), cr = (argb >> 16) & 255, cg = (argb >> 8) & 255, cb = argb & 255;
         poseStack.pushPose();
         poseStack.translate(sx, dy, sz);
         final float fdy = dy;
-        collector.submitCustomGeometry(poseStack, RenderTypes.entityCutout(m.texture), (pose, vc) -> {
+        collector.submitCustomGeometry(poseStack, fade < 1f ? RenderTypes.entityTranslucent(m.texture) : RenderTypes.entityCutout(m.texture), (pose, vc) -> {
             for (int q = 0; q < m.quads; q++) {
                 int nIdx = m.normal[q];
                 float s = SHADE[nIdx];

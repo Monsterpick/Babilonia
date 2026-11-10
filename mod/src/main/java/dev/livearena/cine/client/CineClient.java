@@ -400,6 +400,77 @@ public final class CineClient {
                         g.pose().popMatrix();
                     }
                 }
+                case 5 -> { // hiperespacio: estrellas que se estiran desde el centro
+                    float t = now - f.start();
+                    g.fill(0, 0, w, h, withAlpha(0xff02030a, a * 0.85f));
+                    java.util.Random r = new java.util.Random(f.start() * 13L);
+                    float cx = w / 2f, cy = h / 2f;
+                    for (int k = 0; k < 110; k++) {
+                        float ang = r.nextFloat() * 6.2832f, sp = 0.4f + r.nextFloat() * 1.4f, ph = r.nextFloat();
+                        float u = ((t * 0.045f * sp) + ph) % 1f, d0 = u * u * w * 0.9f, d1 = d0 + 6 + u * w * 0.16f * sp;
+                        float ca = (float) Math.cos(ang), sa = (float) Math.sin(ang);
+                        g.pose().pushMatrix();
+                        g.pose().translate(cx + ca * d0, cy + sa * d0);
+                        g.pose().rotate(ang);
+                        g.fill(0, 0, (int) (d1 - d0), 1, withAlpha(k % 9 == 0 ? (f.argb() | 0xff000000) : 0xffdfe8ff, a * Math.min(1, u * 3)));
+                        g.pose().popMatrix();
+                    }
+                }
+                case 6 -> { // mancha roja que cubre la pantalla y se retira (transición)
+                    float t = (now - f.start()) / Math.max(1f, f.total());
+                    float grow = t < 0.5f ? t / 0.5f : 1 - (t - 0.5f) / 0.5f;
+                    java.util.Random r = new java.util.Random(f.start());
+                    int blobs = 9;
+                    float[] bx = new float[blobs], by = new float[blobs], br = new float[blobs];
+                    for (int k = 0; k < blobs; k++) {
+                        bx[k] = w * (0.2f + r.nextFloat() * 0.6f);
+                        by[k] = h * (0.2f + r.nextFloat() * 0.6f);
+                        br[k] = (0.25f + r.nextFloat() * 0.5f) * Math.max(w, h) * grow;
+                    }
+                    int col = f.argb() | 0xff000000;
+                    for (int y = 0; y < h; y += 2) {
+                        int x0 = Integer.MAX_VALUE, x1 = Integer.MIN_VALUE;
+                        for (int k = 0; k < blobs; k++) {
+                            float dy = y - by[k];
+                            float wob = 1 + 0.18f * (float) Math.sin(y * 0.09f + k * 2.1f);
+                            float rr = br[k] * wob;
+                            if (Math.abs(dy) >= rr) continue;
+                            float dx = (float) Math.sqrt(rr * rr - dy * dy);
+                            x0 = Math.min(x0, (int) (bx[k] - dx));
+                            x1 = Math.max(x1, (int) (bx[k] + dx));
+                        }
+                        if (x0 < x1) g.fill(Math.max(0, x0), y, Math.min(w, x1), y + 2, withAlpha(col, Math.min(1, a * 1.2f)));
+                    }
+                }
+                case 7 -> { // líneas de velocidad de manga alrededor del borde
+                    java.util.Random r = new java.util.Random(f.start() * 7L + (long) (now * 0.5f));
+                    float cx = w / 2f, cy = h / 2f, R0 = Math.min(w, h) * 0.32f, R1 = Math.max(w, h) * 0.8f;
+                    for (int k = 0; k < 90; k++) {
+                        float ang = r.nextFloat() * 6.2832f, d0 = R0 * (1 + r.nextFloat() * 0.6f);
+                        g.pose().pushMatrix();
+                        g.pose().translate(cx + (float) Math.cos(ang) * d0, cy + (float) Math.sin(ang) * d0);
+                        g.pose().rotate(ang);
+                        int th = 1 + r.nextInt(3);
+                        g.fill(0, -th / 2, (int) (R1 - d0), (th + 1) / 2, withAlpha(f.argb(), a * (0.5f + r.nextFloat() * 0.5f)));
+                        g.pose().popMatrix();
+                    }
+                }
+                case 8 -> { // HUD de objetivo fijado: esquinas, cruz y texto parpadeante
+                    int col = f.argb();
+                    float t = now - f.start();
+                    float close = Math.max(0, 1 - t / 10f);
+                    int bw = (int) (w * (0.16f + 0.2f * close)), bh = (int) (h * (0.2f + 0.2f * close)), cx = w / 2, cy = h / 2, L = 14;
+                    int[][] cs = {{cx - bw, cy - bh, 1, 1}, {cx + bw, cy - bh, -1, 1}, {cx - bw, cy + bh, 1, -1}, {cx + bw, cy + bh, -1, -1}};
+                    int ca = withAlpha(col, a);
+                    for (int[] k : cs) {
+                        g.fill(Math.min(k[0], k[0] + k[2] * L), k[1] - 1, Math.max(k[0], k[0] + k[2] * L), k[1] + 1, ca);
+                        g.fill(k[0] - 1, Math.min(k[1], k[1] + k[3] * L), k[0] + 1, Math.max(k[1], k[1] + k[3] * L), ca);
+                    }
+                    g.fill(cx - 7, cy, cx + 8, cy + 1, ca);
+                    g.fill(cx, cy - 7, cx + 1, cy + 8, ca);
+                    if (((int) (t / 5)) % 2 == 0) g.centeredText(mc.font, "[ OBJETIVO FIJADO ]", cx, cy - bh - 14, ca);
+                    g.centeredText(mc.font, String.format("SEÑAL %03d%%  ·  ÓRBITA BAJA", Math.min(100, (int) (t * 4))), cx, cy + bh + 6, withAlpha(col, a * 0.8f));
+                }
                 default -> {}
             }
         }

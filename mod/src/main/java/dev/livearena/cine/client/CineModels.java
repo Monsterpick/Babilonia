@@ -29,11 +29,11 @@ import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 public final class CineModels {
     private CineModels() {}
 
-    static final Set<String> LOOPS = Set.of("idle", "girar", "rotar", "cargar", "arder", "idle_dominio", "pose_final", "rafaga", "rafaga_arriba");
+    static final Set<String> LOOPS = Set.of("idle", "girar", "rotar", "cargar", "arder", "idle_dominio", "pose_final", "rafaga", "rafaga_arriba", "cargado");
     /** Modelos de energía: translúcidos y a plena luz (escudo, disco del agujero negro, círculos…). */
     static final Set<String> TRANSLUCENT = Set.of("escudo", "agujero_negro", "circulo_arcano", "aura", "esfera", "copo", "vacio");
     /** Modelos con partes que brillan: llevan además textures/entity/<modelo>_glowmask.png. */
-    static final Set<String> GLOW = Set.of("meteorito", "ojo_vacio", "guerrero", "santuario", "goku", "sukuna", "gojo", "akaza");
+    static final Set<String> GLOW = Set.of("meteorito", "ojo_vacio", "guerrero", "santuario", "goku", "sukuna", "gojo", "akaza", "choso", "satelite");
 
     /** Una instancia animada por actor del servidor. */
     public static final class Inst implements GeoAnimatable {
@@ -45,6 +45,16 @@ public final class CineModels {
         volatile long animStart = System.currentTimeMillis();
         /** Color ARGB que tiñe el modelo (el servidor lo cambia con la «animación» color:AARRGGBB). */
         volatile int color = 0xFFFFFFFF;
+        /** Desvanecido final («disolver»): momento de inicio (ms, 0 = no) y duración. */
+        volatile long fadeStart;
+        volatile int fadeMs = 1300;
+
+        /** 1 = opaco; baja hasta 0 durante el desvanecido. */
+        float fade() {
+            if (fadeStart == 0) return 1f;
+            float f = (System.currentTimeMillis() - fadeStart) / (float) fadeMs;
+            return Math.max(0f, 1f - f);
+        }
         /** Huesos cuya posición en el mundo hay que seguir (otros modelos se anclan a ellos). */
         final Set<String> track = new java.util.HashSet<>();
         /** Posición en el mundo de cada hueso seguido (del último fotograma dibujado). */
@@ -149,12 +159,20 @@ public final class CineModels {
 
         @Override
         public net.minecraft.client.renderer.rendertype.RenderType getRenderType(GeoRenderState state, Identifier texture) {
-            return translucent ? net.minecraft.client.renderer.rendertype.RenderTypes.entityTranslucentEmissive(texture) : super.getRenderType(state, texture);
+            if (translucent) return net.minecraft.client.renderer.rendertype.RenderTypes.entityTranslucentEmissive(texture);
+            Inst cur = current;
+            // Durante el desvanecido el modelo pasa a translúcido para poder bajar su opacidad.
+            if (cur != null && cur.fadeStart != 0) return net.minecraft.client.renderer.rendertype.RenderTypes.entityTranslucent(texture);
+            return super.getRenderType(state, texture);
         }
 
         @Override
         public int getRenderColor(Inst animatable, Void data, float partialTick) {
-            return animatable.color;
+            int c = animatable.color;
+            float f = animatable.fade();
+            if (f >= 1f) return c;
+            int a = Math.round(((c >>> 24) & 255) * f);
+            return (a << 24) | (c & 0xffffff);
         }
 
         @Override
@@ -213,6 +231,17 @@ public final class CineModels {
                 i.color = (int) Long.parseLong(anim.substring(6), 16);
             } catch (NumberFormatException ignored) {
             }
+            return;
+        }
+        if (anim.equals("disolver") || anim.startsWith("disolver:")) {
+            // Se desvanece conservando la pose actual (sin cambiar de animación).
+            if (anim.startsWith("disolver:")) {
+                try {
+                    i.fadeMs = Math.max(100, Integer.parseInt(anim.substring(9)));
+                } catch (NumberFormatException ignored) {
+                }
+            }
+            i.fadeStart = System.currentTimeMillis();
             return;
         }
         i.anim = raw(i.model, anim);

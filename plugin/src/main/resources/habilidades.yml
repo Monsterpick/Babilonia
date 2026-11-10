@@ -28,6 +28,8 @@ genkidama:         { alturaVuelo: 16.0, radioMax: 12.0, velocidad: 0.4, danio: 5
 meteorito:         { radioCrater: 18, profundidadCrater: 10, radioLetal: 6.0, radioDanio: 30.0, danioMax: 100.0, bloquesEyeccion: 80, radioSacudida: 150 }
 mil_cortes:        { alturaSantuario: 20.0, enterrarSantuario: 0.3, distanciaSantuario: 14.0, radio: 10.0, cortesPorTick: 3, danioCorte: 1.0, danioFinal: 30.0, romperBloques: true, distanciaSukunaSinLanzador: 12.0 }
 vacio_purpura:     { velocidad: 0.6, radioOrbe: 3.0, radioDestruccion: 3.0, radioAtraccion: 10.0, radioNucleo: 1.5, danioTick: 2.0, distanciaMax: 80.0, radioDetonacion: 7, danioFinal: 30.0 }
+sangre_perforante: { distancia: 9.0, danio: 30.0, perforacion: 0.6, witherSegundos: 4, witherNivel: 2, empuje: 2.8, grosor: 0.22, distanciaDestruccion: 28.0, radioDestruccion: 1.4, romperBloques: true }
+ataque_orbital:    { altura: 180.0, inclinacion: 72.0, escalaSatelite: 4.0, anchoLaser: 6.0, radioCrater: 22, profundidadCrater: 16, bloquesPorTick: 1500, danio: 60.0, radioDanio: 26.0, impulso: 1.6 }
 akaza:             { distanciaAparicion: 8.0, radioCopo: 10.0, radioCrater: 7, danio: 20.0, danioGolpe: 0.5, impulsoGancho: 1.7, knockbackHorizontal: 2.5, knockbackVertical: 1.2 }
 
 # Sonidos de cada habilidad. Si tienes un resource pack con sonidos propios, pon aquí su id
@@ -82,6 +84,19 @@ sonidos:
   akaza.aparicion: entity.breeze.land,entity.player.attack.strong
   akaza.despliegue: block.amethyst_block.resonate,block.beacon.activate
   akaza.golpe: entity.generic.explode,entity.warden.attack_impact,entity.lightning_bolt.thunder
+  personaje.desvanecer: block.amethyst_block.resonate,entity.illusioner.mirror_move
+  choso.aparicion: block.bubble_column.whirlpool_inside,entity.warden.emerge
+  choso.carga: block.bubble_column.whirlpool_inside,block.beacon.ambient
+  choso.compresion: block.respawn_anchor.charge,block.honey_block.break
+  choso.disparo: entity.warden.sonic_boom,item.trident.riptide_3,entity.arrow.shoot
+  choso.impacto: entity.player.attack.crit,entity.generic.explode,block.slime_block.break
+  orbital.fijado: block.beacon.power_select,block.note_block.bit
+  orbital.alarma: block.note_block.pling
+  orbital.subida: entity.firework_rocket.launch,item.elytra.flying
+  orbital.activar: block.beacon.activate,block.conduit.activate,block.respawn_anchor.charge
+  orbital.carga: block.respawn_anchor.set_spawn,block.beacon.ambient
+  orbital.disparo: entity.warden.sonic_boom,entity.lightning_bolt.thunder,block.beacon.deactivate
+  orbital.impacto: entity.generic.explode,entity.lightning_bolt.thunder,entity.dragon_fireball.explode,entity.warden.sonic_boom
   akaza.punetazo: entity.player.attack.crit,entity.player.attack.knockback
   akaza.rafaga: entity.breeze.shoot,entity.player.attack.sweep
 
@@ -98,6 +113,8 @@ frases:
   sukuna_templo: "Templo del mal."
   akaza_muerte: "Muerte destructiva…"
   akaza_brujula: "¡Aguja de brújula!"
+  choso_tecnica: "Técnica de manipulación de sangre…"
+  choso_perforante: "¡Sangre Perforante!"
   ojo_vacio: "Te estoy viendo..."
 
 # Voces de los personajes: audios incluidos en el mod «LiveArena Cinemáticas» (los oye quien tiene el mod).

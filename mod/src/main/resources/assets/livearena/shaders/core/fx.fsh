@@ -129,6 +129,63 @@ void main() {
         float arms = pow(0.5 + 0.5 * s, 3.0) * (0.5 + n);
         a = clamp(arms, 0.0, 1.0) * smoothstep(1.0, 0.55, r) * smoothstep(0.05, 0.3, r);
         c = mix(col.rgb, col2, arms * 0.6);
+    } else if (mode == 8) {
+        // Campo de estrellas (cara de una caja): estrellas de varios tamaños con titileo y nebulosa tenue.
+        vec2 g = uv * 140.0;
+        vec2 cell = floor(g), f = fract(g) - 0.5;
+        float h = hash(vec3(cell, seed));
+        float star = 0.0;
+        if (h > 0.93) {
+            vec2 o = vec2(hash(vec3(cell, seed + 1.0)), hash(vec3(cell, seed + 2.0))) - 0.5;
+            float d = length(f - o * 0.6);
+            float sz = mix(0.03, 0.14, pow(hash(vec3(cell, seed + 3.0)), 6.0));
+            star = smoothstep(sz, 0.0, d) * (0.6 + 0.4 * sin(T * (2.0 + h * 5.0) + h * 40.0));
+        }
+        float neb = fbm(vec3(uv * 2.2, seed * 0.1));
+        neb = smoothstep(0.55, 0.85, neb) * 0.35;
+        c = vec3(1.0) * star + col2 * neb * 0.35 + vec3(0.01, 0.012, 0.03);
+        a = 1.0;
+    } else if (mode == 9) {
+        // Planeta visto desde la órbita (par.x = 0: superficie; 1: solo atmósfera aditiva).
+        float rr = r;
+        if (par.x < 0.5) {
+            if (rr > 1.0) discard;
+            float z = sqrt(1.0 - rr * rr);
+            vec3 n = vec3(uv, z);
+            vec3 p = rotY(n, T * 0.004 + seed);
+            float land = smoothstep(0.52, 0.56, fbm(p * 2.6));
+            float cloud = smoothstep(0.5, 0.75, fbm(p * 5.0 + vec3(T * 0.01, 0.0, 0.0)));
+            vec3 ocean = col.rgb * 0.55;
+            vec3 ground = mix(vec3(0.20, 0.32, 0.14), vec3(0.55, 0.47, 0.32), fbm(p * 7.0));
+            vec3 surf = mix(ocean, ground, land);
+            surf = mix(surf, vec3(0.95), cloud * 0.85);
+            float light = clamp(dot(n, normalize(vec3(-0.6, 0.55, 0.6))), 0.0, 1.0);
+            c = surf * (0.08 + 1.1 * light) + col2 * pow(1.0 - z, 3.0) * 0.8 * (0.3 + light);
+            a = 1.0;
+        } else {
+            float rim = exp(-pow((rr - 1.0) / 0.035, 2.0)) + smoothstep(1.0, 0.85, rr) * pow(rr, 6.0) * 0.6;
+            a = clamp(rim, 0.0, 1.0) * smoothstep(1.18, 1.05, rr);
+            c = mix(col.rgb, col2, 0.5) * 1.2;
+        }
+    } else if (mode == 10) {
+        // Cúpula de energía: borde brillante (fresnel), interior rojo oscuro que hierve (par.x = 1: pasada aditiva).
+        if (r > 1.0) {
+            float g = exp(-(r - 1.0) * 18.0);
+            a = par.x > 0.5 ? g : 0.0;
+            c = col.rgb;
+        } else {
+            float z = sqrt(1.0 - r * r);
+            vec3 n = vec3(uv, z);
+            float f = fbm(n * 3.0 + vec3(0.0, -T * 0.8, seed));
+            float fres = pow(1.0 - z, 3.0);
+            if (par.x > 0.5) {
+                a = fres * 1.2 + smoothstep(0.6, 0.8, f) * 0.25;
+                c = mix(col.rgb, col2, fres);
+            } else {
+                a = 0.55 + 0.35 * fres;
+                c = col.rgb * (0.35 + 0.6 * f) + col2;
+            }
+        }
     } else {
         // Color liso (núcleos oscuros, líneas).
         a = smoothstep(1.0, 0.8, r);

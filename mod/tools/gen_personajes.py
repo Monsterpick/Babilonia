@@ -296,6 +296,7 @@ def punch(ext, back, lean):
     })
 
 
-for f in (goku, sukuna, gojo, akaza):
-    f()
+if __name__ == '__main__':
+    for f in (goku, sukuna, gojo, akaza):
+        f()
 print('personajes ok')

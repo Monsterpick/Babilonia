@@ -73,27 +73,27 @@ final class CineCharacters {
     /* ======================================== utilidades ======================================== */
 
     @SuppressWarnings("unchecked")
-    private static <T> T get(CineEngine.Ctx c, String k) {
+    static <T> T get(CineEngine.Ctx c, String k) {
         return (T) c.data.get(k);
     }
 
-    private static Vector forward(float yaw) {
+    static Vector forward(float yaw) {
         double a = Math.toRadians(yaw);
         return new Vector(-Math.sin(a), 0, Math.cos(a));
     }
 
-    private static float yawTo(Location from, Location to) {
+    static float yawTo(Location from, Location to) {
         Vector d = to.toVector().subtract(from.toVector()).setY(0);
         if (d.lengthSquared() < 1e-6) return from.getYaw();
         return from.clone().setDirection(d).getYaw();
     }
 
-    private static Location mid(Location a, Location b, double f) {
+    static Location mid(Location a, Location b, double f) {
         return a.clone().add(b.toVector().subtract(a.toVector()).multiply(f));
     }
 
     /** Personaje: display con el modelo (mira en `yaw`) + soporte de armadura para quien no tiene el mod. */
-    private ItemDisplay character(CineEngine.Ctx c, Location at, float yaw, String model, String anim, float scale, int color) {
+    ItemDisplay character(CineEngine.Ctx c, Location at, float yaw, String model, String anim, float scale, int color) {
         Location l = at.clone();
         l.setYaw(yaw);
         l.setPitch(0);
@@ -140,7 +140,7 @@ final class CineCharacters {
         return d;
     }
 
-    private static void size(ItemDisplay d, float r, int ticks) {
+    static void size(ItemDisplay d, float r, int ticks) {
         if (d == null || !d.isValid()) return;
         d.setInterpolationDelay(0);
         d.setInterpolationDuration(ticks);
@@ -148,7 +148,7 @@ final class CineCharacters {
     }
 
     /** Efecto de energía del mod (shader): fx_azul, fx_rojo, fx_purpura, fx_genki, fx_aura, fx_pilar, fx_cortes, fx_brujula, fx_cometa… */
-    private ItemDisplay vfx(CineEngine.Ctx c, Location at, String model, float size, String argb) {
+    ItemDisplay vfx(CineEngine.Ctx c, Location at, String model, float size, String argb) {
         ItemDisplay d = c.actor(fx.itemDisplay(at, new ItemStack(Material.AIR), 1f, 0));
         d.setTeleportDuration(1);
         d.setDisplayWidth(120f);
@@ -161,7 +161,7 @@ final class CineCharacters {
     }
 
     /** Efecto de un solo uso (onda, golpe…): se borra solo a los `life` ticks. */
-    private void once(CineEngine.Ctx c, Location at, String model, float size, String argb, int life) {
+    void once(CineEngine.Ctx c, Location at, String model, float size, String argb, int life) {
         ItemDisplay d = c.actor(fx.itemDisplay(at, new ItemStack(Material.AIR), 1f, life));
         d.setDisplayWidth(120f);
         d.setDisplayHeight(120f);
@@ -171,17 +171,37 @@ final class CineCharacters {
         size(d, size, 0);
     }
 
-    private static double ease(double f) {
+    static double ease(double f) {
         f = Math.max(0, Math.min(1, f));
         return 1 - (1 - f) * (1 - f);
     }
 
-    private static void remove(Entity... es) {
+    static void remove(Entity... es) {
         for (Entity en : es) if (en != null && en.isValid()) en.remove();
     }
 
+    /**
+     * Final suave: el personaje (y lo que le acompañe, p. ej. su aura) se desvanece en partículas de su color en
+     * `ticks` ticks y después se borra. Quien no tiene el mod ve el soporte de respaldo deshacerse en partículas.
+     */
+    void vanish(CineEngine.Ctx c, String model, ItemDisplay d, int rgb, int ticks, Entity... extra) {
+        if (d == null || !d.isValid()) return;
+        Location at = d.getLocation();
+        c.anim(d, "disolver:" + ticks * 50);
+        for (Entity x : extra) if (x != null && x.isValid()) c.anim(x, "disolver:" + ticks * 50);
+        once(c, at, "fx_disolver", 1f, String.format("ff%06x", rgb & 0xffffff), ticks + 30);
+        c.sound(at, "personaje.desvanecer", 1.5f, 1f);
+        Entity stand = get(c, "stand_" + model);
+        CineFx.part(c.w, Particle.DUST, at.clone().add(0, 1, 0), 40, 0.35, 0.8, 0.35, 0, CineFx.dust(rgb, 1.4f));
+        CineFx.part(c.w, Particle.END_ROD, at.clone().add(0, 1, 0), 12, 0.3, 0.6, 0.3, 0.02, null);
+        java.util.List<Entity> all = new java.util.ArrayList<>(java.util.List.of(extra));
+        all.add(d);
+        if (stand != null) stand.remove();
+        e.plugin.getServer().getScheduler().runTaskLater(e.plugin, () -> remove(all.toArray(new Entity[0])), ticks + 2);
+    }
+
     /** Mueve un personaje (modelo + soporte de respaldo + lo que le acompañe) conservando hacia dónde mira. */
-    private void moveChar(CineEngine.Ctx c, String model, ItemDisplay d, Location to, float yaw, Entity... extra) {
+    void moveChar(CineEngine.Ctx c, String model, ItemDisplay d, Location to, float yaw, Entity... extra) {
         Location l = to.clone();
         l.setYaw(yaw);
         l.setPitch(0);
@@ -194,7 +214,7 @@ final class CineCharacters {
     /* ========================================= GENKIDAMA ========================================= */
 
     private void genkidama() {
-        e.register(new CineEngine.Ability("genkidama", "GENKIDAMA", "#8fd3ff", 450, 450, "Un guerrero sube al cielo, pide energía a todos y forma una esfera gigante que lanza contra el objetivo") {
+        e.register(new CineEngine.Ability("genkidama", "GENKIDAMA", "#8fd3ff", 540, 540, "Un guerrero sube al cielo, pide energía a todos y forma una esfera gigante que lanza contra el objetivo") {
             void start(CineEngine.Ctx c) {
                 Location at;
                 if (c.launcher != null) {
@@ -412,8 +432,8 @@ final class CineCharacters {
                         remove(sphere);
                         c.anim(goku, A_POSE_FINAL);
                     }
-                    if (since == 74) remove(goku, get(c, "stand_" + GOKU), aura);
-                    if (since >= 78) e.finish(c, false);
+                    if (since == 62) vanish(c, GOKU, goku, 0xffb04a, 28, aura);
+                    if (since >= 96) e.finish(c, false);
                 }
             }
         });
@@ -540,10 +560,11 @@ final class CineCharacters {
                 if (plain && t > 200 && t < 240 && t % 2 == 0) CineFx.part(c.w, Particle.CRIMSON_SPORE, c.feet().add(0, 1, 0), 12, 3, 0.02);
                 if (t == 236) {
                     c.anim(get(c, "santuario"), A_HUNDIRSE);
-                    c.anim(sk, A_DESAPARICION);
+                    vanish(c, SUKUNA, sk, 0xff3040, 30, (Entity) get(c, "aura"), (Entity) get(c, "rayos"));
                     c.sound(shAt, "cortes.dominio", 2f, 0.9f);
-                    remove(get(c, "rayos"), get(c, "aura"));
                 }
+                // El templo se hunde y a la vez se desvanece.
+                if (t == 244) c.anim(get(c, "santuario"), "disolver:1700");
                 if (t == 258) c.skyReset();
                 if (t == 280) remove(sk, get(c, "santuario"), get(c, "stand_" + SUKUNA), get(c, "stand_" + SANTUARIO), get(c, "cortes"));
                 if (t >= 286) e.finish(c, false);
@@ -616,7 +637,7 @@ final class CineCharacters {
     /* ======================================== VACÍO PÚRPURA ======================================== */
 
     private void vacioPurpura() {
-        e.register(new CineEngine.Ability("vacio_purpura", "VACÍO PÚRPURA", "#9b30ff", 440, 440, "Azul en una mano, rojo en la otra: se funden en un orbe púrpura que avanza borrando todo y arrastra al objetivo") {
+        e.register(new CineEngine.Ability("vacio_purpura", "VACÍO PÚRPURA", "#9b30ff", 480, 480, "Azul en una mano, rojo en la otra: se funden en un orbe púrpura que avanza borrando todo y arrastra al objetivo") {
             void start(CineEngine.Ctx c) {
                 Location at;
                 float yaw;
@@ -800,8 +821,8 @@ final class CineCharacters {
                         c.anim(gj, A_POSE_FINAL);
                     }
                     if (since == 50) c.skyReset();
-                    if (since == 68) remove(gj, get(c, "stand_" + GOJO));
-                    if (since >= 72) e.finish(c, false);
+                    if (since == 58) vanish(c, GOJO, gj, 0x9a6bff, 28);
+                    if (since >= 92) e.finish(c, false);
                 }
             }
 
@@ -840,7 +861,7 @@ final class CineCharacters {
     /* ========================================== AKAZA ========================================== */
 
     private void akaza() {
-        e.register(new CineEngine.Ability("akaza", "AGUJA DE BRÚJULA", "#7fd8ff", 440, 440, "Un luchador despliega su brújula de hielo, se lanza sobre el objetivo con una ráfaga de golpes, lo eleva a puñetazos de aire y lo remata contra el suelo") {
+        e.register(new CineEngine.Ability("akaza", "AGUJA DE BRÚJULA", "#7fd8ff", 480, 480, "Un luchador despliega su brújula de hielo, se lanza sobre el objetivo con una ráfaga de golpes, lo eleva a puñetazos de aire y lo remata contra el suelo") {
             void start(CineEngine.Ctx c) {
                 Location at = c.ground(c.feet().add(forward(c.yaw0).multiply(c.cfg("distanciaAparicion", 8.0))).add(0, 4, 0));
                 float yaw = yawTo(at, c.feet());
@@ -1051,8 +1072,8 @@ final class CineCharacters {
                     }
                     if (since == 30) for (ItemDisplay p : pilares) remove(p);
                     if (since == 50) remove((Entity) get(c, "copo"));
-                    if (since == 66) remove(ak, get(c, "stand_" + AKAZA), get(c, "aura"));
-                    if (since >= 70) e.finish(c, false);
+                    if (since == 56) vanish(c, AKAZA, ak, 0x7fd8ff, 28, (Entity) get(c, "aura"));
+                    if (since >= 90) e.finish(c, false);
                 }
             }
 

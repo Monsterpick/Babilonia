@@ -49,6 +49,15 @@ final class CineWorld {
     /* ------------------------------------- config ------------------------------------- */
 
     int budgetPerTick = 400;
+    /** Presupuesto extra temporal (destrucciones enormes como el ataque orbital). */
+    private int boostBudget;
+    private long boostUntil;
+
+    /** Durante `ticks` ticks se aplican hasta `perTick` bloques por tick (sin bajar del presupuesto normal). */
+    void boost(int perTick, int ticks) {
+        boostBudget = perTick;
+        boostUntil = tick + ticks;
+    }
     int maxFlying = 200;
     boolean restore = true;
     int restoreSeconds = 60;
@@ -187,7 +196,7 @@ final class CineWorld {
     /** Lo llama el motor cada tick: aplica la cola con presupuesto y restaura lo que toque. */
     void tick(long now) {
         tick = now;
-        int budget = budgetPerTick;
+        int budget = now < boostUntil ? Math.max(budgetPerTick, boostBudget) : budgetPerTick;
         List<Block> changed = new ArrayList<>();
         while (budget-- > 0 && !queue.isEmpty()) {
             Job j = queue.poll();

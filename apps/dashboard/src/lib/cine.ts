@@ -1,4 +1,4 @@
-/** Las 12 habilidades cinemáticas del plugin LiveArena (ids de /habilidad y de /la efecto cine_<id>). */
+/** Las habilidades cinemáticas del plugin LiveArena (ids de /habilidad y de /la efecto cine_<id>). */
 export interface CineAbility {
   id: string
   name: string
@@ -24,4 +24,6 @@ export const CINE_ABILITIES: CineAbility[] = [
   { id: 'mil_cortes', name: 'Mil cortes: Templo del mal', color: '#ff3b3b', icon: '⚔️', seconds: 15, desc: 'El rey maldito forma su sello, su templo emerge bajo un cielo carmesí y cientos de tajos de energía cruzan el dominio hasta el corte en cruz. Con su voz.', model: 'sukuna' },
   { id: 'vacio_purpura', name: 'Vacío púrpura', color: '#9b30ff', icon: '🟣', seconds: 21, desc: 'Azul en una mano y rojo en la otra: giran en espiral, se funden en un orbe púrpura con vórtice y rayos, y lo dispara borrando todo a su paso. Con su voz.', model: 'gojo' },
   { id: 'akaza', name: 'Aguja de brújula', color: '#7fd8ff', icon: '❄️', seconds: 20, desc: 'El luchador despliega su brújula de hielo sobre el terreno, embiste con una ráfaga de golpes, eleva al objetivo a puñetazos de aire y lo remata contra el suelo. Con su voz.', model: 'akaza' },
+  { id: 'sangre_perforante', name: 'Sangre Perforante', color: '#c0101c', icon: '🩸', seconds: 14, desc: 'Un hechicero de sangre surge del suelo, comprime una esfera de sangre entre las manos y dispara una lanza que atraviesa al objetivo (ignora parte de la armadura, aplica marchitamiento) y abre una zanja detrás.', model: 'choso' },
+  { id: 'ataque_orbital', name: 'Ataque orbital', color: '#ff1a2a', icon: '🛰️', seconds: 14, desc: 'Un rayo rojo fija al objetivo, la cámara sube al espacio, un satélite cañón carga y dispara un láser colosal que abre un cráter enorme.', model: 'satelite' },
 ]

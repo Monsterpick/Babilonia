@@ -42,3 +42,19 @@ Durante las habilidades Paper no expulsa por «volar» (y la app pone allow-flig
 - **Voces**: `assets/livearena/sounds/voz/*.ogg` (audios aportados por el usuario). Las líneas de tiempo de genkidama,
   mil_cortes, vacio_purpura y akaza están sincronizadas con ellas. Se configuran en `habilidades.yml → voces`.
 - Sin el mod se siguen viendo los efectos de respaldo (partículas y displays) y los sonidos de Minecraft.
+
+## v5 — Finales suaves, Sangre Perforante, Ataque orbital y nueva skin de Gojo
+
+- **Finales suaves**: los personajes ya no desaparecen de golpe. `CineCharacters.vanish()` manda la animación especial
+  `disolver:<ms>` (el modelo pasa a translúcido y baja su opacidad conservando la pose) y crea `fx_disolver`
+  (partículas de su color que suben y un destello en los pies). Lo usan Goku, Gojo, Akaza, Sukuna (y su templo) y Choso.
+- **Sangre Perforante** (`sangre_perforante`, alias `choso`): skin del usuario (`tools/referencias/skins/choso.png`),
+  animaciones en `tools/gen_choso.py`. Cámara lateral tipo panel de manga, esfera `fx_sangre` anclada al hueso `manos`,
+  lanza `fx_perforante` (90 bloques/s en el mod; 4,5 bloques/tick en el servidor con barrido de segmento, sin atravesar
+  sin impactar), daño que ignora parte de la armadura (`perforacion`), marchitamiento II 4 s, empuje y zanja detrás.
+- **Ataque orbital** (`ataque_orbital`, alias `orbital`): marca roja `fx_marca` con retícula y HUD, subida al espacio
+  (efecto de hiperespacio), fondo `fx_espacio` (estrellas fijas en el mundo + planeta), satélite propio
+  (`tools/gen_satelite.py`) con aros que giran, núcleo `fx_nucleo`, disparo, descenso, mancha roja de transición,
+  láser `fx_laser` (fino → ancho), cúpula `fx_domo` y cráter con presupuesto ampliado (`CineWorld.boost`).
+- Efectos de pantalla nuevos: 5 hiperespacio, 6 mancha, 7 líneas de velocidad (manga), 8 retícula de objetivo.
+- **Gojo**: nueva skin «Satoru Gojo» del usuario.

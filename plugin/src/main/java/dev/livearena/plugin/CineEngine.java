@@ -321,6 +321,12 @@ final class CineEngine implements Listener, TabExecutor {
             return CineNet.hasMod(target);
         }
 
+        /** Efecto de pantalla del mod (hiperespacio, mancha, líneas de velocidad, retícula…) para el objetivo y los cercanos. */
+        void screenFx(byte kind, int argb, int in, int hold, int out) {
+            for (Player p : w.getPlayers())
+                if (p == target || p.getLocation().distanceSquared(origin) < 40 * 40) net.send(p, CineNet.screen(kind, argb, in, hold, out));
+        }
+
         /** Tajos que cruzan la pantalla (solo con mod). */
         void screenSlashes(int rgb, int ticks) {
             for (Player p : w.getPlayers())
@@ -386,6 +392,14 @@ final class CineEngine implements Listener, TabExecutor {
             {"gojo.aparicion", "entity.illusioner.mirror_move,block.amethyst_block.resonate"}, {"gojo.carga", "block.beacon.power_select,block.respawn_anchor.charge"},
             {"gojo.disparo", "entity.warden.sonic_boom,entity.wither.shoot"}, {"gojo.detonacion", "entity.generic.explode,entity.lightning_bolt.thunder,block.beacon.deactivate"},
             {"akaza.aparicion", "entity.breeze.land,entity.player.attack.strong"}, {"akaza.despliegue", "block.amethyst_block.resonate,block.beacon.activate"},
+            {"personaje.desvanecer", "block.amethyst_block.resonate,entity.illusioner.mirror_move"},
+            {"choso.aparicion", "block.bubble_column.whirlpool_inside,entity.warden.emerge"}, {"choso.carga", "block.bubble_column.whirlpool_inside,block.beacon.ambient"},
+            {"choso.compresion", "block.respawn_anchor.charge,block.honey_block.break"}, {"choso.disparo", "entity.warden.sonic_boom,item.trident.riptide_3,entity.arrow.shoot"},
+            {"choso.impacto", "entity.player.attack.crit,entity.generic.explode,block.slime_block.break"},
+            {"orbital.fijado", "block.beacon.power_select,block.note_block.bit"}, {"orbital.alarma", "block.note_block.pling"},
+            {"orbital.subida", "entity.firework_rocket.launch,item.elytra.flying"}, {"orbital.activar", "block.beacon.activate,block.conduit.activate,block.respawn_anchor.charge"},
+            {"orbital.carga", "block.respawn_anchor.set_spawn,block.beacon.ambient"}, {"orbital.disparo", "entity.warden.sonic_boom,entity.lightning_bolt.thunder,block.beacon.deactivate"},
+            {"orbital.impacto", "entity.generic.explode,entity.lightning_bolt.thunder,entity.dragon_fireball.explode,entity.warden.sonic_boom"},
             {"akaza.punetazo", "entity.player.attack.crit,entity.player.attack.knockback"}, {"akaza.rafaga", "entity.breeze.shoot,entity.player.attack.sweep"},
             {"akaza.golpe", "entity.generic.explode,entity.warden.attack_impact,entity.lightning_bolt.thunder"}, {"cortes.ambiente", "ambient.crimson_forest.mood,entity.warden.heartbeat"},
         };
@@ -464,7 +478,8 @@ final class CineEngine implements Listener, TabExecutor {
     }
 
     /** Ids antiguos → id actual (las reglas y comandos viejos siguen funcionando). */
-    static final Map<String, String> ALIASES = Map.of("esfera_energia", "genkidama", "gojo", "vacio_purpura", "gojo_purpura", "vacio_purpura");
+    static final Map<String, String> ALIASES = Map.of("esfera_energia", "genkidama", "gojo", "vacio_purpura", "gojo_purpura", "vacio_purpura",
+            "choso", "sangre_perforante", "orbital", "ataque_orbital", "laser_orbital", "ataque_orbital");
 
     boolean request(String id, Player target, Player launcher, String viewer, boolean announce) {
         String key = id.toLowerCase(Locale.ROOT);
