@@ -143,6 +143,34 @@ public final class Fx {
         stains.addLast(new Stain(d, plugin.tick() + 100 + rnd.nextInt(60)));
     }
 
+    /** Portal de invocación: disco en espiral vertical que gira y se cierra (llegada de un jefe). */
+    public void portal(Location center, Color a, Color b, double radius, int ticks) {
+        org.bukkit.Bukkit.getScheduler().runTaskTimer(plugin, new java.util.function.Consumer<org.bukkit.scheduler.BukkitTask>() {
+            int t;
+
+            @Override
+            public void accept(org.bukkit.scheduler.BukkitTask task) {
+                if (t++ >= ticks || !plugin.game.running()) {
+                    task.cancel();
+                    return;
+                }
+                double f = t / (double) ticks;
+                double r = radius * (f < 0.2 ? f / 0.2 : f > 0.8 ? (1 - f) / 0.2 : 1);
+                Particle.DustTransition dt = new Particle.DustTransition(a, b, 1.6f);
+                for (int arm = 0; arm < 3; arm++) {
+                    for (int k = 0; k < 7; k++) {
+                        double rr = r * (k + 1) / 7.0;
+                        double ang = t * 0.35 + arm * 2.094 + k * 0.55;
+                        Location l = center.clone().add(Math.cos(ang) * rr, 0, Math.sin(ang) * rr);
+                        particle(l, Particle.DUST_COLOR_TRANSITION, 1, 0, 0, 0, 0, dt, true);
+                    }
+                }
+                if (t % 2 == 0) particle(center, Particle.REVERSE_PORTAL, 12, r * 0.3, 0.2, r * 0.3, 0.6, null, true);
+                if (t % 5 == 0) particle(center, Particle.END_ROD, 4, 0.2, 2, 0.2, 0.05, null, true);
+            }
+        }, 0L, 1L);
+    }
+
     public void clearStains() {
         for (Stain s : stains) if (s.e().isValid()) s.e().remove();
         stains.clear();

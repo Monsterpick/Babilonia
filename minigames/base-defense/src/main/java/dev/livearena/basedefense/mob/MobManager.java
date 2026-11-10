@@ -367,7 +367,7 @@ public final class MobManager implements Listener {
             d.setBillboard(Display.Billboard.CENTER);
             d.setShadowed(true);
             d.setSeeThrough(false);
-            d.setBackgroundColor(Color.fromARGB(110, 0, 0, 0));
+            d.setBackgroundColor(Color.fromARGB(0, 0, 0, 0));
             d.setViewRange(2.4f);
             d.setBrightness(new Display.Brightness(15, 15));
             d.setTransformation(new org.bukkit.util.Transformation(new org.joml.Vector3f(0, 0.25f, 0), new org.joml.Quaternionf(), new org.joml.Vector3f(scale), new org.joml.Quaternionf()));
@@ -385,9 +385,15 @@ public final class MobManager implements Listener {
         return Txt.fmt(plugin.settings.label, "usuario", gm.donor, "tipo", gm.typeName()).append(net.kyori.adventure.text.Component.newline()).append(healthBar(gm));
     }
 
-    /** Barra de vida en 10 tramos (verde → amarillo → rojo). */
+    /** Barra de vida: con el pack, barra dibujada (verde → amarillo → rojo; morada en jefes); sin él, 10 tramos de texto. */
     net.kyori.adventure.text.Component healthBar(GameMob gm) {
         double f = Math.max(0, Math.min(1, gm.hp / gm.maxHp));
+        if (plugin.hud.fonts().ok() && plugin.pack.loaded(plugin.game.streamer())) {
+            var hf = plugin.hud.fonts();
+            String g = gm.isBoss() ? hf.step("world_boss", f) : hf.step("world", f > 0.6 ? "g" : f > 0.3 ? "y" : "r", f);
+            return net.kyori.adventure.text.Component.text(g).font(net.kyori.adventure.key.Key.key("basedefense:w_bar"))
+                .color(net.kyori.adventure.text.format.NamedTextColor.WHITE).shadowColor(net.kyori.adventure.text.format.ShadowColor.none());
+        }
         int n = (int) Math.ceil(f * 10);
         String col = f > 0.6 ? "&a" : f > 0.3 ? "&e" : "&c";
         return Txt.fmt("&c❤ " + col + "▮".repeat(n) + "&8" + "▮".repeat(10 - n));
@@ -533,13 +539,14 @@ public final class MobManager implements Listener {
     // ───────────────────────────── DAÑO Y MUERTE ─────────────────────────────
 
     /** Daño del jugador (armas). Sin invulnerabilidad entre golpes. */
-    public void damage(GameMob gm, double amount, Player by) {
-        if (gm.dead || amount <= 0) return;
+    /** Devuelve true si el golpe lo mató. */
+    public boolean damage(GameMob gm, double amount, Player by) {
+        if (gm.dead || amount <= 0) return false;
         gm.hp -= amount;
         Mob m = gm.entity;
         if (gm.hp <= 0) {
             kill(gm, by);
-            return;
+            return true;
         }
         double max = m.getAttribute(Attribute.MAX_HEALTH) != null ? m.getAttribute(Attribute.MAX_HEALTH).getValue() : 20;
         m.setHealth(Math.max(1, Math.min(max, max * gm.hp / gm.maxHp)));
@@ -547,6 +554,7 @@ public final class MobManager implements Listener {
         m.setNoDamageTicks(0);
         updateBar(gm);
         if (gm.isBoss()) plugin.bosses.onDamage(gm);
+        return false;
     }
 
     public void kill(GameMob gm, Player by) {

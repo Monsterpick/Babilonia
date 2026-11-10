@@ -112,6 +112,7 @@ public final class Game implements Listener {
         tickets(w, true);
         prepare(who, true);
         plugin.waves.reset();
+        plugin.loot.resetGoal();
         plugin.pack.send(who);
         plugin.hud.show();
         banner("&c&lBASE DEFENSE", "&7¡Defiende la base! &eRonda 1", Sound.EVENT_RAID_HORN, 1f);
@@ -185,7 +186,7 @@ public final class Game implements Listener {
             }
         }
         if (now % 10 == 0) confine();
-        if (now % 5 == 0) plugin.hud.update();
+        plugin.hud.tick();
     }
 
     /** El streamer no puede salir de la plataforma (ni caer al carril o al vacío). */
@@ -215,8 +216,6 @@ public final class Game implements Listener {
             lastHitFx = now;
             p.playSound(p.getLocation(), Sound.BLOCK_ANVIL_LAND, 0.6f, 0.6f);
             p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_HURT, 0.9f, 0.8f);
-            p.showTitle(Title.title(net.kyori.adventure.text.Component.empty(), Txt.fmt(plugin.settings.msg("golpeBase"), "danio", (int) amount),
-                Title.Times.times(Duration.ZERO, Duration.ofMillis(350), Duration.ofMillis(250))));
             // destello rojo breve: viñeta de borde del mundo + partículas en la puerta
             redFlash(8);
             if (amount >= 40) shake();
@@ -336,6 +335,7 @@ public final class Game implements Listener {
 
     public void onKill(GameMob gm) {
         plugin.alerts.onKill();
+        plugin.loot.countKill();
         // reservado para estadísticas por donante
     }
 
@@ -355,11 +355,8 @@ public final class Game implements Listener {
     // ───────────────────────────── CARTELES ─────────────────────────────
 
     public void banner(String title, String subtitle, Sound sound, float pitch, Object... kv) {
-        Title t = Title.title(Txt.fmt(title, kv), Txt.fmt(subtitle, kv), Title.Times.times(Duration.ofMillis(150), Duration.ofMillis(2200), Duration.ofMillis(500)));
-        for (Player p : viewers()) {
-            p.showTitle(t);
-            if (sound != null) p.playSound(p.getLocation(), sound, 1f, pitch);
-        }
+        plugin.hud.banner(title, subtitle, kv);
+        if (sound != null) for (Player p : viewers()) p.playSound(p.getLocation(), sound, 1f, pitch);
     }
 
     // ───────────────────────── INVENTARIO DEL STREAMER ─────────────────────────

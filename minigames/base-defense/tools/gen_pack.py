@@ -519,6 +519,8 @@ def main():
     shaders(client)
     guns()
     gun_sounds()
+    import gen_hud
+    gen_hud.build()
 
 
 if __name__ == '__main__':

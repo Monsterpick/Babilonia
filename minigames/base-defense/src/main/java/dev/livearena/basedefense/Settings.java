@@ -77,6 +77,7 @@ public final class Settings {
     public final double ammoChance, ammoChanceBoss;
     public final boolean supplyOnPhase;
     public final int supplyEvery;
+    public final int rewardKills, rewardGrowth, rewardBoostSeconds;
     // pack
     public final boolean packEnabled, packRequired;
     public final int packPort;
@@ -147,6 +148,9 @@ public final class Settings {
         ammoChanceBoss = Math.max(0, Math.min(1, c.getDouble("municion.probabilidadCajaJefe", 1.0)));
         supplyOnPhase = c.getBoolean("municion.suministroAlEmpezarFase", true);
         supplyEvery = Math.max(0, c.getInt("municion.suministroCada", 150));
+        rewardKills = Math.max(0, c.getInt("recompensa.bajas", 40));
+        rewardGrowth = Math.max(0, c.getInt("recompensa.incremento", 10));
+        rewardBoostSeconds = Math.max(0, c.getInt("recompensa.danioDobleSegundos", 20));
         packEnabled = c.getBoolean("paquete.activado", true);
         packRequired = c.getBoolean("paquete.obligatorio", false);
         packPort = clamp(c.getInt("paquete.puerto", 25590), 1024, 65535);
@@ -209,7 +213,10 @@ public final class Settings {
     }
 
     public String msg(String key) {
-        return msg == null ? key : msg.getString(key, key);
+        // sin valor por defecto explícito: así las claves nuevas salen del config.yml del .jar aunque el del
+        // servidor sea de una versión anterior
+        String v = msg == null ? null : msg.getString(key);
+        return v == null ? key : v;
     }
 
     public static NamespacedKey key(String s) {

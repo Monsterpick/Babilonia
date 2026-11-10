@@ -58,6 +58,21 @@ public final class Weapons implements Listener {
     private final Map<UUID, Long> lastClick = new HashMap<>();
     private final Map<UUID, Proj> projectiles = new HashMap<>();
     private long lastHitSound;
+    private final Map<UUID, Long> boostUntil = new HashMap<>();
+
+    /** Daño doble durante unos ticks (cofre de la meta de bajas). */
+    public void boost(Player p, int ticks) {
+        boostUntil.put(p.getUniqueId(), plugin.tick() + ticks);
+    }
+
+    public double boostLeft(Player p) {
+        Long u = boostUntil.get(p.getUniqueId());
+        return u == null ? 0 : Math.max(0, u - plugin.tick()) / 20.0;
+    }
+
+    private double mult(Player p) {
+        return p != null && boostLeft(p) > 0 ? 2 : 1;
+    }
 
     private static final class State {
         int ammo;
@@ -92,6 +107,7 @@ public final class Weapons implements Listener {
     /** Da las armas con munición nueva (al empezar la partida). */
     public void give(Player p) {
         states.remove(p.getUniqueId());
+        boostUntil.remove(p.getUniqueId());
         for (WeaponDef w : plugin.settings.weapons.values()) p.getInventory().setItem(w.slot(), item(p, w));
         p.getInventory().setHeldItemSlot(0);
     }
@@ -106,7 +122,9 @@ public final class Weapons implements Listener {
     private ItemStack item(Player p, WeaponDef w) {
         ItemStack it = w.item().createItemStack();
         ItemMeta m = it.getItemMeta();
-        m.displayName(Txt.fmt("&l" + w.name()).decoration(TextDecoration.ITALIC, false));
+        // con el pack el nombre no se muestra sobre la hotbar (taparía el panel): lo enseña el HUD al cambiar de arma
+        boolean fancy = plugin.pack.loaded(p) && plugin.hud.fonts().ok();
+        m.displayName(fancy ? net.kyori.adventure.text.Component.empty() : Txt.fmt("&l" + w.name()).decoration(TextDecoration.ITALIC, false));
         List<net.kyori.adventure.text.Component> lore = new ArrayList<>();
         lore.add(Txt.fmt("&7Daño &f" + fmt(w.damage()) + (w.kind() != WeaponKind.HITSCAN ? " &7en área &f" + fmt(w.radius()) + "m" : "")).decoration(TextDecoration.ITALIC, false));
         lore.add(Txt.fmt("&7Cadencia &f" + fmt(w.rate() * w.shotsPerTick()) + "/s &8· &7Cargador &f" + w.magazine()).decoration(TextDecoration.ITALIC, false));
@@ -119,7 +137,7 @@ public final class Weapons implements Listener {
         m.setUnbreakable(false);
         m.setMaxStackSize(1);
         m.addItemFlags(ItemFlag.values());
-        if (m instanceof Damageable d) {
+        if (!fancy && m instanceof Damageable d) {
             d.setMaxDamage(Math.max(2, w.magazine() + 1));
             State s = state(p, w);
             d.setDamage(Math.max(0, w.magazine() - s.ammo));
@@ -128,12 +146,27 @@ public final class Weapons implements Listener {
         return it;
     }
 
+    /** Lo que el HUD necesita de cada arma. reloading/warming: 0..1 mientras dura, -1 si no. */
+    public record Slot(WeaponDef def, int ammo, int reserve, boolean infinite, double reloading, double warming) {}
+
+    public List<Slot> slots(Player p) {
+        long now = plugin.tick();
+        List<Slot> out = new ArrayList<>();
+        for (WeaponDef w : plugin.settings.weapons.values()) {
+            State s = state(p, w);
+            double rl = s.reloadUntil > now ? 1 - (s.reloadUntil - now) / Math.max(1.0, w.reload() * 20) : -1;
+            double wm = w.warmup() > 0 && s.warmStart >= 0 && now - s.warmStart < w.warmup() * 20 ? (now - s.warmStart) / (w.warmup() * 20) : -1;
+            out.add(new Slot(w, s.ammo, s.reserve, w.infinite(), rl, wm));
+        }
+        return out;
+    }
+
     /** La barrita de durabilidad del arma = balas en el cargador. */
     private void showAmmo(Player p, WeaponDef w) {
         ItemStack it = p.getInventory().getItem(w.slot());
         if (it == null || weaponOf(it) != w) return;
         ItemMeta m = it.getItemMeta();
-        if (m instanceof Damageable d) {
+        if (m instanceof Damageable d && d.hasMaxDamage()) {
             d.setDamage(Math.max(0, w.magazine() - state(p, w).ammo));
             it.setItemMeta(m);
         }
@@ -201,6 +234,24 @@ public final class Weapons implements Listener {
         } else if (a == Action.LEFT_CLICK_AIR || a == Action.LEFT_CLICK_BLOCK) reload(p, w);
     }
 
+    /** Solo hay 6 armas: la rueda salta de la 6 a la 1 (y al revés) y el HUD dice qué arma es. */
+    @EventHandler(ignoreCancelled = true)
+    public void onHeld(org.bukkit.event.player.PlayerItemHeldEvent e) {
+        Player p = e.getPlayer();
+        if (!plugin.game.running() || !plugin.inGameWorld(p)) return;
+        int max = 0;
+        for (WeaponDef w : plugin.settings.weapons.values()) max = Math.max(max, w.slot());
+        int to = e.getNewSlot();
+        if (to > max) {
+            e.setCancelled(true);
+            int next = e.getPreviousSlot() == max && to == max + 1 ? 0 : e.getPreviousSlot() == 0 && to == 8 ? max : Math.min(max, e.getPreviousSlot());
+            plugin.getServer().getScheduler().runTask(plugin, () -> p.getInventory().setHeldItemSlot(next));
+            to = next;
+        }
+        for (WeaponDef w : plugin.settings.weapons.values())
+            if (w.slot() == to) plugin.hud.notify("bullet", net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(Txt.fmt(w.name())), net.kyori.adventure.text.format.TextColor.color(0xF2B632));
+    }
+
     @EventHandler(ignoreCancelled = true)
     public void onSwap(PlayerSwapHandItemsEvent e) {
         WeaponDef w = weaponOf(e.getPlayer().getInventory().getItemInMainHand());
@@ -256,28 +307,6 @@ public final class Weapons implements Listener {
             } else s.warmStart = -1;
         }
         if (w.automatic() && holding) tryFire(p, w);
-        if (now % 2 == 0) actionBar(p, w);
-    }
-
-    private void actionBar(Player p, WeaponDef w) {
-        State s = state(p, w);
-        long now = plugin.tick();
-        if (s.reloadUntil > now) {
-            double total = w.reload() * 20, left = s.reloadUntil - now;
-            int filled = (int) Math.round((1 - left / total) * 12);
-            String bar = "&a" + "█".repeat(Math.max(0, filled)) + "&8" + "█".repeat(Math.max(0, 12 - filled));
-            p.sendActionBar(Txt.fmt(plugin.settings.msg("recargando").replace("{barra}", bar).replace("{arma}", w.name())));
-        } else if (s.ammo == 0 && !w.infinite() && s.reserve == 0) {
-            p.sendActionBar(Txt.fmt(plugin.settings.msg("sinMunicion").replace("{arma}", w.name())));
-        } else if (w.warmup() > 0 && s.warmStart >= 0 && now - s.warmStart < w.warmup() * 20) {
-            int filled = (int) Math.round((now - s.warmStart) / (w.warmup() * 20) * 12);
-            String bar = "&d" + "█".repeat(Math.max(0, filled)) + "&8" + "█".repeat(Math.max(0, 12 - filled));
-            p.sendActionBar(Txt.fmt(plugin.settings.msg("calentando").replace("{barra}", bar).replace("{arma}", w.name())));
-        } else {
-            String ammoColor = s.ammo <= Math.max(1, w.magazine() / 5) ? "&c" : "&f";
-            String reserve = w.infinite() ? "∞" : String.valueOf(s.reserve);
-            p.sendActionBar(Txt.fmt(plugin.settings.msg("municion").replace("{arma}", w.name()).replace("{balas}", ammoColor + s.ammo + "&f").replace("{reserva}", reserve), "cargador", w.magazine()));
-        }
     }
 
     // ───────────────────────────── DISPARO ─────────────────────────────
@@ -359,10 +388,11 @@ public final class Weapons implements Listener {
             if (gm == null) return;
             Entity e = gm.entity;
             boolean head = hit.getHitPosition().getY() > e.getLocation().getY() + e.getHeight() * 0.78;
-            double dmg = w.damage() * (head ? 1.6 : 1.0);
+            double dmg = w.damage() * (head ? 1.6 : 1.0) * mult(p);
             plugin.fx.particle(end, Particle.BLOCK, head ? 8 : 4, 0.08, 0.08, 0.08, 0, Material.REDSTONE_BLOCK.createBlockData(), false);
             if (head) plugin.fx.particle(end, Particle.CRIT, 6, 0.1, 0.25, false);
-            plugin.mobs.damage(gm, dmg, p);
+            boolean killed = plugin.mobs.damage(gm, dmg, p);
+            plugin.hud.hit(p, head, killed);
             long now = plugin.tick();
             if (now - lastHitSound >= 2) {
                 lastHitSound = now;
@@ -475,12 +505,12 @@ public final class Weapons implements Listener {
             double dz = Math.max(box.getMinZ() - l.getZ(), Math.max(0, l.getZ() - box.getMaxZ()));
             double d = Math.sqrt(dx * dx + dy * dy + dz * dz);
             if (d > r) continue;
-            double dmg = pr.def.damage() * (1 - 0.6 * d / r);
+            double dmg = pr.def.damage() * (1 - 0.6 * d / r) * mult(pr.owner);
             if (!gm.isBoss() && !gm.manual) {
                 Vector push = gm.entity.getLocation().toVector().subtract(l.toVector()).setY(0);
                 if (push.lengthSquared() > 1e-4) gm.entity.setVelocity(push.normalize().multiply(0.35).setY(0.32));
             }
-            plugin.mobs.damage(gm, dmg, pr.owner);
+            if (plugin.mobs.damage(gm, dmg, pr.owner) && pr.owner != null) plugin.hud.hit(pr.owner, false, true);
         }
         for (Bosses.Ball b : new ArrayList<>(plugin.bosses.balls()))
             if (!b.returned() && b.entity().isValid() && b.entity().getLocation().distanceSquared(l) < (r + 1.5) * (r + 1.5) && pr.owner != null) plugin.bosses.hitBall(b, pr.owner);

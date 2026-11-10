@@ -111,6 +111,13 @@ public final class Bosses implements Listener {
         plugin.game.banner(plugin.settings.msg("jefeTitulo"), plugin.settings.msg("jefeSubtitulo"), Sound.ENTITY_WITHER_SPAWN, 0.7f, "jefe", def.name(), "usuario", donor);
         plugin.alerts.siren(3);
         Location l = gm.entity.getLocation();
+        Color pc = switch (def.entity().name()) {
+            case "WITHER" -> Color.fromRGB(60, 60, 70);
+            case "WARDEN" -> Color.fromRGB(40, 200, 220);
+            default -> Color.fromRGB(190, 70, 255);
+        };
+        plugin.fx.portal(l.clone().add(0, 0.3, 0), pc, Color.fromRGB(20, 0, 30), Math.max(3, gm.entity.getWidth() * 1.6), 60);
+        l.getWorld().strikeLightningEffect(l);
         plugin.fx.particle(l, Particle.SONIC_BOOM, 1, 0, 0, true);
         plugin.fx.particle(l.clone().add(0, 1, 0), Particle.SOUL_FIRE_FLAME, 60, 1.5, 1.5, 1.5, 0.05, null, true);
     }
@@ -336,7 +343,7 @@ public final class Bosses implements Listener {
         long now = plugin.tick();
         if (now - lastWarnTitle < 100) return;
         lastWarnTitle = now;
-        for (Player p : plugin.game.viewers()) p.sendActionBar(Txt.fmt(plugin.settings.msg(key)));
+        plugin.hud.notify("warn", net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(Txt.fmt(plugin.settings.msg(key))), net.kyori.adventure.text.format.TextColor.color(0xE63C32));
     }
 
     private void shoot(GameMob gm, Kind kind, int i) {
@@ -414,7 +421,7 @@ public final class Bosses implements Listener {
             b.e.remove();
             plugin.fx.explosion(l, 1.5, false);
             plugin.fx.particle(l, Particle.SOUL, 12, 0.4, 0.05, true);
-            p.sendActionBar(Txt.fmt("&a&l¡CALAVERA DESTRUIDA!"));
+            plugin.hud.notify("bolt", "¡CALAVERA DESTRUIDA!", net.kyori.adventure.text.format.TextColor.color(0x5ADC5A));
             p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1f, 1.8f);
             return;
         }
@@ -423,7 +430,7 @@ public final class Bosses implements Listener {
         plugin.fx.particle(l, Particle.END_ROD, 12, 0.3, 0.12, true);
         plugin.fx.sound(l, Sound.ENTITY_PLAYER_ATTACK_CRIT, 2f, 1.2f, true);
         p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1.5f, 2f);
-        p.sendActionBar(Txt.fmt("&6&l¡DEVUELTA!"));
+        plugin.hud.notify("bolt", "¡DEVUELTA!", net.kyori.adventure.text.format.TextColor.color(0xF2B632));
     }
 
     @EventHandler

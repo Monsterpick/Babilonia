@@ -73,6 +73,14 @@ public final class BdCommands {
         return 0;
     }
 
+    private static final net.kyori.adventure.text.format.TextColor RED = net.kyori.adventure.text.format.TextColor.color(0xE63C32);
+    private static final net.kyori.adventure.text.format.TextColor GREEN = net.kyori.adventure.text.format.TextColor.color(0x5ADC5A);
+
+    /** Plantilla de la config → texto plano (sin códigos &) para los avisos del HUD. */
+    private static String plain(String tpl, Object... kv) {
+        return net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(Txt.fmt(tpl, kv));
+    }
+
     private static String arg(CommandContext<CommandSourceStack> ctx, String name) {
         try {
             return ctx.getArgument(name, String.class);
@@ -141,6 +149,7 @@ public final class BdCommands {
                         else plugin.mobs.enqueue(def, capped, who);
                         if (capped >= plugin.settings.bigHorde)
                             plugin.game.banner(plugin.settings.msg("hordaTitulo"), plugin.settings.msg("hordaSubtitulo"), org.bukkit.Sound.EVENT_RAID_HORN, 1f, "usuario", who, "cantidad", capped, "tipo", mix ? "monstruos" : def.name());
+                        else plugin.hud.notify("gift", plain(plugin.settings.msg("hordaSubtitulo"), "usuario", who, "cantidad", capped, "tipo", mix ? "monstruos" : def.name()), RED);
                         return ok(ctx, "ttspawn " + type + " x" + capped + (capped < n ? " (recortado de " + n + ")" : "") + " de " + who + " · en cola " + plugin.mobs.queued() + " · vivos " + plugin.mobs.alive());
                     }))));
     }
@@ -183,7 +192,7 @@ public final class BdCommands {
                     double before = plugin.game.baseHp();
                     plugin.game.heal(n);
                     int healed = (int) Math.round(plugin.game.baseHp() - before);
-                    plugin.game.banner("", plugin.settings.msg("curaTitulo") + " &8· " + plugin.settings.msg("curaSubtitulo"), null, 1f, "cantidad", healed, "usuario", who);
+                    plugin.hud.notify("cross", plain(plugin.settings.msg("curaTitulo") + " " + plugin.settings.msg("curaSubtitulo"), "cantidad", healed, "usuario", who), GREEN);
                     return ok(ctx, "ttheal +" + healed + " de " + who + " · base " + (int) plugin.game.baseHp() + "/" + plugin.game.baseMax());
                 })));
     }
@@ -206,8 +215,8 @@ public final class BdCommands {
                     String who = user(ctx);
                     plugin.game.addVictories(d);
                     int v = plugin.game.victories();
-                    plugin.game.banner("", plugin.settings.msg("victoriasCambio"), d > 0 ? org.bukkit.Sound.ENTITY_PLAYER_LEVELUP : org.bukkit.Sound.ENTITY_VILLAGER_NO, 1f,
-                        "usuario", who, "signo", d > 0 ? "+" : "-", "n", Math.abs(d), "victorias", v);
+                    plugin.hud.notify("trophy", plain(plugin.settings.msg("victoriasCambio"), "usuario", who, "signo", d > 0 ? "+" : "-", "n", Math.abs(d), "victorias", v), d > 0 ? GREEN : RED);
+                    for (Player vp : plugin.game.viewers()) vp.playSound(vp.getLocation(), d > 0 ? org.bukkit.Sound.ENTITY_PLAYER_LEVELUP : org.bukkit.Sound.ENTITY_VILLAGER_NO, 1f, 1f);
                     return ok(ctx, "ttwin " + (d > 0 ? "+" : "") + d + " de " + who + " · victorias " + v);
                 })));
     }
@@ -267,6 +276,14 @@ public final class BdCommands {
                 return ok(ctx, "config.yml recargada");
             }))
             .then(Commands.literal("status").executes(this::status))
+            .then(Commands.literal("pack").executes(ctx -> {
+                // vuelve a leer el pack (plugins/BaseDefense/pack.zip si existe) y se lo manda al streamer
+                plugin.pack.start();
+                Player p = plugin.game.streamer();
+                if (p == null) return err(ctx, "no hay streamer en partida");
+                plugin.pack.send(p);
+                return ok(ctx, "pack reenviado a " + p.getName());
+            }))
             .then(Commands.literal("tp")
                 .executes(ctx -> tp(ctx, ctx.getSource().getSender() instanceof Player p ? p : null))
                 .then(word("jugador").suggests(suggest(() -> Bukkit.getOnlinePlayers().stream().map(Player::getName).toList()))
@@ -434,7 +451,7 @@ public final class BdCommands {
     // ───────────────────────────── test ─────────────────────────────
 
     private LiteralArgumentBuilder<CommandSourceStack> test() {
-        List<String> events = List.of("horda", "jefe", "suministro", "municion", "curar", "ganar", "perder", "likes", "caer", "victoria", "lleno", "ronda");
+        List<String> events = List.of("horda", "jefe", "suministro", "municion", "curar", "ganar", "perder", "likes", "caer", "victoria", "lleno", "ronda", "meta", "aviso");
         return Commands.literal("test")
             .executes(ctx -> err(ctx, "uso: /bd test <" + String.join("|", events) + "> [tipo/cantidad]"))
             .then(word("evento").suggests(suggest(() -> {
@@ -478,6 +495,11 @@ public final class BdCommands {
             case "likes" -> Bukkit.dispatchCommand(console, "ttlikes " + (plugin.likes().total() + (extra == null ? plugin.settings.likesGoal / 4 : parse(extra, 1000))));
             case "caer" -> plugin.game.forceFall();
             case "ronda" -> plugin.game.forceWin();
+            case "meta" -> {
+                int left = plugin.loot.goalTarget() - plugin.loot.goalKills();
+                for (int i = 0; i < left; i++) plugin.loot.countKill();
+            }
+            case "aviso" -> plugin.hud.notify("gift", user + " ENVÍA 10 ZOMBIS", net.kyori.adventure.text.format.TextColor.color(0x5ADC5A));
             default -> {
                 return err(ctx, "evento desconocido '" + ev + "'");
             }

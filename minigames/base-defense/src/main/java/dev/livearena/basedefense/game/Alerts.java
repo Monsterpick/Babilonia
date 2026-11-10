@@ -41,10 +41,13 @@ public final class Alerts {
         if (f < 0.25 && now - lastDanger > 120) {
             lastDanger = now;
             siren(1);
-            Title t = Title.title(Component.empty(), Txt.fmt(plugin.settings.msg("peligroBase")), Title.Times.times(Duration.ofMillis(100), Duration.ofMillis(900), Duration.ofMillis(300)));
-            for (Player p : plugin.game.viewers()) p.showTitle(t);
+            plugin.hud.notify("warn", plain(plugin.settings.msg("peligroBase")), net.kyori.adventure.text.format.TextColor.color(0xE63C32));
             plugin.game.redFlash(14);
         }
+    }
+
+    static String plain(String legacy) {
+        return net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(Txt.fmt(legacy));
     }
 
     /** Racha: muchas bajas seguidas en poco tiempo. */
@@ -55,9 +58,8 @@ public final class Alerts {
         streak = recentKills.size();
         if (streak >= 5 && streak % 5 == 0 && now - lastStreak > 20) {
             lastStreak = now;
-            Title t = Title.title(Component.empty(), Txt.fmt(plugin.settings.msg("racha"), "n", streak), Title.Times.times(Duration.ZERO, Duration.ofMillis(700), Duration.ofMillis(200)));
+            plugin.hud.notify("skull", plain(Txt.plain(plugin.settings.msg("racha"), "n", streak)), net.kyori.adventure.text.format.TextColor.color(0xF2B632));
             for (Player p : plugin.game.viewers()) {
-                p.showTitle(t);
                 p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.6f, 1.2f + Math.min(0.8f, streak / 25f));
             }
         }

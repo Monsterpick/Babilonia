@@ -40,12 +40,14 @@ public final class PackServer implements Listener {
     public void start() {
         stop();
         if (!plugin.settings.packEnabled) return;
-        try (InputStream in = plugin.getResource("basedefense-pack.zip")) {
+        java.io.File custom = new java.io.File(plugin.getDataFolder(), "pack.zip");
+        try (InputStream in = custom.isFile() ? new java.io.FileInputStream(custom) : plugin.getResource("basedefense-pack.zip")) {
             if (in == null) {
                 plugin.getLogger().warning("El .jar no trae el pack de texturas");
                 return;
             }
             zip = in.readAllBytes();
+            if (custom.isFile()) plugin.getLogger().info("Usando el pack personalizado plugins/BaseDefense/pack.zip");
             sha1 = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-1").digest(zip));
             http = HttpServer.create(new InetSocketAddress(plugin.settings.packPort), 0);
             http.createContext("/basedefense.zip", ex -> {
@@ -105,6 +107,7 @@ public final class PackServer implements Listener {
             case SUCCESSFULLY_LOADED -> {
                 loaded.add(e.getPlayer().getUniqueId());
                 plugin.weapons.refreshItems();
+                plugin.hud.relayout();
             }
             case DECLINED, FAILED_DOWNLOAD, FAILED_RELOAD, INVALID_URL, DISCARDED -> {
                 loaded.remove(e.getPlayer().getUniqueId());

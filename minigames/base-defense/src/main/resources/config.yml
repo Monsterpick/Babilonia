@@ -149,6 +149,13 @@ municion:
   suministroAlEmpezarFase: true   # caja de suministros (con munición de minigun) en cada fase
   suministroCada: 150         # segundos entre cajas automáticas (0 = solo por fase y regalos)
 
+# ── Meta de bajas ────────────────────────────────────────────────────
+# Cada X bajas cae un cofre dorado en la base: munición para todo, +10 % de vida y daño doble un rato.
+recompensa:
+  bajas: 40                   # bajas para el primer cofre (0 = sin metas)
+  incremento: 10              # cada meta cumplida, la siguiente pide estas bajas más
+  danioDobleSegundos: 20
+
 # ── Pack de texturas ─────────────────────────────────────────────────
 # Texturas apocalípticas, modelos 3D de las armas y sonidos propios. El plugin lo sirve él mismo.
 paquete:
@@ -216,4 +223,7 @@ mensajes:
   ataqueWither: "&8&l¡CALAVERAS! &7dispárales"
   ataqueDragon: "&5&l¡BOLA DE FUEGO! &7devuélvesela"
   ataqueWarden: "&3&l¡CAÑÓN SÓNICO!"
+  metaTitulo: "&6&l¡META CUMPLIDA!"
+  metaSubtitulo: "&7Cae un cofre dorado en la base"
+  metaPremio: "DAÑO DOBLE {segundos} S"
   recargando: "{arma} &8| &eRECARGANDO {barra}"

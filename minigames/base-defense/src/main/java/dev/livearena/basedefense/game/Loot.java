@@ -49,6 +49,35 @@ public final class Loot {
         boolean landed;
         long born;
         String by;
+        boolean gold;
+    }
+
+    private int goalKills, goalTarget = -1;
+
+    /** Meta de bajas: al cumplirla cae un cofre de recompensa (y la siguiente meta es más alta). */
+    public int goalKills() {
+        return goalKills;
+    }
+
+    public int goalTarget() {
+        if (goalTarget < 0) goalTarget = plugin.settings.rewardKills;
+        return goalTarget;
+    }
+
+    public void resetGoal() {
+        goalKills = 0;
+        goalTarget = plugin.settings.rewardKills;
+    }
+
+    public void countKill() {
+        if (plugin.settings.rewardKills <= 0) return;
+        goalKills++;
+        if (goalKills >= goalTarget()) {
+            goalKills = 0;
+            goalTarget = goalTarget() + plugin.settings.rewardGrowth;
+            dropCrate("meta", true);
+            plugin.game.banner(plugin.settings.msg("metaTitulo"), plugin.settings.msg("metaSubtitulo"), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.2f);
+        }
     }
 
     public Loot(BaseDefense plugin) {
@@ -107,8 +136,12 @@ public final class Loot {
 
     /** Cae una caja de suministros en la plataforma. by = quién la manda (o el motivo). */
     public void dropSupply(String by) {
+        if (dropCrate(by, false)) plugin.game.banner(plugin.settings.msg("suministroTitulo"), plugin.settings.msg("suministroSubtitulo"), Sound.ITEM_TRIDENT_RETURN, 0.6f);
+    }
+
+    private boolean dropCrate(String by, boolean gold) {
         World w = plugin.world(false);
-        if (w == null || plugin.arena == null || plugin.arena.platform == null || crates.size() >= 3) return;
+        if (w == null || plugin.arena == null || plugin.arena.platform == null || crates.size() >= 4) return false;
         var pf = plugin.arena.platform;
         double x = pf.getMinX() + 2.5 + plugin.fx.rnd().nextDouble() * (pf.getWidthX() - 5);
         double z = pf.getMinZ() + 3 + plugin.fx.rnd().nextDouble() * Math.max(1, pf.getWidthZ() - 7);
@@ -118,24 +151,25 @@ public final class Loot {
         c.y = at.getY() + 32;
         c.born = plugin.tick();
         c.by = by;
+        c.gold = gold;
         Location top = at.clone();
         top.setY(c.y);
         c.box = w.spawn(top, BlockDisplay.class, d -> {
             d.setPersistent(false);
-            d.setBlock(Material.BARREL.createBlockData());
+            d.setBlock((gold ? Material.GOLD_BLOCK : Material.BARREL).createBlockData());
             d.setTeleportDuration(2);
             d.setGlowing(true);
-            d.setGlowColorOverride(Color.LIME);
+            d.setGlowColorOverride(gold ? Color.fromRGB(255, 200, 40) : Color.LIME);
             d.setTransformation(new Transformation(new Vector3f(-0.45f, 0, -0.45f), new Quaternionf(), new Vector3f(0.9f), new Quaternionf()));
         });
         c.chute = w.spawn(top.clone().add(0, 2.6, 0), BlockDisplay.class, d -> {
             d.setPersistent(false);
-            d.setBlock(Material.RED_WOOL.createBlockData());
+            d.setBlock((gold ? Material.YELLOW_WOOL : Material.RED_WOOL).createBlockData());
             d.setTeleportDuration(2);
             d.setTransformation(new Transformation(new Vector3f(-1.6f, 0, -1.6f), new Quaternionf(), new Vector3f(3.2f, 0.25f, 3.2f), new Quaternionf()));
         });
         crates.add(c);
-        plugin.game.banner(plugin.settings.msg("suministroTitulo"), plugin.settings.msg("suministroSubtitulo"), Sound.ITEM_TRIDENT_RETURN, 0.6f);
+        return true;
     }
 
     // ───────────────────────────── tick ─────────────────────────────
@@ -193,7 +227,7 @@ public final class Loot {
                 }
                 continue;
             }
-            if (now % 5 == 0) plugin.fx.particle(c.at.clone().add(0, 1.2, 0), Particle.HAPPY_VILLAGER, 3, 0.4, 0, false);
+            if (now % 5 == 0) plugin.fx.particle(c.at.clone().add(0, 1.2, 0), c.gold ? Particle.WAX_ON : Particle.HAPPY_VILLAGER, 3, 0.4, 0, false);
             if (p != null && plugin.inGameWorld(p) && p.getLocation().distanceSquared(c.at) < 2.6 * 2.6) {
                 open(c, p);
                 it.remove();
@@ -217,8 +251,13 @@ public final class Loot {
             plugin.weapons.addReserve(p, w, amount);
             got.add(w.id().equals("minigun") ? "&d&lMINIGUN" : w.name());
         }
-        plugin.game.heal(plugin.game.baseMax() * 0.05);
-        p.sendActionBar(Txt.fmt("&a&l+ MUNICIÓN &7para " + String.join("&7, ", got)));
+        plugin.game.heal(plugin.game.baseMax() * (c.gold ? 0.10 : 0.05));
+        if (c.gold) {
+            plugin.weapons.boost(p, plugin.settings.rewardBoostSeconds * 20);
+            plugin.fx.particle(c.at.clone().add(0, 1, 0), Particle.FIREWORK, 60, 0.3, 0.3, 0.3, 0.3, null, true);
+            plugin.hud.notify("trophy", Txt.plain(plugin.settings.msg("metaPremio"), "segundos", plugin.settings.rewardBoostSeconds), net.kyori.adventure.text.format.TextColor.color(0xF2B632));
+        }
+        plugin.hud.notify("crate", "+ MUNICIÓN PARA TODAS LAS ARMAS", net.kyori.adventure.text.format.TextColor.color(0x5ADC5A));
     }
 
     /** Caja pequeña: rellena el arma que más lo necesita. */
@@ -237,6 +276,6 @@ public final class Loot {
         int amount = Math.max(1, (int) Math.round(best.magazine() * (big ? 1.5 : 0.5)));
         plugin.weapons.addReserve(p, best, amount);
         p.playSound(p.getLocation(), Sound.ITEM_ARMOR_EQUIP_IRON, 1f, 1.3f);
-        p.sendActionBar(Txt.fmt("&e+" + amount + " &7balas · " + best.name()));
+        plugin.hud.notify("crate", "+" + amount + " " + Alerts.plain(best.name()), net.kyori.adventure.text.format.TextColor.color(0xF0C83C));
     }
 }

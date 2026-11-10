@@ -86,6 +86,9 @@ public final class BaseDefense extends JavaPlugin {
                 getLogger().info("config.yml actualizada a la v2 (la anterior queda en config-v1.yml)");
             }
         }
+        // añade al config.yml del servidor las claves nuevas de esta versión (conserva lo que el usuario cambió)
+        getConfig().options().copyDefaults(true);
+        saveConfig();
         settings = new Settings(getConfig(), getLogger());
         loadData();
         likes = new LikeGoal(this);

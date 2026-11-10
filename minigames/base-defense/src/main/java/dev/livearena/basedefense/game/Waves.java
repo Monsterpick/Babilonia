@@ -96,7 +96,10 @@ public final class Waves {
         int n = plugin.settings.waveSize + (phase - 1) * plugin.settings.waveGrowth;
         if (n <= 0) return;
         enqueueMix(n, null);
-        plugin.game.banner("", plugin.settings.msg("oleadaSubtitulo"), Sound.EVENT_RAID_HORN, 1.4f, "oleada", wave, "cantidad", n);
+        // las oleadas son frecuentes: aviso pequeño abajo (los carteles grandes quedan para fases y jefes)
+        plugin.hud.notify("warn", Alerts.plain(dev.livearena.basedefense.util.Txt.plain(plugin.settings.msg("oleadaSubtitulo"), "oleada", wave, "cantidad", n)),
+            net.kyori.adventure.text.format.TextColor.color(0xE63C32));
+        for (var p : plugin.game.viewers()) p.playSound(p.getLocation(), Sound.EVENT_RAID_HORN, 0.7f, 1.4f);
     }
 
     /** Mezcla de la fase actual (sorteo por peso entre los mobs desbloqueados). */
