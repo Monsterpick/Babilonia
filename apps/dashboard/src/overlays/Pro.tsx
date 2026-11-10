@@ -215,6 +215,19 @@ interface Notice {
 /** Seguidores («¡Logro conseguido!»), «¡Te mató!» y Quiéreme (corazón de píxeles). Uno detrás de otro. */
 export function NoticesOverlay() {
   const [cur, setCur] = useState<Notice | null>(DEMO ? { key: 1, kind: 'killed', name: 'Espectador de prueba', gift: { name: 'Rose' } } : null)
+  // Vista previa: los tres avisos uno detrás de otro (muerte, seguidor y Quiéreme).
+  useEffect(() => {
+    if (!DEMO) return
+    const demo: Notice[] = [
+      { key: 1, kind: 'killed', name: 'Espectador de prueba', gift: { name: 'Rose' } },
+      { key: 2, kind: 'follow', name: 'Lucía' },
+      { key: 3, kind: 'love', name: 'Mateo', gift: { name: 'Heart Me' } },
+      { key: 4, kind: 'killed', name: '' },
+    ]
+    let i = 0
+    const t = setInterval(() => setCur(demo[++i % demo.length] ?? null), 3500)
+    return () => clearInterval(t)
+  }, [])
   const queue = useRef<Notice[]>([])
   const seq = useRef(1)
   const seenFollow = useRef(new Set<string>())
@@ -235,7 +248,7 @@ export function NoticesOverlay() {
       push({ kind: 'love', name: ev.user.nickname, avatar: ev.user.avatarUrl, gift: { name: ev.payload.name, imageUrl: ev.payload.imageUrl } })
   })
   useOnAction((a: ActionMessage) => {
-    if (a.kind === 'overlay.killed' && a.user) push({ kind: 'killed', name: a.user.nickname, avatar: a.user.avatarUrl, gift: a.gift, action: a.actionName })
+    if (a.kind === 'overlay.killed') push(a.user ? { kind: 'killed', name: a.user.nickname, avatar: a.user.avatarUrl, gift: a.gift, action: a.actionName } : { kind: 'killed', name: '' })
   })
   useEffect(() => {
     if (DEMO) return
@@ -282,7 +295,13 @@ export function NoticesOverlay() {
           </div>
         </div>
       )}
-      {cur.kind === 'killed' && (
+      {cur.kind === 'killed' && !cur.name && (
+        <div key={cur.key} className="la-pop" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '22px 34px', borderRadius: 18, background: 'radial-gradient(circle,#7a0d1a,#2a0308 70%)', boxShadow: '0 0 60px #ff1f3d77' }}>
+          <div style={{ fontSize: 64, fontWeight: 900, textShadow: '0 4px 0 #5a0010, 0 0 30px #ff2d55' }}>¡Has muerto!</div>
+          <div style={{ fontSize: 20, fontWeight: 700, opacity: 0.85 }}>esta vez no fue culpa del chat</div>
+        </div>
+      )}
+      {cur.kind === 'killed' && !!cur.name && (
         <div key={cur.key} className="la-pop" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, padding: 24, borderRadius: 18, background: 'radial-gradient(circle,#7a0d1a,#2a0308 70%)', boxShadow: '0 0 60px #ff1f3d77' }}>
           <div style={{ fontSize: 64, fontWeight: 900, textShadow: '0 4px 0 #5a0010, 0 0 30px #ff2d55' }}>¡Te mató!</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 20px 10px 10px', background: '#140306', border: '3px solid #ff2d55', boxShadow: 'inset 0 0 0 3px #5a0010' }}>

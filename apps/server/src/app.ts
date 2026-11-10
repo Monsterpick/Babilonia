@@ -319,7 +319,7 @@ export class App {
       actionName: action.name,
       color: action.color,
       media: action.media,
-      gift: gift ? { name: gift.name, diamonds: gift.diamonds, count: gift.count, imageUrl: gift.imageUrl ?? this.gifts.imageFor(gift.name) } : undefined,
+      gift: gift ? { name: gift.name, diamonds: gift.diamonds, count: gift.count, imageUrl: gift.imageUrl ?? this.gifts.imageFor(gift.name, gift.diamonds) } : undefined,
       intensity: job.intensity,
       priority: job.priority,
     }
@@ -491,11 +491,12 @@ export class App {
     if (td === 'reset') this.timerOp('reset')
     else if (td === 'pause') this.timerOp('pause')
     // «¡Te mató!»: el último espectador que mandó algo malo en los últimos 2 minutos.
+    // Si no hubo nadie (caída, lava…), el overlay muestra igualmente la muerte.
     const k = this.lastBad
-    if (k && Date.now() - k.ts < 120_000) {
+    if (k && Date.now() - k.ts < 180_000) {
       this.hub.action({ kind: 'overlay.killed', user: k.user, gift: k.gift, actionName: k.actionName, color: k.color, params: {}, intensity: 1, priority: 900 })
       this.log.info('minecraft', `Te mató ${k.user.nickname} (${k.actionName})`)
-    }
+    } else this.hub.action({ kind: 'overlay.killed', user: null, params: {}, intensity: 1, priority: 900 })
   }
 
   publishOverlayCfg(): void {

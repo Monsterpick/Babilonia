@@ -366,6 +366,7 @@ export class MinecraftService extends EventEmitter {
     if (props.size > 0) await this.ensurePortsFree(mc.server.folder, props)
     props = await readProperties(propsFile)
     this.serverPort = Number(props.get('server-port') ?? 25565) || 25565
+    await ensureTrackingRange(mc.server.folder)
     await this.syncBundledPlugin(mc.server.folder)
     await this.syncPluginConfigs()
     this.creating = null
@@ -653,4 +654,44 @@ export function lanIp(): string {
     for (const i of list ?? []) if (i.family === 'IPv4' && !i.internal && !i.address.startsWith('169.254')) return i.address
   }
   return '127.0.0.1'
+}
+
+/**
+ * Las cinemáticas usan entidades «display» (modelos, haces, anillos). El servidor solo se las manda al jugador si están
+ * dentro de su radio de seguimiento (spigot.yml → entity-tracking-range, 128/96 por defecto): con planos de cámara
+ * lejanos o efectos grandes, a veces no llegaban y «no salía el efecto». Se sube ese radio (solo si es menor).
+ */
+export async function ensureTrackingRange(folder: string): Promise<boolean> {
+  const file = path.join(folder, 'spigot.yml')
+  let text: string
+  try {
+    text = await fs.readFile(file, 'utf8')
+  } catch {
+    return false
+  }
+  const want: Record<string, number> = { display: 320, misc: 192, other: 128 }
+  let changed = false
+  const lines = text.split(/\r?\n/)
+  let blockIndent = -1
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]!
+    const indent = line.length - line.trimStart().length
+    if (/^\s*entity-tracking-range:\s*$/.test(line)) {
+      blockIndent = indent
+      continue
+    }
+    if (blockIndent < 0 || !line.trim()) continue
+    if (indent <= blockIndent) {
+      blockIndent = -1
+      continue
+    }
+    const m = /^(\s+)(display|misc|other):\s*(\d+)\s*$/.exec(line)
+    if (m && want[m[2]!] !== undefined && Number(m[3]) < want[m[2]!]!) {
+      lines[i] = `${m[1]}${m[2]}: ${want[m[2]!]}`
+      changed = true
+    }
+  }
+  const out = lines.join('\n')
+  if (changed) await fs.writeFile(file, out, 'utf8')
+  return changed
 }

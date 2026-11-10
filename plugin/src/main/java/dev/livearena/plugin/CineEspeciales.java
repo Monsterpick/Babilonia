@@ -217,18 +217,18 @@ final class CineEspeciales {
                     c.shake(0.2 + (t - 80) / 20.0 * 0.4, 5, 0.9);
                     if (t % 8 == 0) c.sound(at, "choso.compresion", 1.2f, 0.9f + (t - 80) / 30f);
                 }
-                if (t == 76) {
-                    // Voz (1,6 s): «Sangre Perforante» 0–1,3 s y el arranque del disparo (1,35 s = tick 103).
+                if (t == 72) {
+                    // Voz (1,6 s): la frase «¡Sangre Perforante!» termina justo en el disparo (tick 103). El subtítulo sale
+                    // con la voz y la flecha cuando la frase acaba; el destello rojo y el daño solo llegan con el impacto.
                     c.data.put("voiced", c.voice("choso"));
-                    c.say("choso_perforante", "¡Sangre Perforante!", 0xff2a3a, 48);
+                    c.say("choso_perforante", "¡Sangre Perforante!", 0xff2a3a, 40);
                 }
-                if (t == 100) {
-                    c.anim(ch, "perforar");
-                    c.screenFx(CineNet.SPEEDLINES, 0xff000000, 0, 14, 6);
-                    c.tint(0x508a0010, 0, 2, 5);
-                    c.shake(0.8, 8, 0.85);
+                if (t == 101) c.anim(ch, "perforar");
+                if (t == 103) {
+                    fire(c, at, yaw);
+                    c.screenFx(CineNet.SPEEDLINES, 0xff000000, 0, 12, 6);
+                    c.shake(0.4, 6, 0.85);
                 }
-                if (t == 103) fire(c, at, yaw);
                 Integer fired = get(c, "fired");
                 Integer imp = get(c, "imp");
                 if (fired != null && imp == null) advance(c, t);
@@ -448,7 +448,10 @@ final class CineEspeciales {
                 // 175 bloques de la cámara) y la Tierra del fondo va fijada a la cámara, como un cielo.
                 // Por encima de las nubes (y≈192) para que no se vean bajo el satélite.
                 Location sat = g.clone().add(0, c.cfg("alturaEspacio", 340.0), 0);
-                if (sat.getY() < 420) sat.setY(420);
+                // Todo lo del espacio (satélite, fondo y el rayo, que va 160-300 bloques por debajo con el truco de la
+                // caja de dibujo) queda por encima del techo del mundo (y=320): ahí el cliente lo dibuja siempre. Por
+                // debajo solo lo dibujaría si esa zona entra en tu distancia de renderizado (con 6-8 chunks no salía el rayo).
+                if (sat.getY() < 640) sat.setY(640);
                 float scale = (float) c.cfg("tamanoSatelite", 2.0);
                 Location muzzle = sat.clone().add(dir.clone().multiply(8.75 * scale));
                 c.data.put("sat", sat);
@@ -540,12 +543,15 @@ final class CineEspeciales {
                     c.anim(get(c, "satD"), "activar");
                     c.sound(sat, "orbital.activar", 3f, 0.7f);
                     // Carga: haces de energía que entran en la boca y chispas entre los aros (sin esfera que tape el cañón).
+                    // Va anclado al hueso del cañón (sigue su deslizamiento, retroceso y giro) con el centro entre los aros.
                     ItemDisplay core = c.actor(fx.itemDisplay(muzzle.clone().add(0, -40, 0), new ItemStack(Material.AIR), 1f, 0));
                     core.setDisplayWidth(120f);
                     core.setDisplayHeight(120f);
                     core.setViewRange(16f);
                     c.model(core, "fx_carga", "idle", 1f);
-                    setAxis(core, muzzle, muzzle.clone().add(dir), 1.25f * scale, 1.25f * scale, 0, 40);
+                    setAxis(core, muzzle, muzzle.clone().add(dir), 1.1f * scale, 1.1f * scale, 0, 0);
+                    double along = (116 - 40) / 16.0 * scale; // del pivote del cañón (z=40 px) al centro de los aros (z≈116 px)
+                    c.attach(core, get(c, "satD"), "canon", dir.getX() * along, dir.getY() * along, dir.getZ() * along);
                     c.data.put("core", core);
                 }
                 if (t == 122) c.anim(get(c, "satD"), "cargando");

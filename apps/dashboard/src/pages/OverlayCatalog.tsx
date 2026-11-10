@@ -179,7 +179,7 @@ const SECTIONS: { title: string; hint: string; items: Def[] }[] = [
       {
         id: 'logros',
         name: 'Logros, «¡Te mató!» y Quiéreme',
-        desc: 'Seguidor nuevo = «¡Logro conseguido!» (una vez por persona). Si mueres después de un mob o trampa, sale quién te mató. Quiéreme = corazón de píxeles que late.',
+        desc: 'Tres avisos en uno: seguidor nuevo = «¡Logro conseguido!» (una vez por persona); al morir, quién te mató (el último que te mandó un mob o trampa en 3 min) o «¡Has muerto!»; y cada Quiéreme, con su corazón de píxeles que late.',
         w: 600,
         h: 360,
       },

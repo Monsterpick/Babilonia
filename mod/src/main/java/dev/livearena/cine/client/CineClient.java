@@ -267,7 +267,16 @@ public final class CineClient {
 
     private static void fog(ViewportEvent.RenderFog e) {
         if (skyMode == 2) e.scaleFarPlaneDistance(0.55f);
-        else if (skyMode == 1) e.scaleFarPlaneDistance(1.6f);
+        else if (skyMode == 1) {
+            // En el espacio no hay niebla: con una distancia de renderizado corta el rayo del satélite (cientos de
+            // bloques) se perdía en la niebla negra aunque el satélite y la Tierra sí se veían.
+            var fd = e.getFogData();
+            fd.environmentalStart = fd.environmentalEnd = 1.0e5f;
+            fd.renderDistanceStart = fd.renderDistanceEnd = 1.0e5f;
+            fd.skyEnd = 1.0e5f;
+            e.setNearPlaneDistance(1.0e5f);
+            e.setFarPlaneDistance(1.0e5f);
+        }
     }
 
     /* ------------------------------------ cámara ------------------------------------ */
@@ -447,7 +456,23 @@ public final class CineClient {
             }
             clipDist = Math.min(len, clipDist + Math.max(0.04, (len - clipDist) * 0.12));
         } else clipDist = clipDist < 0 ? want : Math.min(want, clipDist + Math.max(0.04, (want - clipDist) * 0.12));
-        return look.add(off.scale(clipDist / len));
+        Vec3 out = look.add(off.scale(clipDist / len));
+        // Dentro de hierba alta, flores, hojas o nieve (sin colisión, el rayo no los ve) la pantalla se llena de verde:
+        // se acerca la cámara al foco hasta salir del bloque.
+        Vec3 dir = off.normalize();
+        double d = clipDist;
+        for (int i = 0; i < 24 && d > 0.6 && !clearAt(mc, out); i++) {
+            d -= 0.2;
+            out = look.add(dir.scale(d));
+        }
+        if (d < clipDist - 1e-3) clipDist = d;
+        return out;
+    }
+
+    private static boolean clearAt(Minecraft mc, Vec3 p) {
+        var pos = net.minecraft.core.BlockPos.containing(p);
+        var st = mc.level.getBlockState(pos);
+        return st.isAir() || st.getFluidState().isEmpty() && st.getCollisionShape(mc.level, pos).isEmpty() && st.getShape(mc.level, pos).isEmpty();
     }
 
     /** Sacudida también fuera de la cinemática (para los que miran cerca). */
