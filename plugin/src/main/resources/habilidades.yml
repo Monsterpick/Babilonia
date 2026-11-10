@@ -28,9 +28,32 @@ genkidama:         { alturaVuelo: 16.0, radioMax: 12.0, velocidad: 0.4, danio: 5
 meteorito:         { radioCrater: 18, profundidadCrater: 10, radioLetal: 6.0, radioDanio: 30.0, danioMax: 100.0, bloquesEyeccion: 80, radioSacudida: 150 }
 mil_cortes:        { alturaSantuario: 20.0, enterrarSantuario: 0.3, distanciaSantuario: 14.0, radio: 10.0, cortesPorTick: 3, danioCorte: 1.0, danioFinal: 30.0, romperBloques: true, distanciaSukunaSinLanzador: 12.0 }
 vacio_purpura:     { velocidad: 0.6, radioOrbe: 3.0, radioDestruccion: 3.0, radioAtraccion: 10.0, radioNucleo: 1.5, danioTick: 2.0, distanciaMax: 80.0, radioDetonacion: 7, danioFinal: 30.0 }
-sangre_perforante: { distancia: 9.0, danio: 30.0, perforacion: 0.6, witherSegundos: 4, witherNivel: 2, empuje: 2.8, grosor: 0.22, distanciaDestruccion: 28.0, radioDestruccion: 1.4, romperBloques: true }
+sangre_perforante: { distancia: 9.0, velocidadFlecha: 2.25, danio: 30.0, perforacion: 0.6, witherSegundos: 4, witherNivel: 2, empuje: 2.8, grosor: 0.22, distanciaDestruccion: 28.0, radioDestruccion: 1.4, romperBloques: true }
 ataque_orbital:    { altura: 180.0, inclinacion: 72.0, escalaSatelite: 4.0, anchoLaser: 6.0, radioCrater: 22, profundidadCrater: 16, bloquesPorTick: 1500, danio: 60.0, radioDanio: 26.0, impulso: 1.6 }
 akaza:             { distanciaAparicion: 8.0, radioCopo: 10.0, radioCrater: 7, danio: 20.0, danioGolpe: 0.5, impulsoGancho: 1.7, knockbackHorizontal: 2.5, knockbackVertical: 1.2 }
+
+# Daño de cada habilidad al jugador objetivo (lo cambia la app en Cinemáticas → Daño y tótems):
+#   corazonesGolpe: corazones de cada golpe durante la habilidad (-1 = los de la propia habilidad)
+#   corazonesFinal: corazones del golpe final
+#   totemsDurante:  tótems que quita mientras dura (uno por golpe, como mucho cada medio segundo)
+#   totemsFinal:    tótems que quita en el golpe final
+# Mientras le queden tótems el daño no le mata (los tótems que pierde son exactamente estos); sin tótems, sí.
+danio:
+  onda_repulsion: { corazonesGolpe: 1, corazonesFinal: 4, totemsDurante: 0, totemsFinal: 1 }
+  corona_espadas: { corazonesGolpe: 2.5, corazonesFinal: 5, totemsDurante: 0, totemsFinal: 1 }
+  super_rayo: { corazonesGolpe: 1, corazonesFinal: 12.5, totemsDurante: 0, totemsFinal: 1 }
+  trueno_explosion: { corazonesGolpe: 3, corazonesFinal: 15, totemsDurante: 0, totemsFinal: 1 }
+  carrusel_creepers: { corazonesGolpe: 2.5, corazonesFinal: 10, totemsDurante: 0, totemsFinal: 1 }
+  ojo_vacio: { corazonesGolpe: 1, corazonesFinal: 12, totemsDurante: 0, totemsFinal: 1 }
+  agujero_negro: { corazonesGolpe: 1, corazonesFinal: 10, totemsDurante: 0, totemsFinal: 1 }
+  juicio_arcano: { corazonesGolpe: 4, corazonesFinal: 20, totemsDurante: 0, totemsFinal: 1 }
+  genkidama: { corazonesGolpe: 1, corazonesFinal: 25, totemsDurante: 0, totemsFinal: 1 }
+  meteorito: { corazonesGolpe: 1, corazonesFinal: 50, totemsDurante: 0, totemsFinal: 1 }
+  mil_cortes: { corazonesGolpe: 0.5, corazonesFinal: 15, totemsDurante: 0, totemsFinal: 1 }
+  vacio_purpura: { corazonesGolpe: 1, corazonesFinal: 15, totemsDurante: 0, totemsFinal: 1 }
+  akaza: { corazonesGolpe: 0.5, corazonesFinal: 10, totemsDurante: 0, totemsFinal: 1 }
+  sangre_perforante: { corazonesGolpe: 2, corazonesFinal: 15, totemsDurante: 0, totemsFinal: 1 }
+  ataque_orbital: { corazonesGolpe: 1, corazonesFinal: 30, totemsDurante: 0, totemsFinal: 1 }
 
 # Formato «sonidos del mod|sonidos de Minecraft»: los livearena:sfx.* son audios propios del mod (los oye quien
 # lo tiene); lo que va después de «|», el resto de jugadores.

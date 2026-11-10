@@ -8,6 +8,11 @@ public final class LiveArenaPlugin extends JavaPlugin {
     private TotemManager totems;
     private CineEngine cine;
 
+    /** Contador de tótems apilables (lo usan las cinemáticas para quitar tótems). */
+    TotemManager totems() {
+        return totems;
+    }
+
     @Override
     public void onEnable() {
         saveDefaultConfig();

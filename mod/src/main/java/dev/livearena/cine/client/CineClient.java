@@ -153,6 +153,14 @@ public final class CineClient {
                 case 9 -> CineModels.anim(in.readInt(), in.readUTF());
                 case 10 -> CineModels.remove(in.readInt());
                 case 11 -> CineModels.attach(in.readInt(), in.readInt(), in.readUTF(), in.readFloat(), in.readFloat(), in.readFloat());
+                case 13 -> { // SOUND: sonido de cinemática sin atenuación (se oye aunque la cámara esté lejos)
+                    String key = in.readUTF();
+                    float vol = in.readFloat(), pitch = in.readFloat();
+                    Minecraft mc = Minecraft.getInstance();
+                    mc.execute(() -> mc.getSoundManager().play(new net.minecraft.client.resources.sounds.SimpleSoundInstance(Identifier.parse(key),
+                            net.minecraft.sounds.SoundSource.MASTER, vol, pitch, net.minecraft.util.RandomSource.create(), false, 0,
+                            net.minecraft.client.resources.sounds.SoundInstance.Attenuation.NONE, 0, 0, 0, true)));
+                }
                 case 12 -> { // SUBTITLE
                     subText = in.readUTF();
                     subRgb = in.readInt();

@@ -8,78 +8,119 @@ from geo import Geo, anim, save_anims, tex_path
 
 N = 'satelite'
 rnd = random.Random(11)
-S = 256
+S = 512
 img = Image.new('RGBA', (S, S), (0, 0, 0, 0))
 glow = Image.new('RGBA', (S, S), (0, 0, 0, 0))
 d, gd = ImageDraw.Draw(img), ImageDraw.Draw(glow)
 
 
-def region(x, y, w, h, base, seams=True, noise=10):
+def plating(x, y, w, h, base, panel=32, noise=6):
+    """Placas metálicas de tonos variados con juntas, remaches y desgaste."""
+    for py in range(y, y + h, panel // 2):
+        for px in range(x, x + w, panel):
+            tone = rnd.randint(-14, 10)
+            col = tuple(max(0, min(255, c + tone)) for c in base) + (255,)
+            d.rectangle([px, py, min(x + w, px + panel) - 1, min(y + h, py + panel // 2) - 1], fill=col)
     for yy in range(y, y + h):
         for xx in range(x, x + w):
+            r, g, b, _ = img.getpixel((xx, yy))
             v = rnd.randint(-noise, noise)
-            img.putpixel((xx, yy), tuple(max(0, min(255, c + v)) for c in base) + (255,))
-    if seams:
-        for k in range(0, w, 16):
-            d.line([(x + k, y), (x + k, y + h - 1)], fill=tuple(max(0, c - 22) for c in base) + (255,))
-        for k in range(0, h, 16):
-            d.line([(x, y + k), (x + w - 1, y + k)], fill=tuple(max(0, c - 22) for c in base) + (255,))
+            img.putpixel((xx, yy), (max(0, min(255, r + v)), max(0, min(255, g + v)), max(0, min(255, b + v)), 255))
+    dark = tuple(max(0, c - 34) for c in base) + (255,)
+    light = tuple(min(255, c + 26) for c in base) + (255,)
+    for py in range(y, y + h, panel // 2):
+        d.line([(x, py), (x + w - 1, py)], fill=dark)
+        d.line([(x, py + 1), (x + w - 1, py + 1)], fill=light)
+        for px in range(x + (panel // 2 if (py // (panel // 2)) % 2 else 0), x + w, panel):
+            d.line([(px, py), (px, py + panel // 2 - 1)], fill=dark)
+    for py in range(y + 3, y + h, panel // 2):
+        for px in range(x + 3, x + w, 8):
+            img.putpixel((px, py), light)
     return (x, y, w, h)
 
 
-HULL = region(0, 0, 64, 64, (58, 60, 66))
-# Greebles en el casco
-for _ in range(26):
-    gx, gy = rnd.randint(1, 56), rnd.randint(1, 56)
-    gw, gh = rnd.randint(3, 8), rnd.randint(2, 6)
-    d.rectangle([gx, gy, gx + gw, gy + gh], fill=(40, 42, 48, 255), outline=(84, 88, 96, 255))
-HULL2 = region(64, 0, 64, 64, (86, 88, 94))
-# Ventanas iluminadas en filas
-for row in range(4):
-    yy = 6 + row * 16
-    for k in range(9):
-        xx = 64 + 3 + k * 7
-        lit = rnd.random() < 0.8
-        col = (255, 235, 200, 255) if lit else (30, 32, 38, 255)
-        d.rectangle([xx, yy, xx + 3, yy + 2], fill=col)
+def stripes(x, y, w, h):
+    for k in range(-h, w, 8):
+        d.polygon([(x + k, y + h), (x + k + 4, y + h), (x + k + 4 + h, y), (x + k + h, y)], fill=(235, 180, 30, 255))
+    d.rectangle([x, y, x + w - 1, y + h - 1], outline=(40, 34, 20, 255))
+
+
+# Casco: placas grises con franjas de aviso, rejillas y la matrícula «LA-1».
+HULL = plating(0, 0, 128, 128, (70, 73, 80))
+for _ in range(10):
+    gx, gy = rnd.randint(4, 100), rnd.randint(4, 110)
+    d.rectangle([gx, gy, gx + rnd.randint(8, 22), gy + rnd.randint(4, 12)], fill=(36, 38, 44, 255), outline=(110, 114, 122, 255))
+for k in range(6):
+    d.line([(10, 96 + k * 3), (50, 96 + k * 3)], fill=(30, 32, 36, 255))  # rejilla
+stripes(60, 100, 60, 10)
+d.text((70, 20), 'LA-1', fill=(225, 228, 232, 255))
+d.text((71, 21), 'LA-1', fill=(225, 228, 232, 255))
+# Módulos con ventanas iluminadas.
+HULL2 = plating(128, 0, 128, 128, (104, 107, 114), panel=24)
+for row in range(6):
+    yy = 8 + row * 20
+    for k in range(14):
+        xx = 128 + 4 + k * 9
+        lit = rnd.random() < 0.78
+        col = (255, 236, 196, 255) if lit else (28, 30, 36, 255)
+        d.rectangle([xx, yy, xx + 5, yy + 3], fill=col)
         if lit:
-            gd.rectangle([xx, yy, xx + 3, yy + 2], fill=(255, 235, 200, 255))
-    d.line([(64, yy + 8), (127, yy + 8)], fill=(150, 20, 30, 255))
-    gd.line([(64, yy + 8), (127, yy + 8)], fill=(255, 40, 50, 255))
-SOLAR = (128, 0, 64, 64)
+            gd.rectangle([xx, yy, xx + 5, yy + 3], fill=(255, 236, 196, 255))
+    d.line([(128, yy + 11), (255, yy + 11)], fill=(170, 18, 28, 255), width=2)
+    gd.line([(128, yy + 11), (255, yy + 11)], fill=(255, 40, 50, 255), width=2)
+# Paneles solares: celdas azules con degradado y marco plateado.
+SOLAR = (256, 0, 128, 128)
+for yy in range(128):
+    for xx in range(128):
+        cx, cy = xx % 16, yy % 16
+        frame = cx == 0 or cy == 0
+        grad = int(30 * (1 - yy / 128))
+        v = rnd.randint(-5, 5)
+        if frame:
+            img.putpixel((256 + xx, yy), (176, 182, 194, 255))
+        else:
+            sheen = 22 if (cx + cy) % 15 == 7 else 0
+            img.putpixel((256 + xx, yy), (14 + v + sheen, 30 + v + grad // 2 + sheen, 92 + grad + v * 2 + sheen, 255))
+# Raíles del cañón con conductos rojos.
+RAIL = plating(384, 0, 128, 128, (52, 54, 60), panel=16, noise=4)
+for k in (34, 92):
+    d.line([(384, k), (511, k)], fill=(210, 20, 30, 255), width=3)
+    gd.line([(384, k), (511, k)], fill=(255, 50, 60, 255), width=3)
+RING = plating(0, 128, 64, 64, (222, 224, 230), panel=16, noise=4)
+stripes(0, 180, 64, 8)
+RED = (64, 128, 64, 64)
+d.rectangle([64, 128, 127, 191], fill=(255, 40, 50, 255))
+gd.rectangle([64, 128, 127, 191], fill=(255, 60, 70, 255))
+BLACK = plating(128, 128, 64, 64, (20, 20, 24), panel=16, noise=3)
+TRUSS = (192, 128, 64, 64)
+for k in range(0, 64, 16):
+    d.line([(192 + k, 128), (192 + k + 16, 191)], fill=(140, 144, 152, 255), width=3)
+    d.line([(192 + k + 16, 128), (192 + k, 191)], fill=(140, 144, 152, 255), width=3)
+d.rectangle([192, 128, 255, 191], outline=(160, 164, 170, 255), width=3)
+ENGINE = (256, 128, 64, 64)
 for yy in range(64):
     for xx in range(64):
-        cell = (xx % 8 == 0) or (yy % 8 == 0)
-        v = rnd.randint(-6, 6)
-        img.putpixel((128 + xx, yy), (150, 156, 168, 255) if cell else (18 + v, 34 + v, 78 + v * 2, 255))
-RAIL = region(192, 0, 64, 64, (44, 46, 52), noise=6)
-for k in (20, 44):
-    d.line([(192, k), (255, k)], fill=(200, 20, 30, 255), width=2)
-    gd.line([(192, k), (255, k)], fill=(255, 50, 60, 255), width=2)
-RING = region(0, 64, 32, 32, (226, 228, 232), seams=False, noise=6)
-d.line([(0, 79), (31, 79)], fill=(160, 164, 170, 255))
-RED = (32, 64, 32, 32)
-d.rectangle([32, 64, 63, 95], fill=(255, 40, 50, 255))
-gd.rectangle([32, 64, 63, 95], fill=(255, 60, 70, 255))
-BLACK = region(64, 64, 32, 32, (16, 16, 20), seams=False, noise=4)
-TRUSS = (96, 64, 32, 32)
-d.rectangle([96, 64, 127, 95], fill=(0, 0, 0, 0))
-for k in range(0, 32, 8):
-    d.line([(96 + k, 64), (96 + k + 8, 95)], fill=(120, 124, 132, 255), width=2)
-    d.line([(96 + k + 8, 64), (96 + k, 95)], fill=(120, 124, 132, 255), width=2)
-d.rectangle([96, 64, 127, 95], outline=(140, 144, 150, 255), width=2)
-ENGINE = (128, 64, 32, 32)
-for yy in range(32):
-    for xx in range(32):
-        r = math.hypot(xx - 15.5, yy - 15.5) / 16
-        c = (255, int(80 + 120 * max(0, 1 - r)), int(60 + 100 * max(0, 1 - r)), 255) if r < 0.75 else (40, 40, 46, 255)
-        img.putpixel((128 + xx, 64 + yy), c)
-        if r < 0.75:
-            glow.putpixel((128 + xx, 64 + yy), c)
+        r = math.hypot(xx - 31.5, yy - 31.5) / 32
+        if r < 0.78:
+            k = max(0, 1 - r / 0.78)
+            c = (255, int(90 + 140 * k), int(70 + 150 * k * k), 255)
+            img.putpixel((256 + xx, 128 + yy), c)
+            glow.putpixel((256 + xx, 128 + yy), c)
+        else:
+            img.putpixel((256 + xx, 128 + yy), (46, 46, 52, 255))
+RADIATOR = (320, 128, 64, 64)
+for yy in range(64):
+    for xx in range(64):
+        img.putpixel((320 + xx, 128 + yy), (232, 234, 238, 255) if xx % 6 else (170, 174, 182, 255))
+DISH = (384, 128, 64, 64)
+for yy in range(64):
+    for xx in range(64):
+        r = math.hypot(xx - 31.5, yy - 31.5) / 32
+        img.putpixel((384 + xx, 128 + yy), (int(200 + 40 * (1 - r)), int(204 + 40 * (1 - r)), int(212 + 30 * (1 - r)), 255) if r < 1 else (180, 184, 190, 255))
 img.save(tex_path(N))
 glow.save(tex_path(N, '_glowmask'))
 
-g = Geo(N, S, S, bounds=(16, 16, -8))
+g = Geo(N, S, S, bounds=(16, 16, -8))  # textura de 512 px
 root = g.bone('root')
 casco = g.bone('casco', 'root')
 # Casco principal largo con módulos a los lados y arriba.
@@ -137,6 +178,26 @@ for i, z in enumerate((104, 116, 128)):
         g.cube(ring, (-w / 2, R - 2, z - 2), (w, 4, 4), RING, rotation=(0, 0, a), pivot=(0, 0, z))
         if k % 3 == 0:
             g.cube(ring, (-1, R - 4, z - 1), (2, 2, 2), RED, rotation=(0, 0, a), pivot=(0, 0, z))
+# Antena parabólica (discos escalonados) sobre un mástil.
+antena = g.bone('antena', 'casco', pivot=(0, 17, -70))
+g.cube(antena, (-1.5, 17, -71.5), (3, 10, 3), RING)
+for k, (rr, hh) in enumerate(((13, 1.2), (10, 1.2), (6, 1.2), (2, 4))):
+    g.cube(antena, (-rr, 27 + k * 1.1, -70 - rr), (rr * 2, hh, rr * 2), DISH, rotation=(18, 0, 0), pivot=(0, 27, -70))
+# Radiadores blancos a los lados del motor.
+for side in (-1, 1):
+    rad = g.bone(f'radiador_{"izq" if side < 0 else "der"}', 'casco', pivot=(side * 14, 0, -84))
+    x0 = 14 if side > 0 else -14 - 22
+    g.cube(rad, (x0, -0.4, -96), (22, 0.8, 18), RADIATOR)
+    g.cube(rad, (x0 + (0 if side > 0 else 20), -1, -88), (2, 2, 3), TRUSS)
+# Módulos cilíndricos (prismas de 8 caras) debajo del casco.
+for z0 in (-60, -22):
+    for k in range(8):
+        g.cube(casco, (-4, -24, z0), (8, 3.3, 26), HULL2, rotation=(0, 0, k * 45), pivot=(0, -19, z0 + 13))
+# Propulsores de maniobra en las esquinas.
+for sx in (-1, 1):
+    for sz in (-80, 20):
+        g.cube(casco, (sx * 15 - 2, 8, sz), (4, 4, 6), BLACK)
+        g.cube(casco, (sx * 15 - 1.5, 8.5, sz - 0.5), (3, 3, 0.6), ENGINE)
 g.save()
 
 E_ = 'easeInOutSine'

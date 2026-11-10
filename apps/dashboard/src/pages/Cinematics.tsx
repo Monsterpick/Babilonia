@@ -31,7 +31,42 @@ interface CineSettings {
   bloquesPorTick: number
   colaMax: number
   escudoCorazones: number
+  danio: Record<string, Danio>
   exists: boolean
+}
+
+interface Danio {
+  corazonesGolpe: number
+  corazonesFinal: number
+  totemsDurante: number
+  totemsFinal: number
+}
+
+/** Número pequeño con etiqueta (para la tarjeta de daño). */
+function DmgField({ label, title, value, min, step, onChange }: { label: string; title: string; value: number; min: number; step: number; onChange: (v: number) => void }) {
+  const [text, setText] = useState(String(value))
+  useEffect(() => setText(String(value)), [value])
+  return (
+    <label className="flex items-center justify-between gap-2 rounded-lg bg-black/20 px-2 py-1.5" title={title}>
+      <span className="text-[11px] text-muted">{label}</span>
+      <input
+        type="number"
+        className="input !w-[4.5rem] !px-2 !py-1 text-right text-xs"
+        min={min}
+        step={step}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={() => {
+          const n = Number(text)
+          if (text.trim() === '' || Number.isNaN(n)) return setText(String(value))
+          const v = Math.max(min, n)
+          if (v !== value) onChange(v)
+          else setText(String(value))
+        }}
+        onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+      />
+    </label>
+  )
 }
 
 function Step({ ok, warn, title, detail }: { ok: boolean; warn?: boolean; title: string; detail?: string }) {
@@ -89,6 +124,18 @@ export function CinematicsPage() {
       toast((e as Error).message, 'error')
     } finally {
       setTimeout(() => setRunning(null), 1200)
+    }
+  }
+
+  const patchDanio = async (id: string, d: Partial<Danio>) => {
+    if (!settings) return
+    const next = { ...settings.danio[id]!, ...d }
+    setSettings({ ...settings, danio: { ...settings.danio, [id]: next } })
+    try {
+      setSettings(await api<CineSettings>('PUT', '/api/cine/settings', { danio: { [id]: d } }))
+      toast('Daño guardado: se aplica en la próxima cinemática')
+    } catch (e) {
+      toast((e as Error).message, 'error')
     }
   }
 
@@ -194,6 +241,20 @@ export function CinematicsPage() {
                   </div>
                 </div>
                 <p className="mt-2 min-h-[2.5rem] text-xs text-muted">{a.desc}</p>
+                {settings?.danio?.[a.id] && (
+                  <div className="mt-3 rounded-xl border border-white/5 p-2">
+                    <div className="mb-1.5 flex items-center justify-between text-[11px] font-semibold">
+                      <span>Daño y tótems</span>
+                      <span className="text-muted">al jugador objetivo</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <DmgField label="❤ por golpe" title="Corazones de cada golpe mientras dura (-1 = los de la propia habilidad)" value={settings.danio[a.id]!.corazonesGolpe} min={-1} step={0.5} onChange={(v) => void patchDanio(a.id, { corazonesGolpe: v })} />
+                      <DmgField label="❤ golpe final" title="Corazones del golpe final" value={settings.danio[a.id]!.corazonesFinal} min={0} step={0.5} onChange={(v) => void patchDanio(a.id, { corazonesFinal: v })} />
+                      <DmgField label="Tótems durante" title="Tótems que quita mientras dura (uno por golpe, como mucho cada medio segundo)" value={settings.danio[a.id]!.totemsDurante} min={0} step={1} onChange={(v) => void patchDanio(a.id, { totemsDurante: Math.round(v) })} />
+                      <DmgField label="Tótems al final" title="Tótems que quita en el golpe final" value={settings.danio[a.id]!.totemsFinal} min={0} step={1} onChange={(v) => void patchDanio(a.id, { totemsFinal: Math.round(v) })} />
+                    </div>
+                  </div>
+                )}
                 <div className="mt-3 flex gap-2">
                   <button className="btn-accent flex-1 justify-center" disabled={running === a.id} onClick={() => void run(a.id)}>
                     {running === a.id ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />} Probar
@@ -255,7 +316,8 @@ export function CinematicsPage() {
             </p>
             <p>Si llegan varias a la vez, esperan en cola y se lanzan una detrás de otra.</p>
             <p>
-              El golpe final de cada habilidad gasta un tótem (como el resto de efectos). Los números de cada habilidad están en <code className="text-white">plugins/LiveArena/habilidades.yml</code>.
+              En cada tarjeta eliges los corazones que quita cada golpe y el golpe final, y cuántos tótems quita durante y al final. Mientras le queden tótems, el
+              daño no le mata: pierde exactamente esos tótems. Sin tótems, sí puede morir. El resto de números está en <code className="text-white">plugins/LiveArena/habilidades.yml</code>.
             </p>
           </div>
         </div>

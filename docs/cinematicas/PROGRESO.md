@@ -67,3 +67,18 @@ Durante las habilidades Paper no expulsa por «volar» (y la app pone allow-flig
   tajo, onda de choque, aura y desvanecer.
 - Sonidos con formato `mod|vanilla` en `habilidades.yml`: lo de la izquierda lo oyen los jugadores con el mod y lo de
   la derecha el resto. Los archivos antiguos con el valor por defecto anterior se actualizan solos.
+
+## v6 — Sonido en cinemáticas, daño y tótems configurables, flecha de sangre y espacio real
+
+- **Sonido**: el oyente de Minecraft sigue a la cámara, así que con la cámara lejos (p. ej. en el espacio) no se oía nada.
+  Ahora el plugin manda a los jugadores con el mod un mensaje `SOUND` (13) y el mod lo reproduce sin atenuación;
+  los demás jugadores siguen oyendo los sonidos de Minecraft posicionados. Las voces van por el mismo camino.
+- **Daño y tótems por habilidad** (`habilidades.yml → danio.<id>`, editable en la app, Cinemáticas → cada tarjeta):
+  `corazonesGolpe` (−1 = los de la habilidad), `corazonesFinal`, `totemsDurante` (uno por golpe, máx. cada 0,5 s) y
+  `totemsFinal`. El daño es mágico (exacto, sin armadura). Mientras le queden tótems el daño no le mata: pierde
+  exactamente los tótems configurados; sin tótems sí puede morir.
+- **Sangre Perforante**: proyectil con forma de flecha (shader `ARROW`), asta fina, espiral de sangre y estelas;
+  `velocidadFlecha` (bloques/tick) y cámara que acompaña a la flecha durante el vuelo.
+- **Ataque orbital**: Vía Láctea, Tierra (día, noche con luces, nubes, reflejo del sol, atmósfera) y Luna con
+  imágenes reales (Solar System Scope, CC BY 4.0, basadas en NASA y ESO; créditos en `textures/espacio/CREDITOS.txt`),
+  shader `fxsphere`, sol con destello y satélite con textura de 512 px y más piezas (antena, radiadores, módulos).

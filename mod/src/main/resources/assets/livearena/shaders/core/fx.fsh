@@ -186,6 +186,22 @@ void main() {
                 c = col.rgb * (0.35 + 0.6 * f) + col2;
             }
         }
+    } else if (mode == 11) {
+        // Punta de flecha: uv.x a lo ancho (±1), uv.y a lo largo (0 = base, 1 = punta). par.x = 1: solo el brillo.
+        float y = clamp(uv.y, 0.0, 1.0);
+        float w = y > 0.42 ? (1.0 - y) / 0.58 : mix(0.18, 0.62, smoothstep(0.0, 0.42, y));
+        w *= 1.0 + 0.25 * smoothstep(0.30, 0.42, y) * step(y, 0.42); // aletas
+        float x = abs(uv.x);
+        float inside = smoothstep(w + 0.05, w - 0.03, x);
+        float core = exp(-x * x / (w * w * 0.12 + 0.002)) * smoothstep(0.05, 0.5, y);
+        float rim = smoothstep(w - 0.18, w - 0.02, x) * inside;
+        if (par.x > 0.5) {
+            a = (core * 1.2 + exp(-max(x - w, 0.0) * 9.0) * 0.35 * step(0.02, w)) * smoothstep(0.0, 0.15, y);
+            c = mix(col.rgb, col2, core);
+        } else {
+            a = inside;
+            c = mix(col.rgb, col2, core * 0.9) + col2 * rim * 0.25;
+        }
     } else {
         // Color liso (núcleos oscuros, líneas).
         a = smoothstep(1.0, 0.8, r);

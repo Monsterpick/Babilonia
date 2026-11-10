@@ -16,7 +16,7 @@ import org.bukkit.entity.Player;
 final class CineNet {
     static final String CHANNEL = "livearena:cine";
 
-    static final byte SHOT = 1, END = 2, SHAKE = 3, SCREEN = 4, SKY = 5, KEEPALIVE = 6, CAPTION = 7, MODEL = 8, MODEL_ANIM = 9, MODEL_REMOVE = 10, MODEL_ATTACH = 11, SUBTITLE = 12;
+    static final byte SHOT = 1, END = 2, SHAKE = 3, SCREEN = 4, SKY = 5, KEEPALIVE = 6, CAPTION = 7, MODEL = 8, MODEL_ANIM = 9, MODEL_REMOVE = 10, MODEL_ATTACH = 11, SUBTITLE = 12, SOUND = 13;
 
     /** Curvas de interpolación de la cámara (mismos valores en el mod). */
     static final byte LINEAR = 0, EASE_IN_OUT = 1, EASE_IN_EXPO = 2, EASE_OUT_EXPO = 3, CUT = 4;
@@ -186,6 +186,11 @@ final class CineNet {
     /** Frase en pantalla (subtítulo de cine). */
     static byte[] subtitle(String text, int rgb, int ticks) {
         return new Msg(SUBTITLE).s(text).i(rgb).i(ticks).bytes();
+    }
+
+    /** Sonido de cinemática que el mod reproduce sin atenuación (el oyente de Minecraft sigue a la cámara, que puede estar lejos). */
+    static byte[] sound(String key, float volume, float pitch) {
+        return new Msg(SOUND).s(key).f(volume).f(pitch).bytes();
     }
 
     static byte[] modelRemove(int entityId) {

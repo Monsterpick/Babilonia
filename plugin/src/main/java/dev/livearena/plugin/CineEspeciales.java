@@ -79,18 +79,23 @@ final class CineEspeciales {
     }
 
     private static void setAxis(ItemDisplay d, Location from, Location to, float width, int ticks) {
+        setAxis(d, from, to, width, width, ticks);
+    }
+
+    /** yScale: libre para pasar un dato al efecto (p. ej. la velocidad de la flecha, en bloques/s ÷ 100). */
+    private static void setAxis(ItemDisplay d, Location from, Location to, float width, float yScale, int ticks) {
         if (d == null || !d.isValid()) return;
         Vector v = to.toVector().subtract(from.toVector());
         float len = (float) v.length();
         Quaternionf q = new Quaternionf().rotationTo(new Vector3f(0, 0, 1), new Vector3f((float) v.getX(), (float) v.getY(), (float) v.getZ()).normalize());
         d.setInterpolationDelay(0);
         d.setInterpolationDuration(ticks);
-        d.setTransformation(new Transformation(new Vector3f(), q, new Vector3f(width, width, Math.max(0.01f, len)), new Quaternionf()));
+        d.setTransformation(new Transformation(new Vector3f(), q, new Vector3f(width, yScale, Math.max(0.01f, len)), new Quaternionf()));
     }
 
     /** Daño que atraviesa la armadura en una fracción `pierce` (esa parte es de tipo mágico). */
     private void piercing(CineEngine.Ctx c, LivingEntity le, double amount, double pierce) {
-        if (le == c.target && e.plugin.getConfig().getBoolean("cinematicas.golpe-letal-final", true)) {
+        if (le == c.target) {
             c.finalHit(c.target, amount);
             return;
         }
@@ -225,7 +230,10 @@ final class CineEspeciales {
                 dir.normalize();
                 double len = from.distance(aim) + c.cfg("distanciaDestruccion", 28.0);
                 Location to = from.clone().add(dir.clone().multiply(len));
+                double speed = c.cfg("velocidadFlecha", 2.25); // bloques por tick (×20 = bloques/s)
+                c.data.put("speed", speed);
                 ItemDisplay beam = axis(c, from, to, "fx_perforante", (float) c.cfg("grosor", 0.22), null, "disparar");
+                setAxis(beam, from, to, (float) c.cfg("grosor", 0.22), (float) (speed * 20 / 100.0), 0);
                 c.data.put("beam", beam);
                 c.data.put("from", from);
                 c.data.put("dir", dir);
@@ -237,21 +245,25 @@ final class CineEspeciales {
                 if (Boolean.TRUE.equals(c.data.get("voiced"))) c.sound(from, "choso.disparo", 0.7f, 1f);
                 else c.sound(from, "choso.disparo", 2.5f, 1.7f);
                 c.target.removePotionEffect(PotionEffectType.SLOWNESS);
-                // Plano de manga: el haz cruza el encuadre lateral.
-                Location m = mid(at, c.feet(), 0.5);
+                // La cámara acompaña a la flecha de lado durante el vuelo (se ve la punta entera).
                 Vector lat = lateral(at, c.feet());
+                double hit = Math.max(1, from.distance(aim));
+                int flight = (int) Math.max(3, Math.ceil(hit / speed));
                 CineNet.Shot s = c.shot();
-                s.key(0, m.clone().add(lat.clone().multiply(at.distance(c.feet()) * 0.75 + 2.5)).add(0, 1.3, 0), m.clone().add(0, 1.2, 0), 58, CUT);
-                s.key(12, m.clone().add(lat.clone().multiply(at.distance(c.feet()) * 0.72 + 2.4)).add(0, 1.3, 0), m.clone().add(dir.clone().multiply(1.5)).add(0, 1.2, 0), 60, LINEAR);
+                Location cam0 = from.clone().add(lat.clone().multiply(3.6)).add(0, 0.4, 0).add(dir.clone().multiply(-1.2));
+                s.key(0, cam0, from.clone().add(dir.clone().multiply(-0.6)), 58, CUT);
+                Location cam1 = from.clone().add(dir.clone().multiply(hit - 1.8)).add(lat.clone().multiply(3.6)).add(0, 0.4, 0);
+                s.key(flight, cam1, from.clone().add(dir.clone().multiply(hit - 0.6)), 58, LINEAR);
+                s.key(flight + 8, cam1.clone().add(lat.clone().multiply(0.8)), from.clone().add(dir.clone().multiply(hit + 0.5)), 66, LINEAR);
                 c.cam(s);
             }
 
-            /** Avanza el proyectil 4,5 bloques/tick con un barrido de segmento: no puede atravesar sin impactar. */
+            /** Avanza el proyectil `velocidadFlecha` bloques/tick con un barrido de segmento: no puede atravesar sin impactar. */
             void advance(CineEngine.Ctx c, int t) {
                 Location from = get(c, "from");
                 Vector dir = get(c, "dir");
                 double len = (double) c.data.get("len");
-                double p0 = (double) c.data.get("prog"), p1 = Math.min(len, p0 + 4.5);
+                double p0 = (double) c.data.get("prog"), p1 = Math.min(len, p0 + (double) c.data.get("speed"));
                 c.data.put("prog", p1);
                 Location a = from.clone().add(dir.clone().multiply(p0));
                 if (!CineNet.hasMod(c.target)) CineFx.line(c.w, a, from.clone().add(dir.clone().multiply(p1)), 0.3, 0xc0101c, 1.6f);

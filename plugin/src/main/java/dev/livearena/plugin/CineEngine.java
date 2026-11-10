@@ -186,13 +186,28 @@ final class CineEngine implements Listener, TabExecutor {
                 plainKeys = keys.substring(bar + 1);
             }
             // Los audios propios están hechos a su tono: solo se varía un poco.
-            List<Sound> mod = sounds(modKeys, vol, bar >= 0 ? 1f + (pitch - 1f) * 0.3f : pitch);
+            float modPitch = bar >= 0 ? 1f + (pitch - 1f) * 0.3f : pitch;
             List<Sound> plain = sounds(plainKeys, vol, pitch);
+            List<String> modList = new ArrayList<>();
+            for (String key : modKeys.split(",")) {
+                key = key.trim();
+                if (!key.isEmpty()) modList.add(key.contains(":") ? key : "minecraft:" + key);
+            }
+            float range = 24f * Math.max(1f, vol);
             for (Player p : w.getPlayers()) {
-                if (p.getLocation().distanceSquared(at) > 160 * 160) continue;
+                double d = p.getLocation().distance(at);
+                if (CineNet.hasMod(p)) {
+                    // Con el mod, el sonido llega directo (sin depender de dónde esté la cámara de cine).
+                    double k = p == target ? 1 : Math.max(0, 1 - d / range);
+                    if (k < 0.05) continue;
+                    float v = (float) (Math.min(1f, vol) * k);
+                    for (String key : modList) net.send(p, CineNet.sound(key, v, Math.max(0.5f, Math.min(2f, modPitch))));
+                    continue;
+                }
+                if (d > 160) continue;
                 // Volumen > 1 solo amplía el alcance: se oye a cualquier distancia del jugador como si estuviera cerca.
-                Location near = p.getLocation().distanceSquared(at) > 12 * 12 ? p.getLocation().add(at.toVector().subtract(p.getLocation().toVector()).normalize().multiply(6)) : at;
-                for (Sound snd : CineNet.hasMod(p) ? mod : plain) p.playSound(snd, near.getX(), near.getY(), near.getZ());
+                Location near = d > 12 ? p.getLocation().add(at.toVector().subtract(p.getLocation().toVector()).normalize().multiply(6)) : at;
+                for (Sound snd : plain) p.playSound(snd, near.getX(), near.getY(), near.getZ());
             }
         }
 
@@ -335,7 +350,7 @@ final class CineEngine implements Listener, TabExecutor {
             Sound s = Sound.sound(k, Sound.Source.MASTER, vol, 1f);
             for (Player p : w.getPlayers()) {
                 if (!CineNet.hasMod(p) || p.getLocation().distanceSquared(origin) > 160 * 160) continue;
-                p.playSound(s, Sound.Emitter.self());
+                net.send(p, CineNet.sound(key, vol, 1f));
             }
             return CineNet.hasMod(target);
         }
@@ -356,18 +371,93 @@ final class CineEngine implements Listener, TabExecutor {
             for (Player p : w.getPlayers()) net.send(p, CineNet.modelAnim(holder.getEntityId(), anim));
         }
 
+        /* --- daño y tótems configurables (habilidades.yml → danio.<id>) --- */
+
+        /** Ajuste de daño de esta habilidad (sección «danio»); def si no está. */
+        double dmg(String key, double def) {
+            return cfgFile.getDouble("danio." + ab.id + "." + key, def);
+        }
+
+        int totemsDuringLeft = -1;
+        int lastTotemTick = -1000;
+        boolean finalDone;
+
+        private int totemsDuring() {
+            if (totemsDuringLeft < 0) totemsDuringLeft = Math.max(0, (int) dmg("totemsDurante", 0));
+            return totemsDuringLeft;
+        }
+
+        /** Quita hasta n tótems apilados con la animación de tótem; devuelve cuántos quitó. */
+        int takeTotems(Player p, int n) {
+            if (n <= 0 || !p.isOnline()) return 0;
+            TotemManager tm = plugin.totems();
+            int k = Math.min(n, tm.get(p.getName()));
+            if (k <= 0) return 0;
+            tm.add(p.getName(), -k);
+            p.playEffect(org.bukkit.EntityEffect.PROTECTED_FROM_DEATH);
+            p.playSound(Sound.sound(Key.key("minecraft", "item.totem.use"), Sound.Source.MASTER, 1f, 1f), Sound.Emitter.self());
+            tm.announceRemoved(p, k, viewer);
+            return k;
+        }
+
+        /**
+         * Daño al objetivo: si quedan tótems apilados, no baja de medio corazón (los tótems que se pierden son
+         * exactamente los configurados); sin tótems sí puede matar.
+         */
+        private void hurtTarget(Player p, double hp) {
+            if (hp <= 0 || !p.isOnline() || p.isDead()) return;
+            if (plugin.totems().get(p.getName()) > 0) hp = Math.min(hp, Math.max(0, p.getHealth() + p.getAbsorptionAmount() - 1));
+            if (world.nonLethal()) hp = Math.min(hp, Math.max(0, p.getHealth() + p.getAbsorptionAmount() - 2));
+            if (hp <= 0 || !CineWorld.affectable(p, launcher)) return;
+            // Daño exacto en corazones: de tipo mágico, la armadura no lo reduce.
+            p.setNoDamageTicks(0);
+            p.damage(hp, org.bukkit.damage.DamageSource.builder(org.bukkit.damage.DamageType.MAGIC).build());
+            p.setNoDamageTicks(0);
+        }
+
         void damage(LivingEntity e, double amount, boolean fast) {
+            if (e == target) {
+                // Golpe durante la habilidad: corazones configurados (si los hay) y, a ritmo, los tótems «durante».
+                double h = dmg("corazonesGolpe", -1);
+                hurtTarget(target, h >= 0 ? h * 2 : amount);
+                if (totemsDuring() > 0 && t - lastTotemTick >= 10) {
+                    lastTotemTick = t;
+                    totemsDuringLeft -= Math.max(1, takeTotems(target, 1));
+                }
+                return;
+            }
             world.damage(e, amount, fast, launcher);
         }
 
-        /** Golpe final: si está activado «golpe-letal-final», gasta un tótem (o mata) como el resto de efectos de LiveArena. */
+        /** Golpe final: quita los tótems configurados (y los «durante» que falten) y hace el daño final en corazones. */
         void finalHit(Player p, double amount) {
-            if (plugin.getConfig().getBoolean("cinematicas.golpe-letal-final", true)) {
-                if (p.isOnline() && !p.isDead() && CineWorld.affectable(p, launcher)) {
-                    p.setNoDamageTicks(0);
-                    p.damage(plugin.getConfig().getDouble("efectos.danio-golpe", 1000.0));
-                }
-            } else damage(p, amount, true);
+            if (p != target) {
+                damage(p, amount, true);
+                return;
+            }
+            if (finalDone) {
+                hurtTarget(p, dmg("corazonesFinal", amount / 2) * 2);
+                return;
+            }
+            finalDone = true;
+            boolean letal = plugin.getConfig().getBoolean("cinematicas.golpe-letal-final", true);
+            int tf = (int) dmg("totemsFinal", letal ? 1 : 0);
+            int during = totemsDuring();
+            totemsDuringLeft = 0;
+            takeTotems(p, Math.max(0, tf) + during);
+            hurtTarget(p, dmg("corazonesFinal", amount / 2) * 2);
+        }
+
+        /** Al terminar sin golpe final (o si faltan tótems «durante» por quitar). */
+        void settleTotems() {
+            if (!target.isOnline()) return;
+            if (!finalDone) {
+                boolean letal = plugin.getConfig().getBoolean("cinematicas.golpe-letal-final", true);
+                // Solo las habilidades de ataque (las que tienen sección de daño) quitan tótems al final por su cuenta.
+                if (cfgFile.isConfigurationSection("danio." + ab.id)) takeTotems(target, Math.max(0, (int) dmg("totemsFinal", letal ? 1 : 0)) + totemsDuring());
+                finalDone = true;
+            } else if (totemsDuring() > 0) takeTotems(target, totemsDuring());
+            totemsDuringLeft = 0;
         }
     }
 
@@ -590,6 +680,13 @@ final class CineEngine implements Listener, TabExecutor {
     void finish(Ctx c, boolean cancelled) {
         if (c.ended) return;
         c.ended = true;
+        if (!cancelled) {
+            try {
+                c.settleTotems();
+            } catch (RuntimeException ex) {
+                plugin.getLogger().warning("Tótems de " + c.ab.id + ": " + ex);
+            }
+        }
         try {
             c.ab.end(c, cancelled);
         } catch (RuntimeException ex) {
