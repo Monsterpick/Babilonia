@@ -632,7 +632,7 @@ export function MinigamesPage() {
               {showGuide && (
                 <div className="space-y-3 border-t border-line px-5 py-4 text-xs leading-relaxed text-muted">
                   <p>
-                    <b className="text-white">Armas:</b> teclas 1–5. Clic derecho dispara (mantén pulsado para ráfaga), clic izquierdo o <b>F</b> recarga. Los disparos a la cabeza hacen ×1,6. Dispárale a la bola de fuego del Ghast para devolvérsela.
+                    <b className="text-white">Armas:</b> teclas 1–6 (pistola, subfusil, ametralladora, lanzagranadas, lanzacohetes y minigun). Clic derecho dispara (mantén pulsado para ráfaga; la minigun gira antes de disparar), clic izquierdo o <b>F</b> recarga. A la cabeza hace ×1,6. Munición: cajas que sueltan los mobs, suministros en paracaídas (tócalos) y el cofre dorado de la meta de bajas. Dispara a las calaveras del Wither para romperlas y a las bolas de fuego del Dragón para devolvérselas.
                   </p>
                   <p>
                     <b className="text-white">Rondas:</b> si el tiempo llega a 0 con la base en pie, +1 victoria. Si la base cae, −1 victoria, se limpian los mobs y la ronda vuelve a empezar con la base al máximo.
@@ -643,6 +643,7 @@ export function MinigamesPage() {
                   <pre className="overflow-x-auto rounded-lg bg-black/40 p-3 font-mono text-[11px] text-white/85">{`ttspawn <tipo> <cantidad> <usuario>
 ttboss <jefe> <usuario>
 ttheal <cantidad> <usuario>
+ttaliado <misil|bombardeo|rayo> <usuario>
 ttwin <+n|-n> <usuario>
 ttlikes <total de likes>`}</pre>
                   <p>Tipos: zombie, skeleton, spider, creeper. Jefes: ravager, blaze, ghast, wither, warden, dragon. El usuario va al final y puede tener espacios y emojis. LiveArena ya envía los likes sola.</p>
