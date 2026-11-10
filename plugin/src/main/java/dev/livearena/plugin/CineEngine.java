@@ -596,6 +596,8 @@ final class CineEngine implements Listener, TabExecutor {
         String key = id.toLowerCase(Locale.ROOT);
         Ability a = abilities.get(ALIASES.getOrDefault(key, key));
         if (a == null || target == null) return false;
+        // En el minijuego Base Defense no hay cinemáticas (modos separados).
+        if (Minijuego.en(target)) return false;
         if (running.containsKey(target.getUniqueId())) {
             Deque<Runnable> q = queue.computeIfAbsent(target.getUniqueId(), k -> new ArrayDeque<>());
             if (q.size() < Math.max(0, cfgFile.getInt("general.colaMax", 10))) q.add(() -> start(a, target, launcher, viewer, announce));

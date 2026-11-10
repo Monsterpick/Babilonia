@@ -50,190 +50,113 @@ mobs:
   spawnPorTick: 6       # cuántos salen del portal por tick como máximo
   hordaGrande: 25       # a partir de esta cantidad se anuncia "¡LLEGA LA HORDA!"
   maxPorComando: 500    # tope de cantidad por /ttspawn
-  # Nombre sobre cada mob. {usuario} = nombre del donante.
-  etiqueta: "&e[Donante] &a{usuario}"
-  # En hordas grandes solo se etiqueta una parte para no saturar.
+  # Nombre sobre los mobs de un donante ({usuario}). Debajo va su barra de vida.
+  etiqueta: "&e{usuario}"
+  # En hordas grandes solo se nombra a una parte; el resto lleva solo su barra de vida.
   etiquetasPorHorda: 6
   etiquetasMax: 90
-  # Tipos. Añadir uno nuevo = añadir una entrada (entidad = tipo de Minecraft).
+  # fase = desde qué fase sale en las oleadas automáticas · peso = lo frecuente que es.
+  # Añadir uno nuevo = añadir una entrada (entidad = cualquier mob de Minecraft que camine).
   tipos:
-    zombie:
-      entidad: zombie
-      vida: 20
-      velocidad: 0.23
-      danio: 10
-      nombre: "Zombi"
-    skeleton:
-      entidad: skeleton
-      vida: 16
-      velocidad: 0.25
-      danio: 8
-      nombre: "Esqueleto"
-    spider:
-      entidad: spider
-      vida: 14
-      velocidad: 0.32
-      danio: 6
-      nombre: "Araña"
-    creeper:
-      entidad: creeper
-      vida: 18
-      velocidad: 0.22
-      danio: 35
-      nombre: "Creeper"
-    # Ejemplos para añadir más (descomenta):
-    # husk:     { entidad: husk, vida: 26, velocidad: 0.22, danio: 14, nombre: "Momia" }
-    # piglin:   { entidad: zombified_piglin, vida: 30, velocidad: 0.24, danio: 16, nombre: "Piglin" }
+    zombie:          { entidad: zombie,          vida: 20, velocidad: 0.23, danio: 10, nombre: "Zombi",               fase: 1, peso: 10 }
+    skeleton:        { entidad: skeleton,        vida: 16, velocidad: 0.25, danio: 8,  nombre: "Esqueleto",           fase: 1, peso: 7 }
+    spider:          { entidad: spider,          vida: 14, velocidad: 0.32, danio: 6,  nombre: "Araña",               fase: 2, peso: 6 }
+    zombie_villager: { entidad: zombie_villager, vida: 22, velocidad: 0.23, danio: 10, nombre: "Aldeano zombi",       fase: 2, peso: 4 }
+    husk:            { entidad: husk,            vida: 26, velocidad: 0.22, danio: 14, nombre: "Momia",               fase: 2, peso: 4 }
+    piglin:          { entidad: piglin,          vida: 24, velocidad: 0.30, danio: 16, nombre: "Piglin",              fase: 3, peso: 6 }
+    stray:           { entidad: stray,           vida: 20, velocidad: 0.25, danio: 12, nombre: "Esqueleto glacial",   fase: 3, peso: 4 }
+    cave_spider:     { entidad: cave_spider,     vida: 12, velocidad: 0.36, danio: 8,  nombre: "Araña venenosa",      fase: 3, peso: 4 }
+    wither_skeleton: { entidad: wither_skeleton, vida: 30, velocidad: 0.26, danio: 22, nombre: "Esqueleto wither",    fase: 4, peso: 5 }
+    vindicator:      { entidad: vindicator,      vida: 28, velocidad: 0.30, danio: 24, nombre: "Vindicador",          fase: 4, peso: 3 }
+    bogged:          { entidad: bogged,          vida: 18, velocidad: 0.25, danio: 12, nombre: "Esqueleto pantanoso", fase: 4, peso: 3 }
+    piglin_brute:    { entidad: piglin_brute,    vida: 50, velocidad: 0.30, danio: 35, nombre: "Piglin bruto",        fase: 5, peso: 3 }
+    creeper:         { entidad: creeper,         vida: 18, velocidad: 0.22, danio: 35, nombre: "Creeper",             fase: 5, peso: 3 }
+    ravager:         { entidad: ravager,         vida: 90, velocidad: 0.20, danio: 70, nombre: "Devastador",          fase: 5, peso: 1 }
+
+# ── Oleadas y fases ──────────────────────────────────────────────────
+# La ronda se divide en fases; cada fase suma mobs nuevos y oleadas más grandes (además de los regalos).
+oleadas:
+  activadas: true
+  fases: 5
+  cada: 35             # segundos entre oleadas automáticas
+  tamano: 5            # mobs por oleada en la fase 1
+  crecimiento: 3       # mobs más por oleada en cada fase
+  vidaPorFase: 0.15    # +15 % de vida de los mobs por fase
+  velocidadPorFase: 0.04
 
 # ── Jefes ────────────────────────────────────────────────────────────
+# No desaparecen al llegar: se colocan frente a la base y la atacan hasta que los matas.
 jefes:
-  # % de vida por debajo del cual el jefe se enfurece y acelera
-  furia: 35
-  aceleracionFuria: 1.6
+  furia: 35               # % de vida bajo el que se enfurece (ataca y se mueve más rápido)
+  aceleracionFuria: 1.5
   tipos:
     wither:
       entidad: wither
-      vida: 600
-      velocidad: 0.16      # bloques por tick para los voladores
-      danio: 300
+      vida: 700
+      velocidad: 0.16      # bloques por tick
       escala: 1.6
       altura: 9            # altura de vuelo sobre el carril
+      distanciaAtaque: 22  # se queda a esta distancia de la base y dispara
+      ataqueCada: 2.2      # segundos entre calaveras
+      danioAtaque: 35      # daño a la base por calavera (dispárales para destruirlas)
       nombre: "WITHER"
     dragon:
       entidad: ender_dragon
-      vida: 900
-      velocidad: 0.14
-      danio: 450
+      vida: 1000
+      velocidad: 0.15
       escala: 1.0
-      altura: 14
-      nombre: "DRAGÓN"
-    ghast:
-      entidad: ghast
-      vida: 400
-      velocidad: 0.10
-      danio: 250
-      escala: 1.3
-      altura: 15
-      nombre: "GHAST"
-      # Bolas de fuego hacia la base (cada N segundos). Dispárale a la bola para devolverla.
-      bolaCada: 6
-      bolaDanioBase: 60
-      bolaDanioJefe: 80
-    blaze:
-      entidad: blaze
-      vida: 300
-      velocidad: 0.18
-      danio: 200
-      escala: 2.2
-      altura: 6
-      nombre: "BLAZE"
-    ravager:
-      entidad: ravager
-      vida: 500
-      velocidad: 0.20
-      danio: 350
-      escala: 1.5
-      nombre: "DEVASTADOR"
+      altura: 16
+      distanciaAtaque: 30
+      ataqueCada: 3.0      # bolas de fuego (dispárales para devolvérselas)
+      danioAtaque: 60
+      danioDevuelta: 90    # daño al dragón con su bola devuelta
+      nombre: "DRAGÓN DEL END"
     warden:
       entidad: warden
-      vida: 800
+      vida: 900
       velocidad: 0.13
-      danio: 500
-      escala: 1.25
+      escala: 1.3
+      distanciaAtaque: 26  # desde aquí lanza su cañón sónico
+      ataqueCada: 4.0
+      danioAtaque: 55      # cañón sónico
+      danioEmbestida: 80   # cuando llega a la base embiste una y otra vez
+      embestidaCada: 2.5
       nombre: "WARDEN"
 
 # ── Meta de likes ────────────────────────────────────────────────────
 likes:
   meta: 5000
-  jefe: ghast
+  jefe: wither
   donante: "la comunidad"
 
 # ── Armas ────────────────────────────────────────────────────────────
-# tipo: hitscan | cohete | granada
-# cadencia = disparos por segundo · dispersion en grados · recarga en segundos
-# modelo: id de item_model para un resource pack (vacío = ítem vanilla)
+# tipo: hitscan | cohete | granada · cadencia = disparos/s · dispersion en grados · recarga en s
+# cargador = balas por cargador · reserva = balas de repuesto al empezar (-1 = infinitas)
+# La barrita bajo cada arma en la hotbar es la munición que le queda en el cargador.
+# sonido: "sonido del pack|sonido vanilla" (el segundo se usa si no aceptas el pack)
 armas:
-  pistola:
-    slot: 0
-    item: crossbow
-    modelo: ""
-    nombre: "&ePistola"
-    tipo: hitscan
-    automatica: false
-    danio: 9
-    cadencia: 5
-    alcance: 110
-    dispersion: 0.4
-    cargador: 15
-    recarga: 1.2
-    sonido: entity.firework_rocket.blast
-    tono: 1.8
-  subfusil:
-    slot: 1
-    item: iron_hoe
-    modelo: ""
-    nombre: "&bSubfusil"
-    tipo: hitscan
-    automatica: true
-    danio: 5
-    cadencia: 12
-    alcance: 90
-    dispersion: 2.2
-    cargador: 40
-    recarga: 1.8
-    sonido: entity.firework_rocket.blast
-    tono: 2.0
-  metralleta:
-    slot: 2
-    item: netherite_hoe
-    modelo: ""
-    nombre: "&cMetralleta"
-    tipo: hitscan
-    automatica: true
-    danio: 6
-    cadencia: 20
-    alcance: 120
-    dispersion: 1.6
-    cargador: 150
-    recarga: 3.5
-    sonido: entity.firework_rocket.large_blast
-    tono: 1.7
-  lanzacohetes:
-    slot: 3
-    item: firework_rocket
-    modelo: ""
-    nombre: "&6Lanzacohetes"
-    tipo: cohete
-    automatica: false
-    danio: 40
-    cadencia: 1.2
-    alcance: 140
-    dispersion: 0
-    cargador: 4
-    recarga: 2.6
-    radio: 5
-    velocidad: 2.2
-    sonido: entity.firework_rocket.launch
-    tono: 0.7
-  lanzagranadas:
-    slot: 4
-    item: fire_charge
-    modelo: ""
-    nombre: "&aLanzagranadas"
-    tipo: granada
-    automatica: false
-    danio: 30
-    cadencia: 2
-    alcance: 80
-    dispersion: 0
-    cargador: 6
-    recarga: 2.4
-    radio: 4.5
-    velocidad: 1.35
-    rebotes: 2
-    mecha: 2.2
-    sonido: entity.snowball.throw
-    tono: 0.6
+  pistola:       { slot: 0, item: crossbow,        modelo: "basedefense:pistola",       nombre: "&ePistola",        tipo: hitscan, automatica: false, danio: 9,  cadencia: 5,   alcance: 110, dispersion: 0.4, cargador: 15,  reserva: -1,  recarga: 1.1, sonido: "basedefense:arma.pistola|entity.firework_rocket.blast" }
+  subfusil:      { slot: 1, item: iron_hoe,        modelo: "basedefense:subfusil",      nombre: "&bSubfusil",       tipo: hitscan, automatica: true,  danio: 5,  cadencia: 12,  alcance: 90,  dispersion: 2.2, cargador: 40,  reserva: 240, recarga: 1.6, sonido: "basedefense:arma.subfusil|entity.firework_rocket.blast" }
+  ametralladora: { slot: 2, item: netherite_hoe,   modelo: "basedefense:ametralladora", nombre: "&cAmetralladora",  tipo: hitscan, automatica: true,  danio: 7,  cadencia: 16,  alcance: 120, dispersion: 1.4, cargador: 100, reserva: 300, recarga: 3.2, sonido: "basedefense:arma.ametralladora|entity.firework_rocket.large_blast" }
+  lanzagranadas: { slot: 3, item: fire_charge,     modelo: "basedefense:lanzagranadas", nombre: "&aLanzagranadas",  tipo: granada, automatica: false, danio: 32, cadencia: 2,   alcance: 80,  dispersion: 0,   cargador: 6,   reserva: 18,  recarga: 2.4, radio: 4.5, velocidad: 1.35, rebotes: 2, mecha: 2.0, sonido: "basedefense:arma.granada|entity.snowball.throw" }
+  lanzacohetes:  { slot: 4, item: firework_rocket, modelo: "basedefense:lanzacohetes",  nombre: "&6Lanzacohetes",   tipo: cohete,  automatica: false, danio: 45, cadencia: 1.2, alcance: 140, dispersion: 0,   cargador: 4,   reserva: 8,   recarga: 2.6, radio: 5.5, velocidad: 2.2, sonido: "basedefense:arma.cohete|entity.firework_rocket.launch" }
+  minigun:       { slot: 5, item: diamond_hoe,     modelo: "basedefense:minigun",       nombre: "&d&lMinigun",      tipo: hitscan, automatica: true,  danio: 6,  cadencia: 20,  balasPorTick: 2, calentamiento: 0.7, alcance: 120, dispersion: 2.6, cargador: 400, reserva: 0, recarga: 4.0, sonido: "basedefense:arma.minigun|entity.firework_rocket.blast" }
+
+# ── Munición y suministros ──────────────────────────────────────────
+municion:
+  probabilidadCaja: 0.10      # un mob suelta una caja de munición (vuela sola hasta ti)
+  probabilidadCajaJefe: 1.0
+  suministroAlEmpezarFase: true   # caja de suministros (con munición de minigun) en cada fase
+  suministroCada: 150         # segundos entre cajas automáticas (0 = solo por fase y regalos)
+
+# ── Pack de texturas ─────────────────────────────────────────────────
+# Texturas apocalípticas, modelos 3D de las armas y sonidos propios. El plugin lo sirve él mismo.
+paquete:
+  activado: true
+  puerto: 25590
+  # Dirección desde la que tu Minecraft descarga el pack. Jugando en tu PC: 127.0.0.1. En un host: su IP pública.
+  url: "http://127.0.0.1:{puerto}/basedefense.zip"
+  obligatorio: false
 
 # ── Rendimiento ──────────────────────────────────────────────────────
 rendimiento:
@@ -261,7 +184,7 @@ ambiente:
 mensajes:
   prefijo: "&8[&cBase Defense&8] &7"
   bossbarBase: "&c&lVIDA DE LA BASE &f{vida}&7/&f{max} &8(&e{porcentaje}%&8)"
-  bossbarRonda: "&6RONDA {ronda} &8· &f⏱ {tiempo} &8· &e🏆 Victorias: {victorias}"
+  bossbarRonda: "&6RONDA {ronda} &8· &cFASE {fase} &8· &f⏱ {tiempo} &8· &e🏆 {victorias}"
   bossbarLikes: "&d❤ Faltan &f{faltan} &dlikes para &c&l{jefe}"
   hordaTitulo: "&c&l¡LLEGA LA HORDA!"
   hordaSubtitulo: "&e{usuario} &7envía &f{cantidad} {tipo}"
@@ -280,5 +203,17 @@ mensajes:
   curaSubtitulo: "&7gracias a &e{usuario}"
   victoriasCambio: "&e{usuario} &7{signo}{n} victoria(s) &8→ &f{victorias}"
   jefeDerrotado: "&a&l¡{jefe} DERROTADO!"
-  municion: "{arma} &8| &f{balas}&7/{cargador}"
+  municion: "{arma} &8| &f{balas}&7/{cargador} &8· &7reserva &f{reserva}"
+  sinMunicion: "{arma} &8| &c&lSIN MUNICIÓN &7· cajas y suministros"
+  calentando: "{arma} &8| &dGIRANDO {barra}"
+  faseTitulo: "&6&lFASE {fase}"
+  faseSubtitulo: "&7Nuevos enemigos: &f{nuevos}"
+  oleadaSubtitulo: "&cOleada {oleada} &8· &f{cantidad} enemigos"
+  suministroTitulo: "&a&l¡SUMINISTROS!"
+  suministroSubtitulo: "&7Cae una caja en la base &8· &ftócala para abrirla"
+  peligroBase: "&4&l⚠ ¡LA BASE ESTÁ EN PELIGRO! ⚠"
+  racha: "&6&l¡{n} SEGUIDAS!"
+  ataqueWither: "&8&l¡CALAVERAS! &7dispárales"
+  ataqueDragon: "&5&l¡BOLA DE FUEGO! &7devuélvesela"
+  ataqueWarden: "&3&l¡CAÑÓN SÓNICO!"
   recargando: "{arma} &8| &eRECARGANDO {barra}"

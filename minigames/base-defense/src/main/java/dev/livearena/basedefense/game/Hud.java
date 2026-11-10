@@ -89,7 +89,8 @@ public final class Hud {
         base.progress(frac);
         base.color(frac > 0.6 ? BossBar.Color.GREEN : frac > 0.3 ? BossBar.Color.YELLOW : BossBar.Color.RED);
         String time = g.paused() ? "PAUSA" : Txt.time(g.secondsLeft());
-        round.name(Txt.fmt(plugin.settings.msg("bossbarRonda"), "ronda", g.round(), "tiempo", time, "victorias", g.victories()));
+        round.name(Txt.fmt(plugin.settings.msg("bossbarRonda"), "ronda", g.round(), "tiempo", time, "victorias", g.victories(),
+            "fase", plugin.waves.phase(), "oleada", plugin.waves.wave()));
         round.progress((float) Math.max(0, Math.min(1, g.secondsLeft() / (double) plugin.settings.roundSeconds)));
         round.color(g.secondsLeft() <= 10 ? BossBar.Color.RED : BossBar.Color.YELLOW);
         LikeGoal lg = plugin.likes();
@@ -111,6 +112,8 @@ public final class Hud {
         Game g = plugin.game;
         String[] lines = {
             "&7Ronda &f" + g.round() + " &8· &f" + (g.paused() ? "pausa" : Txt.time(g.secondsLeft())),
+            "&6Fase &f" + plugin.waves.phase() + "&7/" + plugin.settings.phases + " &8· &cOleada &f" + plugin.waves.wave(),
+            "&7Próxima oleada &f" + plugin.waves.secondsToWave() + "s",
             "&eVictorias &f" + g.victories(),
             " ",
             "&cMobs vivos &f" + plugin.mobs.alive(),

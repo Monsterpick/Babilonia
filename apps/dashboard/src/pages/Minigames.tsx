@@ -42,6 +42,8 @@ interface Game {
   mobs: number
   queue: number
   bosses: number
+  phase?: number
+  wave?: number
   kills: number
   likes: number
   likesMissing: number
@@ -63,19 +65,17 @@ interface Status {
 type Settings = Record<string, string | number>
 
 const BOSSES = [
-  { id: 'ravager', name: 'Devastador' },
-  { id: 'blaze', name: 'Blaze' },
-  { id: 'ghast', name: 'Ghast' },
   { id: 'wither', name: 'Wither' },
+  { id: 'dragon', name: 'Dragón del End' },
   { id: 'warden', name: 'Warden' },
-  { id: 'dragon', name: 'Dragón' },
 ]
 
 const MOBS = [
   { id: 'zombie', name: 'Zombis' },
   { id: 'skeleton', name: 'Esqueletos' },
   { id: 'spider', name: 'Arañas' },
-  { id: 'creeper', name: 'Creepers' },
+  { id: 'piglin', name: 'Piglins' },
+  { id: 'wither_skeleton', name: 'Esq. wither' },
 ]
 
 /** Regalos del perfil «Base Defense» (se editan en Plugins). */
@@ -83,19 +83,19 @@ const GIFT_MAP: { gift: string; coins: number; what: string }[] = [
   { gift: 'Rose', coins: 1, what: '2 zombis' },
   { gift: 'TikTok', coins: 1, what: '1 esqueleto' },
   { gift: 'GG', coins: 1, what: '2 arañas' },
-  { gift: 'Finger Heart', coins: 5, what: '2 creepers' },
-  { gift: 'Perfume', coins: 20, what: 'Horda de 10 zombis' },
+  { gift: 'Finger Heart', coins: 5, what: '2 piglins' },
+  { gift: 'Perfume', coins: 20, what: 'Horda de 10 (mezcla de la fase)' },
   { gift: 'Doughnut', coins: 30, what: 'Cura +100 la base' },
-  { gift: 'Hand Hearts', coins: 100, what: 'Horda mixta (30)' },
-  { gift: 'Confetti', coins: 100, what: '15 creepers' },
-  { gift: 'Corgi', coins: 299, what: 'Jefe: Devastador' },
-  { gift: 'Money Gun', coins: 500, what: 'Jefe: Blaze' },
+  { gift: 'Hand Hearts', coins: 100, what: 'Horda grande (30)' },
+  { gift: 'Confetti', coins: 100, what: '3 esqueletos wither' },
+  { gift: 'Corgi', coins: 299, what: '3 piglins brutos' },
+  { gift: 'Money Gun', coins: 500, what: 'Caja de suministros (minigun)' },
   { gift: 'Galaxy', coins: 1000, what: 'Jefe: Wither' },
   { gift: '3.000–4.999 monedas', coins: 3000, what: 'Jefe: Warden' },
-  { gift: '5.000+ monedas', coins: 5000, what: 'Jefe: Dragón' },
+  { gift: '5.000+ monedas', coins: 5000, what: 'Jefe: Dragón del End' },
   { gift: 'Seguir', coins: 0, what: 'Repara +25 la base' },
   { gift: 'Compartir', coins: 0, what: '1 esqueleto' },
-  { gift: 'Meta de likes', coins: 0, what: 'Jefe Ghast (la lleva el plugin)' },
+  { gift: 'Meta de likes', coins: 0, what: 'Jefe Wither (la lleva el plugin)' },
 ]
 
 const FIELDS: { key: string; label: string; hint?: string; type: 'int' | 'number' | 'text' | 'select'; options?: { v: string; l: string }[]; arena?: boolean; min?: number; max?: number; step?: number }[] = [
@@ -295,11 +295,11 @@ export function MinigamesPage() {
               </div>
               <h2 className="mt-1 text-3xl font-black tracking-tight">Base Defense</h2>
               <p className="mt-2 max-w-xl text-sm text-white/80">
-                Defiende tu base en primera persona con pistola, subfusil, metralleta, lanzacohetes y lanzagranadas. Tus espectadores mandan zombis, esqueletos, arañas y creepers por un carril de un bosque muerto postapocalíptico,
-                y con los regalos grandes, jefes: Devastador, Blaze, Ghast (¡devuélvele las bolas de fuego!), Wither, Warden y el Dragón.
+                Defiende tu base en primera persona con pistola, subfusil, ametralladora, lanzagranadas, lanzacohetes y minigun. Oleadas por fases que mezclan zombis, esqueletos, arañas, piglins, esqueletos wither y más,
+                y con los regalos grandes, jefes que atacan la base: el Wither con sus calaveras, el Dragón del End con bolas de fuego (¡devuélveselas!) y el Warden con su cañón sónico y sus embestidas.
               </p>
               <div className="mt-4 flex flex-wrap gap-2 text-[11px]">
-                {['Rondas de 15:00', 'Victorias que se guardan', 'Meta de likes con jefe', 'Hasta 300 mobs a 20 TPS', 'Arena generada sola'].map((t) => (
+                {['5 fases por ronda', 'Munición y suministros', 'Vida visible en cada mob', 'Pack de texturas + armas 3D', 'Hasta 300 mobs a 20 TPS', 'Modo separado del survival'].map((t) => (
                   <span key={t} className="rounded-full bg-white/10 px-2.5 py-1 font-semibold text-white/90 ring-1 ring-white/10">
                     {t}
                   </span>
@@ -434,7 +434,7 @@ export function MinigamesPage() {
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    <Stat icon={<Timer size={12} />} label={`Ronda ${g.round}`} value={g.paused ? 'Pausa' : mmss(g.time)} tone={g.time <= 10 ? 'text-red-400' : 'text-white'} />
+                    <Stat icon={<Timer size={12} />} label={`Ronda ${g.round} · fase ${g.phase ?? 1} · oleada ${g.wave ?? 0}`} value={g.paused ? 'Pausa' : mmss(g.time)} tone={g.time <= 10 ? 'text-red-400' : 'text-white'} />
                     <Stat icon={<Trophy size={12} />} label="Victorias" value={g.wins} tone={g.wins < 0 ? 'text-red-400' : 'text-amber-300'} />
                     <Stat icon={<Skull size={12} />} label="Mobs vivos" value={g.mobs} />
                     <Stat icon={<Gamepad2 size={12} />} label="En cola" value={g.queue} />
@@ -472,7 +472,13 @@ export function MinigamesPage() {
                     </button>
                   ))}
                   <button className="btn btn-accent" disabled={!g?.running || !!busy} onClick={() => void cmd('bd test horda 60', '¡Horda de 60!')}>
-                    <Swords size={14} /> Horda de 60
+                    <Swords size={14} /> Horda de 60 (mezcla)
+                  </button>
+                  <button className="btn" disabled={!g?.running || !!busy} onClick={() => void cmd('bd test suministro', 'Suministros en camino')}>
+                    <Gift size={14} /> Suministros
+                  </button>
+                  <button className="btn" disabled={!g?.running || !!busy} onClick={() => void cmd('bd test municion', '+3 cargadores para cada arma')}>
+                    <Zap size={14} /> Munición
                   </button>
                   <button className="btn" disabled={!g?.running || !!busy} onClick={() => void cmd('bd test lleno', 'Carga máxima (300 mobs)')} title="Prueba de rendimiento: llena hasta el tope">
                     <Zap size={14} /> Carga máxima

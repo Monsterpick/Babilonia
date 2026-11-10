@@ -48,6 +48,7 @@ public final class BdCommands {
         c.register(ttheal().build(), "Cura la base (app de TikTok)");
         c.register(ttwin().build(), "Suma o resta victorias (app de TikTok)");
         c.register(ttlikes().build(), "Total de likes del directo (app de TikTok)");
+        c.register(ttsuministro().build(), "Caja de suministros para la base (app de TikTok)");
     }
 
     // ───────────────────────────── utilidades ─────────────────────────────
@@ -112,7 +113,11 @@ public final class BdCommands {
         String usage = "uso: ttspawn <tipo> <cantidad> <usuario>";
         return Commands.literal("ttspawn").requires(BdCommands::app)
             .executes(ctx -> err(ctx, usage))
-            .then(word("tipo").suggests(suggest(() -> plugin.settings.mobs.keySet()))
+            .then(word("tipo").suggests(suggest(() -> {
+                    java.util.List<String> all = new java.util.ArrayList<>(plugin.settings.mobs.keySet());
+                    all.add("horda");
+                    return all;
+                }))
                 .executes(ctx -> err(ctx, "falta la cantidad; " + usage))
                 .then(word("cantidad").suggests(suggest(() -> List.of("1", "5", "10", "25", "50")))
                     .executes(ctx -> err(ctx, "falta el usuario; " + usage))
@@ -121,7 +126,8 @@ public final class BdCommands {
                         if (g != null) return err(ctx, g);
                         String type = arg(ctx, "tipo").toLowerCase(Locale.ROOT);
                         Settings.MobDef def = plugin.settings.mobs.get(type);
-                        if (def == null) return err(ctx, "tipo desconocido '" + type + "'. Tipos: " + String.join(", ", plugin.settings.mobs.keySet()));
+                        boolean mix = type.equals("horda") || type.equals("mezcla");
+                        if (def == null && !mix) return err(ctx, "tipo desconocido '" + type + "'. Tipos: horda (mezcla de la fase), " + String.join(", ", plugin.settings.mobs.keySet()));
                         int n;
                         try {
                             n = Integer.parseInt(arg(ctx, "cantidad"));
@@ -131,9 +137,10 @@ public final class BdCommands {
                         if (n < 1) return err(ctx, "la cantidad debe ser 1 o más");
                         int capped = Math.min(n, plugin.settings.maxPerCommand);
                         String who = user(ctx);
-                        plugin.mobs.enqueue(def, capped, who);
+                        if (mix) plugin.waves.enqueueMix(capped, who);
+                        else plugin.mobs.enqueue(def, capped, who);
                         if (capped >= plugin.settings.bigHorde)
-                            plugin.game.banner(plugin.settings.msg("hordaTitulo"), plugin.settings.msg("hordaSubtitulo"), org.bukkit.Sound.EVENT_RAID_HORN, 1f, "usuario", who, "cantidad", capped, "tipo", def.name());
+                            plugin.game.banner(plugin.settings.msg("hordaTitulo"), plugin.settings.msg("hordaSubtitulo"), org.bukkit.Sound.EVENT_RAID_HORN, 1f, "usuario", who, "cantidad", capped, "tipo", mix ? "monstruos" : def.name());
                         return ok(ctx, "ttspawn " + type + " x" + capped + (capped < n ? " (recortado de " + n + ")" : "") + " de " + who + " · en cola " + plugin.mobs.queued() + " · vivos " + plugin.mobs.alive());
                     }))));
     }
@@ -205,6 +212,18 @@ public final class BdCommands {
                 })));
     }
 
+    private LiteralArgumentBuilder<CommandSourceStack> ttsuministro() {
+        return Commands.literal("ttsuministro").requires(BdCommands::app)
+            .executes(ctx -> err(ctx, "uso: ttsuministro <usuario>"))
+            .then(rest("usuario").executes(ctx -> {
+                String g = needGame();
+                if (g != null) return err(ctx, g);
+                String who = user(ctx);
+                plugin.loot.dropSupply(who);
+                return ok(ctx, "ttsuministro de " + who);
+            }));
+    }
+
     private LiteralArgumentBuilder<CommandSourceStack> ttlikes() {
         String usage = "uso: ttlikes <total>";
         return Commands.literal("ttlikes").requires(BdCommands::app)
@@ -269,8 +288,8 @@ public final class BdCommands {
             "&e/bd start [jugador] &7· iniciar &8| &e/bd stop &8| &e/bd status &8| &e/bd reload",
             "&e/bd arena generate [semilla] &8| &earena regen &8| &earena clear &8| &e/bd tp",
             "&e/bd set <jugador|mobs|base|waypoint-add|waypoint-clear> &7· ajuste manual",
-            "&e/bd test <horda|zombie|skeleton|spider|creeper|jefe|curar|ganar|perder|likes|caer|victoria>",
-            "&7App: &f/ttspawn <tipo> <n> <usuario> · /ttboss <tipo> <usuario> · /ttheal <n> <usuario> · /ttwin <+n|-n> <usuario> · /ttlikes <total>"))
+            "&e/bd test <horda|<tipo>|jefe [wither|dragon|warden]|suministro|municion|curar|ganar|perder|likes|caer|ronda>",
+            "&7App: &f/ttspawn <tipo|horda> <n> <usuario> · /ttboss <jefe> <usuario> · /ttheal <n> <usuario> · /ttwin <+n|-n> <usuario> · /ttsuministro <usuario> · /ttlikes <total>"))
             s.sendMessage(Txt.fmt(l));
         return Command.SINGLE_SUCCESS;
     }
@@ -305,6 +324,7 @@ public final class BdCommands {
             + " arena=" + (plugin.arena != null && plugin.arena.valid() ? 1 : 0)
             + " generating=" + (plugin.placer.busy() ? 1 : 0)
             + " round=" + g.round() + " time=" + g.secondsLeft() + " paused=" + (g.paused() ? 1 : 0)
+            + " phase=" + plugin.waves.phase() + " wave=" + plugin.waves.wave()
             + " hp=" + (int) Math.ceil(g.baseHp()) + " max=" + g.baseMax()
             + " wins=" + g.victories() + " mobs=" + plugin.mobs.alive() + " queue=" + plugin.mobs.queued()
             + " bosses=" + plugin.bosses.all().size() + " kills=" + plugin.mobs.kills
@@ -414,7 +434,7 @@ public final class BdCommands {
     // ───────────────────────────── test ─────────────────────────────
 
     private LiteralArgumentBuilder<CommandSourceStack> test() {
-        List<String> events = List.of("horda", "zombie", "skeleton", "spider", "creeper", "jefe", "curar", "ganar", "perder", "likes", "caer", "victoria", "lleno", "ronda");
+        List<String> events = List.of("horda", "jefe", "suministro", "municion", "curar", "ganar", "perder", "likes", "caer", "victoria", "lleno", "ronda");
         return Commands.literal("test")
             .executes(ctx -> err(ctx, "uso: /bd test <" + String.join("|", events) + "> [tipo/cantidad]"))
             .then(word("evento").suggests(suggest(() -> {
@@ -441,11 +461,11 @@ public final class BdCommands {
             return ok(ctx, "test " + e);
         }
         switch (e) {
-            case "horda" -> {
-                int n = extra == null ? 40 : parse(extra, 40);
-                List<String> types = List.copyOf(plugin.settings.mobs.keySet());
-                for (int i = 0; i < types.size(); i++)
-                    Bukkit.dispatchCommand(console, "ttspawn " + types.get(i) + " " + Math.max(1, n / types.size()) + " " + user);
+            case "horda" -> Bukkit.dispatchCommand(console, "ttspawn horda " + (extra == null ? 40 : parse(extra, 40)) + " " + user);
+            case "suministro" -> Bukkit.dispatchCommand(console, "ttsuministro " + user);
+            case "municion" -> {
+                Player sp = plugin.game.streamer();
+                if (sp != null) for (Settings.WeaponDef w : plugin.settings.weapons.values()) plugin.weapons.addReserve(sp, w, w.magazine() * 3);
             }
             case "lleno" -> {
                 List<String> types = List.copyOf(plugin.settings.mobs.keySet());

@@ -15,14 +15,19 @@ import org.bukkit.inventory.ItemType;
 
 /** Lectura de config.yml a valores inmutables. Se reconstruye entero en cada /bd reload. */
 public final class Settings {
-    public record MobDef(String id, EntityType entity, double health, double speed, int damage, String name) {}
+    public record MobDef(String id, EntityType entity, double health, double speed, int damage, String name, int phase, int weight) {}
 
-    public record BossDef(String id, EntityType entity, double health, double speed, int damage, double scale,
-                          double height, String name, double fireballEvery, int fireballBaseDamage, int fireballBossDamage) {
+    /** Jefe: se queda a `attackDistance` bloques de la base y ataca cada `attackEvery` s (y embiste si llega). */
+    public record BossDef(String id, EntityType entity, double health, double speed, double scale, double height, String name,
+                          double attackDistance, double attackEvery, int attackDamage, int returnDamage, int ramDamage, double ramEvery) {
         public boolean flying() {
             return entity == EntityType.WITHER || entity == EntityType.ENDER_DRAGON || entity == EntityType.GHAST
                 || entity == EntityType.BLAZE || entity == EntityType.PHANTOM || entity == EntityType.VEX
                 || entity == EntityType.ALLAY || entity == EntityType.BEE || entity == EntityType.HAPPY_GHAST;
+        }
+
+        public int damage() {
+            return ramDamage;
         }
     }
 
@@ -30,7 +35,19 @@ public final class Settings {
 
     public record WeaponDef(String id, int slot, ItemType item, String model, String name, WeaponKind kind, boolean automatic,
                             double damage, double rate, double range, double spread, int magazine, double reload,
-                            double radius, double speed, int bounces, double fuse, String sound, float pitch) {
+                            double radius, double speed, int bounces, double fuse, String sound, float pitch,
+                            int reserve, int shotsPerTick, double warmup) {
+        /** Sonido del pack (antes de «|») o el vanilla de respaldo (después). */
+        public String sound(boolean pack) {
+            int i = sound.indexOf('|');
+            if (i < 0) return sound;
+            return pack ? sound.substring(0, i) : sound.substring(i + 1);
+        }
+
+        public boolean infinite() {
+            return reserve < 0;
+        }
+
         public int cooldownTicks() {
             return Math.max(1, (int) Math.round(20.0 / Math.max(0.1, rate)));
         }
@@ -52,6 +69,18 @@ public final class Settings {
     public final Map<String, MobDef> mobs = new LinkedHashMap<>();
     // jefes
     public final double furyPercent, furySpeed;
+    // oleadas
+    public final boolean waves;
+    public final int phases, waveEvery, waveSize, waveGrowth;
+    public final double healthPerPhase, speedPerPhase;
+    // munición
+    public final double ammoChance, ammoChanceBoss;
+    public final boolean supplyOnPhase;
+    public final int supplyEvery;
+    // pack
+    public final boolean packEnabled, packRequired;
+    public final int packPort;
+    public final String packUrl;
     public final Map<String, BossDef> bosses = new LinkedHashMap<>();
     // likes
     public final int likesGoal;
@@ -103,8 +132,25 @@ public final class Settings {
             EntityType et = entity(s == null ? null : s.getString("entidad"), log, "mobs.tipos." + id);
             if (s == null || et == null) continue;
             mobs.put(id.toLowerCase(Locale.ROOT), new MobDef(id.toLowerCase(Locale.ROOT), et, Math.max(1, s.getDouble("vida", 20)),
-                Math.max(0.05, s.getDouble("velocidad", 0.23)), Math.max(0, s.getInt("danio", 10)), s.getString("nombre", id)));
+                Math.max(0.05, s.getDouble("velocidad", 0.23)), Math.max(0, s.getInt("danio", 10)), s.getString("nombre", id),
+                Math.max(1, s.getInt("fase", 1)), Math.max(0, s.getInt("peso", 5))));
         }
+
+        waves = c.getBoolean("oleadas.activadas", true);
+        phases = clamp(c.getInt("oleadas.fases", 5), 1, 20);
+        waveEvery = clamp(c.getInt("oleadas.cada", 35), 5, 3600);
+        waveSize = clamp(c.getInt("oleadas.tamano", 5), 0, 500);
+        waveGrowth = clamp(c.getInt("oleadas.crecimiento", 3), 0, 500);
+        healthPerPhase = Math.max(0, c.getDouble("oleadas.vidaPorFase", 0.15));
+        speedPerPhase = Math.max(0, c.getDouble("oleadas.velocidadPorFase", 0.04));
+        ammoChance = Math.max(0, Math.min(1, c.getDouble("municion.probabilidadCaja", 0.10)));
+        ammoChanceBoss = Math.max(0, Math.min(1, c.getDouble("municion.probabilidadCajaJefe", 1.0)));
+        supplyOnPhase = c.getBoolean("municion.suministroAlEmpezarFase", true);
+        supplyEvery = Math.max(0, c.getInt("municion.suministroCada", 150));
+        packEnabled = c.getBoolean("paquete.activado", true);
+        packRequired = c.getBoolean("paquete.obligatorio", false);
+        packPort = clamp(c.getInt("paquete.puerto", 25590), 1024, 65535);
+        packUrl = c.getString("paquete.url", "http://127.0.0.1:{puerto}/basedefense.zip").replace("{puerto}", String.valueOf(packPort));
 
         furyPercent = Math.max(0, Math.min(100, c.getDouble("jefes.furia", 35)));
         furySpeed = Math.max(1, c.getDouble("jefes.aceleracionFuria", 1.6));
@@ -114,13 +160,14 @@ public final class Settings {
             EntityType et = entity(s == null ? null : s.getString("entidad"), log, "jefes.tipos." + id);
             if (s == null || et == null) continue;
             bosses.put(id.toLowerCase(Locale.ROOT), new BossDef(id.toLowerCase(Locale.ROOT), et, Math.max(1, s.getDouble("vida", 400)),
-                Math.max(0.02, s.getDouble("velocidad", 0.15)), Math.max(0, s.getInt("danio", 200)), Math.max(0.2, Math.min(6, s.getDouble("escala", 1))),
-                s.getDouble("altura", 8), s.getString("nombre", id.toUpperCase(Locale.ROOT)), s.getDouble("bolaCada", 0),
-                s.getInt("bolaDanioBase", 60), s.getInt("bolaDanioJefe", 80)));
+                Math.max(0.02, s.getDouble("velocidad", 0.15)), Math.max(0.2, Math.min(6, s.getDouble("escala", 1))),
+                s.getDouble("altura", 8), s.getString("nombre", id.toUpperCase(Locale.ROOT)),
+                Math.max(2, s.getDouble("distanciaAtaque", 24)), Math.max(0.3, s.getDouble("ataqueCada", 3)), Math.max(0, s.getInt("danioAtaque", 40)),
+                Math.max(0, s.getInt("danioDevuelta", 80)), Math.max(0, s.getInt("danioEmbestida", s.getInt("danio", 80))), Math.max(0.3, s.getDouble("embestidaCada", 2.5))));
         }
 
         likesGoal = Math.max(1, c.getInt("likes.meta", 5000));
-        likesBoss = c.getString("likes.jefe", "ghast").toLowerCase(Locale.ROOT);
+        likesBoss = c.getString("likes.jefe", "wither").toLowerCase(Locale.ROOT);
         likesDonor = c.getString("likes.donante", "la comunidad");
 
         ConfigurationSection ws = c.getConfigurationSection("armas");
@@ -144,7 +191,7 @@ public final class Settings {
                 Math.max(5, s.getDouble("alcance", 100)), Math.max(0, s.getDouble("dispersion", 1)), Math.max(1, s.getInt("cargador", 10)),
                 Math.max(0, s.getDouble("recarga", 1.5)), Math.max(0.5, s.getDouble("radio", 4)), Math.max(0.2, s.getDouble("velocidad", 1.5)),
                 Math.max(0, s.getInt("rebotes", 2)), Math.max(0.2, s.getDouble("mecha", 2.5)), s.getString("sonido", "entity.firework_rocket.blast"),
-                (float) s.getDouble("tono", 1.0)));
+                (float) s.getDouble("tono", 1.0), s.getInt("reserva", -1), clamp(s.getInt("balasPorTick", 1), 1, 5), Math.max(0, s.getDouble("calentamiento", 0))));
         }
 
         particlesPerTick = clamp(c.getInt("rendimiento.particulasPorTick", 900), 50, 20000);

@@ -9,6 +9,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.entity.EntityResurrectEvent;
+import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
@@ -75,5 +76,11 @@ final class TotemListener implements Listener {
     @EventHandler
     public void onQuit(PlayerQuitEvent e) {
         totems.hide(e.getPlayer());
+    }
+
+    /** La barra de tótems se oculta en el mundo del minijuego y vuelve al salir. */
+    @EventHandler
+    public void onWorld(PlayerChangedWorldEvent e) {
+        totems.refresh(e.getPlayer());
     }
 }

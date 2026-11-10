@@ -138,7 +138,7 @@ final class TotemManager {
     void refresh(Player p) {
         String k = key(p.getName());
         int total = get(p.getName());
-        boolean show = cfg().getBoolean("totems.barra.mostrar", true) && (total > 0 || cfg().getBoolean("totems.barra.mostrar-con-cero", false));
+        boolean show = cfg().getBoolean("totems.barra.mostrar", true) && (total > 0 || cfg().getBoolean("totems.barra.mostrar-con-cero", false)) && !Minijuego.en(p);
         BossBar bar = bars.get(k);
         if (!show) {
             if (bar != null) {

@@ -1,0 +1,86 @@
+{
+ "arma.pistola": {
+  "sounds": [
+   {
+    "name": "basedefense:arma/pistola"
+   }
+  ]
+ },
+ "arma.subfusil": {
+  "sounds": [
+   {
+    "name": "basedefense:arma/subfusil"
+   }
+  ]
+ },
+ "arma.ametralladora": {
+  "sounds": [
+   {
+    "name": "basedefense:arma/ametralladora"
+   }
+  ]
+ },
+ "arma.minigun": {
+  "sounds": [
+   {
+    "name": "basedefense:arma/minigun"
+   }
+  ]
+ },
+ "arma.granada": {
+  "sounds": [
+   {
+    "name": "basedefense:arma/granada"
+   }
+  ]
+ },
+ "arma.cohete": {
+  "sounds": [
+   {
+    "name": "basedefense:arma/cohete"
+   }
+  ]
+ },
+ "arma.explosion": {
+  "sounds": [
+   {
+    "name": "basedefense:arma/explosion"
+   }
+  ]
+ },
+ "arma.minigun_gira": {
+  "sounds": [
+   {
+    "name": "basedefense:arma/minigun_gira"
+   }
+  ]
+ },
+ "arma.recarga": {
+  "sounds": [
+   {
+    "name": "basedefense:arma/recarga"
+   }
+  ]
+ },
+ "arma.recarga_fin": {
+  "sounds": [
+   {
+    "name": "basedefense:arma/recarga_fin"
+   }
+  ]
+ },
+ "arma.vacia": {
+  "sounds": [
+   {
+    "name": "basedefense:arma/vacia"
+   }
+  ]
+ },
+ "alerta.sirena": {
+  "sounds": [
+   {
+    "name": "basedefense:alerta/sirena"
+   }
+  ]
+ }
+}

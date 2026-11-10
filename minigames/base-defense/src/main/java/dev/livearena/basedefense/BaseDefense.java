@@ -7,7 +7,11 @@ import dev.livearena.basedefense.cmd.BdCommands;
 import dev.livearena.basedefense.fx.Ambience;
 import dev.livearena.basedefense.fx.Fx;
 import dev.livearena.basedefense.game.Game;
+import dev.livearena.basedefense.game.Alerts;
 import dev.livearena.basedefense.game.Hud;
+import dev.livearena.basedefense.game.Loot;
+import dev.livearena.basedefense.game.Waves;
+import dev.livearena.basedefense.pack.PackServer;
 import dev.livearena.basedefense.game.LikeGoal;
 import dev.livearena.basedefense.game.Protection;
 import dev.livearena.basedefense.mob.Bosses;
@@ -48,6 +52,10 @@ public final class BaseDefense extends JavaPlugin {
     public Bosses bosses;
     public Weapons weapons;
     public Ambience ambience;
+    public Waves waves;
+    public Loot loot;
+    public Alerts alerts;
+    public PackServer pack;
     public BlockPlacer placer;
     private BukkitTask loop;
     private long tick;
@@ -69,6 +77,15 @@ public final class BaseDefense extends JavaPlugin {
         weaponKey = new NamespacedKey(this, "arma");
         projKey = new NamespacedKey(this, "proyectil");
         saveDefaultConfig();
+        // config.yml de la versión 1 (sin fases, sin minigun, jefes antiguos): se guarda aparte y se pone la nueva
+        if (!getConfig().contains("oleadas")) {
+            File cfg = new File(getDataFolder(), "config.yml");
+            if (cfg.renameTo(new File(getDataFolder(), "config-v1.yml"))) {
+                saveDefaultConfig();
+                reloadConfig();
+                getLogger().info("config.yml actualizada a la v2 (la anterior queda en config-v1.yml)");
+            }
+        }
         settings = new Settings(getConfig(), getLogger());
         loadData();
         likes = new LikeGoal(this);
@@ -79,6 +96,11 @@ public final class BaseDefense extends JavaPlugin {
         mobs = new MobManager(this);
         bosses = new Bosses(this);
         weapons = new Weapons(this);
+        waves = new Waves(this);
+        loot = new Loot(this);
+        alerts = new Alerts(this);
+        pack = new PackServer(this);
+        pack.start();
         game = new Game(this);
         ambience = new Ambience(this);
         getServer().getPluginManager().registerEvents(new Protection(this), this);
@@ -86,6 +108,7 @@ public final class BaseDefense extends JavaPlugin {
         getServer().getPluginManager().registerEvents(weapons, this);
         getServer().getPluginManager().registerEvents(bosses, this);
         getServer().getPluginManager().registerEvents(game, this);
+        getServer().getPluginManager().registerEvents(pack, this);
         getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, e -> new BdCommands(this).register(e.registrar()));
         World w = world(true);
         if (w != null) mobs.purgeStrays(w);
@@ -98,6 +121,7 @@ public final class BaseDefense extends JavaPlugin {
         if (loop != null) loop.cancel();
         placer.cancel();
         if (game != null) game.stop(false);
+        if (pack != null) pack.stop();
         saveData();
     }
 
@@ -109,6 +133,9 @@ public final class BaseDefense extends JavaPlugin {
             bosses.tick();
             weapons.tick();
             game.tick();
+            waves.tick();
+            loot.tick();
+            if (tick % 20 == 0) alerts.tick();
             ambience.tick();
         } catch (Throwable t) {
             getLogger().log(java.util.logging.Level.SEVERE, "Error en el bucle de Base Defense", t);
@@ -121,6 +148,7 @@ public final class BaseDefense extends JavaPlugin {
         World w = world(false);
         if (w != null) applyWorldRules(w);
         weapons.refreshItems();
+        pack.start();
         hud.refresh();
     }
 
@@ -142,7 +170,11 @@ public final class BaseDefense extends JavaPlugin {
             WorldCreator wc = new WorldCreator(settings.worldName).generator(new VoidGenerator(biome())).generateStructures(false);
             w = wc.createWorld();
         }
-        if (w != null) applyWorldRules(w);
+        if (w != null) {
+            applyWorldRules(w);
+            // marca del minijuego: el plugin LiveArena (cinemáticas, efectos survival) no actúa en este mundo
+            w.getPersistentDataContainer().set(new NamespacedKey("basedefense", "juego"), org.bukkit.persistence.PersistentDataType.BYTE, (byte) 1);
+        }
         return w;
     }
 

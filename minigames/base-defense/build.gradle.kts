@@ -22,6 +22,15 @@ java {
     toolchain.languageVersion.set(JavaLanguageVersion.of(25))
 }
 
+// Pack de texturas (src/pack, generado con tools/gen_pack.py) → basedefense-pack.zip dentro del plugin.
+val packZip by tasks.registering(Zip::class) {
+    from("src/pack")
+    archiveFileName.set("basedefense-pack.zip")
+    destinationDirectory.set(layout.buildDirectory.dir("generated/pack"))
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
+}
+
 tasks {
     compileJava {
         options.encoding = "UTF-8"
@@ -32,6 +41,7 @@ tasks {
         val props = mapOf("version" to project.version)
         inputs.properties(props)
         filesMatching("paper-plugin.yml") { expand(props) }
+        from(packZip)
     }
     jar {
         archiveFileName.set("BaseDefense.jar")

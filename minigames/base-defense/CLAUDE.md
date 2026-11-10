@@ -63,6 +63,24 @@ Decisiones:
 - El streamer no puede salir de la plataforma: barreras laterales/traseras + comprobación cada 10 ticks
   (el frente no lleva barrera para no bloquear los proyectiles).
 
+## v2 (feedback del streamer)
+
+- **Modos separados**: el mundo del juego lleva la marca PDC `basedefense:juego`; el plugin LiveArena no ejecuta
+  cinemáticas, efectos survival ni la barra de tótems ahí (`plugin/.../Minijuego.java`), y los /tt* solo actúan con
+  la partida en marcha. La app cambia al perfil «Base Defense» al empezar y recupera el anterior al terminar.
+- **Armas**: pistola, subfusil, ametralladora, lanzagranadas, lanzacohetes y minigun (gira antes de disparar,
+  2 balas/tick). Munición = cargador (barrita de durabilidad en la hotbar) + reserva; loot de cajas que vuelan hasta
+  el jugador (`game/Loot`) y suministros en paracaídas (cada fase, cada `suministroCada` s y `/ttsuministro`).
+- **Fases** (`game/Waves`): 5 por ronda; desbloquean mobs (`fase`, `peso` en config), suben vida/velocidad y lanzan
+  oleadas automáticas además de los regalos. `/ttspawn horda <n>` = mezcla de la fase.
+- **Jefes** (`mob/Bosses`): Wither (calaveras, destruibles a tiros), Dragón del End (bolas de fuego devolvibles) y
+  Warden (cañón sónico + embestidas en la base). No desaparecen al llegar: atacan hasta morir.
+- **Vida visible**: barra de 10 tramos como nombre del mob (o bajo el nombre del donante).
+- **Pack de texturas** (`tools/gen_pack.py` → `src/pack` → `basedefense-pack.zip` dentro del jar, servido por
+  `pack/PackServer` en el puerto `paquete.puerto`): texturas propias generadas, shader de color (terrain/entity
+  .fsh), modelos 3D de las armas (`item_model`) y sonidos sintetizados. Se pone al empezar y se quita al terminar.
+- Migración: un config.yml sin `oleadas` (v1) se guarda como `config-v1.yml` y se escribe el nuevo.
+
 ## Medido en el servidor de pruebas
 
 300 mobs vivos + 94 en cola + jefe + metralleta disparando sin parar: **20 TPS, MSPT medio 7,5 ms

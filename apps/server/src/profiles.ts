@@ -54,6 +54,11 @@ export class ProfileStore {
       if (!this.cache.has('base-defense')) await this.save(baseDefenseProfile(), false)
       await fs.writeFile(marker5, new Date().toISOString())
     }
+    // Base Defense v2: los jefes Devastador/Blaze/Ghast ya no existen; se renueva el perfil (con copia de seguridad).
+    const bd = this.cache.get('base-defense')
+    if (bd && bd.actions.some((a) => a.steps.some((st) => st.type === 'minecraft.command' && st.commands.some((c) => /ttboss (ravager|blaze|ghast)\b/.test(c))))) {
+      await this.save(baseDefenseProfile(), true)
+    }
   }
 
   list(): { id: string; name: string; mode: string; actions: number; events: number }[] {

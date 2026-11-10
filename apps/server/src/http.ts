@@ -410,7 +410,20 @@ export async function buildHttp(app: App): Promise<FastifyInstance> {
   f.post('/api/minigames/basedefense/install', async () => app.minigames.install())
   f.post('/api/minigames/basedefense/command', async (req) => {
     const { command } = parse(z.object({ command: z.string().min(1).max(120) }), req.body)
-    return { response: await app.minigames.command(command) }
+    const response = await app.minigames.command(command)
+    // Modos separados: al empezar la partida se activa el perfil de regalos de Base Defense; al terminar vuelve el anterior.
+    if (/^bd start\b/.test(command.trim())) {
+      const bd = app.profiles.get('base-defense') ?? (await app.profiles.save(baseDefenseProfile(), false))
+      if (app.activeProfile.id !== bd.id) {
+        app.minigames.previousProfile = app.activeProfile.id
+        app.setProfile(bd)
+      }
+    } else if (/^bd stop\b/.test(command.trim()) && app.minigames.previousProfile) {
+      const prev = app.profiles.get(app.minigames.previousProfile)
+      app.minigames.previousProfile = null
+      if (prev) app.setProfile(prev)
+    }
+    return { response }
   })
   f.get('/api/minigames/basedefense/settings', async () => app.minigames.getSettings())
   f.put('/api/minigames/basedefense/settings', async (req) => {

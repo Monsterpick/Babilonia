@@ -13,12 +13,14 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Color;
 import org.bukkit.FluidCollisionMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Entity;
@@ -34,15 +36,20 @@ import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 
 /**
- * Armas del streamer. Clic derecho dispara; el servidor solo recibe el clic cada ~4 ticks al
- * mantenerlo, así que el fuego automático lo sostiene la tarea central mientras el último clic sea
- * reciente. Clic izquierdo o F recargan.
+ * Armas del streamer: pistola, subfusil, ametralladora, lanzagranadas, lanzacohetes y minigun.
+ *
+ * <p>Clic derecho dispara; el servidor solo recibe el clic cada ~4 ticks al mantenerlo, así que el fuego automático
+ * lo sostiene la tarea central mientras el último clic sea reciente. Clic izquierdo o F recargan. Munición: cargador
+ * (barrita de durabilidad en la hotbar) + reserva (cajas de los mobs y suministros). La minigun gira antes de disparar.
  */
 public final class Weapons implements Listener {
     private static final int HOLD_TICKS = 6;
@@ -54,8 +61,10 @@ public final class Weapons implements Listener {
 
     private static final class State {
         int ammo;
+        int reserve;
         long reloadUntil;
         long nextShot;
+        long warmStart = -1;
     }
 
     private static final class Proj {
@@ -80,33 +89,54 @@ public final class Weapons implements Listener {
 
     // ───────────────────────────── ÍTEMS ─────────────────────────────
 
+    /** Da las armas con munición nueva (al empezar la partida). */
     public void give(Player p) {
         states.remove(p.getUniqueId());
-        for (WeaponDef w : plugin.settings.weapons.values()) p.getInventory().setItem(w.slot(), item(w));
+        for (WeaponDef w : plugin.settings.weapons.values()) p.getInventory().setItem(w.slot(), item(p, w));
         p.getInventory().setHeldItemSlot(0);
     }
 
+    /** Vuelve a dibujar las armas (p. ej. al cargar el pack: modelos 3D) sin tocar la munición. */
     public void refreshItems() {
         Player p = plugin.game.streamer();
-        if (p != null && plugin.game.running()) give(p);
+        if (p == null || !plugin.game.running()) return;
+        for (WeaponDef w : plugin.settings.weapons.values()) p.getInventory().setItem(w.slot(), item(p, w));
     }
 
-    private ItemStack item(WeaponDef w) {
+    private ItemStack item(Player p, WeaponDef w) {
         ItemStack it = w.item().createItemStack();
         ItemMeta m = it.getItemMeta();
-        m.displayName(Txt.fmt("&l" + w.name()).decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false));
+        m.displayName(Txt.fmt("&l" + w.name()).decoration(TextDecoration.ITALIC, false));
         List<net.kyori.adventure.text.Component> lore = new ArrayList<>();
-        lore.add(Txt.fmt("&7Daño &f" + fmt(w.damage()) + (w.kind() != WeaponKind.HITSCAN ? " &7en área &f" + fmt(w.radius()) + "m" : "")).decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false));
-        lore.add(Txt.fmt("&7Cadencia &f" + fmt(w.rate()) + "/s &8· &7Cargador &f" + w.magazine()).decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false));
-        lore.add(Txt.fmt("&8Clic derecho: disparar · Clic izq. o F: recargar").decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false));
+        lore.add(Txt.fmt("&7Daño &f" + fmt(w.damage()) + (w.kind() != WeaponKind.HITSCAN ? " &7en área &f" + fmt(w.radius()) + "m" : "")).decoration(TextDecoration.ITALIC, false));
+        lore.add(Txt.fmt("&7Cadencia &f" + fmt(w.rate() * w.shotsPerTick()) + "/s &8· &7Cargador &f" + w.magazine()).decoration(TextDecoration.ITALIC, false));
+        if (w.warmup() > 0) lore.add(Txt.fmt("&dMantén pulsado: gira y luego dispara").decoration(TextDecoration.ITALIC, false));
+        lore.add(Txt.fmt("&8Clic derecho: disparar · Clic izq. o F: recargar").decoration(TextDecoration.ITALIC, false));
         m.lore(lore);
         m.getPersistentDataContainer().set(plugin.weaponKey, PersistentDataType.STRING, w.id());
-        if (w.model() != null && !w.model().isBlank()) m.setItemModel(Settings.key(w.model()));
-        m.setUnbreakable(true);
+        // modelo 3D del pack (solo si el jugador lo tiene cargado; si no, se vería sin textura)
+        if (w.model() != null && !w.model().isBlank() && plugin.pack.loaded(p)) m.setItemModel(Settings.key(w.model()));
+        m.setUnbreakable(false);
         m.setMaxStackSize(1);
         m.addItemFlags(ItemFlag.values());
+        if (m instanceof Damageable d) {
+            d.setMaxDamage(Math.max(2, w.magazine() + 1));
+            State s = state(p, w);
+            d.setDamage(Math.max(0, w.magazine() - s.ammo));
+        }
         it.setItemMeta(m);
         return it;
+    }
+
+    /** La barrita de durabilidad del arma = balas en el cargador. */
+    private void showAmmo(Player p, WeaponDef w) {
+        ItemStack it = p.getInventory().getItem(w.slot());
+        if (it == null || weaponOf(it) != w) return;
+        ItemMeta m = it.getItemMeta();
+        if (m instanceof Damageable d) {
+            d.setDamage(Math.max(0, w.magazine() - state(p, w).ammo));
+            it.setItemMeta(m);
+        }
     }
 
     private static String fmt(double d) {
@@ -126,9 +156,31 @@ public final class Weapons implements Listener {
     private State state(Player p, WeaponDef w) {
         return states.computeIfAbsent(p.getUniqueId(), k -> new HashMap<>()).computeIfAbsent(w.id(), k -> {
             State s = new State();
-            s.ammo = w.magazine();
+            s.ammo = w.reserve() == 0 ? 0 : w.magazine();
+            s.reserve = Math.max(0, w.reserve());
             return s;
         });
+    }
+
+    /** Munición que llega de cajas y suministros. */
+    public void addReserve(Player p, WeaponDef w, int amount) {
+        if (w.infinite() || amount <= 0) return;
+        State s = state(p, w);
+        boolean wasEmpty = s.ammo == 0 && s.reserve == 0;
+        s.reserve += amount;
+        if (wasEmpty) reload(p, w);
+    }
+
+    /** 0..1: lo llena que está la reserva (para repartir las cajas). */
+    public double reserveRatio(Player p, WeaponDef w) {
+        State s = state(p, w);
+        return Math.min(1, (s.ammo + s.reserve) / (double) Math.max(1, w.magazine() * 4));
+    }
+
+    private void play(Player p, Location at, String key, float vol, float pitch) {
+        String[] parts = key.split("\\|", 2);
+        String k = plugin.pack.loaded(p) || parts.length < 2 ? parts[0] : parts[1];
+        if (plugin.fx.soundBudget()) at.getWorld().playSound(at, k, SoundCategory.PLAYERS, vol, pitch);
     }
 
     // ───────────────────────────── ENTRADA ─────────────────────────────
@@ -145,7 +197,6 @@ public final class Weapons implements Listener {
         if (a == Action.RIGHT_CLICK_AIR || a == Action.RIGHT_CLICK_BLOCK) {
             long now = plugin.tick();
             Long prev = lastClick.put(p.getUniqueId(), now);
-            // semiautomática: un disparo por clic (los repetidos de mantener cuentan como clics)
             if (!w.automatic() || prev == null || now - prev > HOLD_TICKS) tryFire(p, w);
         } else if (a == Action.LEFT_CLICK_AIR || a == Action.LEFT_CLICK_BLOCK) reload(p, w);
     }
@@ -162,8 +213,9 @@ public final class Weapons implements Listener {
         State s = state(p, w);
         long now = plugin.tick();
         if (s.reloadUntil > now || s.ammo >= w.magazine()) return;
+        if (!w.infinite() && s.reserve <= 0) return;
         s.reloadUntil = now + Math.round(w.reload() * 20);
-        p.playSound(p.getLocation(), Sound.ITEM_CROSSBOW_LOADING_START, 1f, 0.9f);
+        play(p, p.getLocation(), "basedefense:arma.recarga|item.crossbow.loading_start", 1f, 1f);
     }
 
     // ───────────────────────────── TICK ─────────────────────────────
@@ -175,20 +227,35 @@ public final class Weapons implements Listener {
         Player p = plugin.game.streamer();
         if (p == null || !plugin.inGameWorld(p)) return;
         WeaponDef w = weaponOf(p.getInventory().getItemInMainHand());
-        // recargas terminadas (todas las armas, aunque no estén en la mano)
         Map<String, State> mine = states.get(p.getUniqueId());
         if (mine != null) for (var en : mine.entrySet()) {
             State s = en.getValue();
             if (s.reloadUntil != 0 && now >= s.reloadUntil) {
                 WeaponDef d = plugin.settings.weapons.get(en.getKey());
-                s.ammo = d == null ? 0 : d.magazine();
                 s.reloadUntil = 0;
-                if (d != null && d == w) p.playSound(p.getLocation(), Sound.ITEM_CROSSBOW_LOADING_END, 1f, 1.1f);
+                if (d == null) continue;
+                int need = d.magazine() - s.ammo;
+                int take = d.infinite() ? need : Math.min(need, s.reserve);
+                s.ammo += take;
+                if (!d.infinite()) s.reserve -= take;
+                showAmmo(p, d);
+                if (d == w) play(p, p.getLocation(), "basedefense:arma.recarga_fin|item.crossbow.loading_end", 1f, 1.1f);
             }
         }
         if (w == null) return;
         Long lc = lastClick.get(p.getUniqueId());
-        if (w.automatic() && lc != null && now - lc <= HOLD_TICKS) tryFire(p, w);
+        boolean holding = lc != null && now - lc <= HOLD_TICKS;
+        State s = state(p, w);
+        if (w.warmup() > 0) {
+            if (holding && s.ammo > 0 && s.reloadUntil <= now) {
+                if (s.warmStart < 0) {
+                    s.warmStart = now;
+                    play(p, p.getLocation(), "basedefense:arma.minigun_gira|entity.minecart.riding", 1f, 1f);
+                }
+                p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 10, 1, false, false, false));
+            } else s.warmStart = -1;
+        }
+        if (w.automatic() && holding) tryFire(p, w);
         if (now % 2 == 0) actionBar(p, w);
     }
 
@@ -200,9 +267,16 @@ public final class Weapons implements Listener {
             int filled = (int) Math.round((1 - left / total) * 12);
             String bar = "&a" + "█".repeat(Math.max(0, filled)) + "&8" + "█".repeat(Math.max(0, 12 - filled));
             p.sendActionBar(Txt.fmt(plugin.settings.msg("recargando").replace("{barra}", bar).replace("{arma}", w.name())));
+        } else if (s.ammo == 0 && !w.infinite() && s.reserve == 0) {
+            p.sendActionBar(Txt.fmt(plugin.settings.msg("sinMunicion").replace("{arma}", w.name())));
+        } else if (w.warmup() > 0 && s.warmStart >= 0 && now - s.warmStart < w.warmup() * 20) {
+            int filled = (int) Math.round((now - s.warmStart) / (w.warmup() * 20) * 12);
+            String bar = "&d" + "█".repeat(Math.max(0, filled)) + "&8" + "█".repeat(Math.max(0, 12 - filled));
+            p.sendActionBar(Txt.fmt(plugin.settings.msg("calentando").replace("{barra}", bar).replace("{arma}", w.name())));
         } else {
             String ammoColor = s.ammo <= Math.max(1, w.magazine() / 5) ? "&c" : "&f";
-            p.sendActionBar(Txt.fmt(plugin.settings.msg("municion").replace("{arma}", w.name()).replace("{balas}", ammoColor + s.ammo + "&f"), "cargador", w.magazine()));
+            String reserve = w.infinite() ? "∞" : String.valueOf(s.reserve);
+            p.sendActionBar(Txt.fmt(plugin.settings.msg("municion").replace("{arma}", w.name()).replace("{balas}", ammoColor + s.ammo + "&f").replace("{reserva}", reserve), "cargador", w.magazine()));
         }
     }
 
@@ -213,16 +287,21 @@ public final class Weapons implements Listener {
         long now = plugin.tick();
         if (s.reloadUntil > now || now < s.nextShot) return;
         if (s.ammo <= 0) {
-            p.playSound(p.getLocation(), Sound.BLOCK_DISPENSER_FAIL, 0.8f, 1.6f);
+            if (now % 8 == 0) play(p, p.getLocation(), "basedefense:arma.vacia|block.dispenser.fail", 0.8f, 1.6f);
             reload(p, w);
             return;
         }
-        s.ammo--;
+        if (w.warmup() > 0 && (s.warmStart < 0 || now - s.warmStart < w.warmup() * 20)) return;
         s.nextShot = now + w.cooldownTicks();
-        switch (w.kind()) {
-            case HITSCAN -> hitscan(p, w);
-            case COHETE, GRANADA -> launch(p, w);
+        int shots = Math.min(s.ammo, w.shotsPerTick());
+        for (int i = 0; i < shots; i++) {
+            s.ammo--;
+            switch (w.kind()) {
+                case HITSCAN -> hitscan(p, w, i == 0);
+                case COHETE, GRANADA -> launch(p, w);
+            }
         }
+        showAmmo(p, w);
         if (s.ammo <= 0) reload(p, w);
     }
 
@@ -247,15 +326,14 @@ public final class Weapons implements Listener {
     }
 
     /** Un único ray trace por disparo, filtrado a los mobs del juego. */
-    private void hitscan(Player p, WeaponDef w) {
+    private void hitscan(Player p, WeaponDef w, boolean sound) {
         Location eye = p.getEyeLocation();
         Vector dir = spread(eye.getDirection(), w.spread());
-        // el trazo empieza a unos bloques del ojo: cerca de la cámara las partículas taparían la vista
         Location from = eye.clone().add(dir.clone().multiply(3.2)).add(0, -0.25, 0);
         RayTraceResult hit = p.getWorld().rayTrace(eye, dir, w.range(), FluidCollisionMode.NEVER, true, 0.18,
             e -> plugin.mobs.get(e) != null, Weapons::solid);
         double hitDist = hit == null ? w.range() : hit.getHitPosition().distance(eye.toVector());
-        // ¿cruzó una bola de fuego del Ghast antes?
+        // ¿cruzó una calavera o bola de fuego de un jefe antes?
         Bosses.Ball ball = null;
         for (Bosses.Ball b : plugin.bosses.balls()) {
             if (b.returned() || !b.entity().isValid()) continue;
@@ -268,11 +346,11 @@ public final class Weapons implements Listener {
             }
         }
         Location end = eye.clone().add(dir.clone().multiply(hitDist));
-        Color trace = w.automatic() ? Color.fromRGB(255, 214, 120) : Color.fromRGB(255, 245, 200);
+        Color trace = w.shotsPerTick() > 1 ? Color.fromRGB(255, 160, 255) : w.automatic() ? Color.fromRGB(255, 214, 120) : Color.fromRGB(255, 245, 200);
         if (hitDist > 3.5) plugin.fx.tracer(from, end, trace);
-        plugin.fx.sound(p.getLocation(), w.sound(), 0.7f, w.pitch() + (plugin.fx.rnd().nextFloat() - 0.5f) * 0.1f, true);
+        if (sound) play(p, p.getLocation(), w.sound(), 0.8f, w.pitch() + (plugin.fx.rnd().nextFloat() - 0.5f) * 0.08f);
         if (ball != null) {
-            plugin.bosses.returnBall(ball, p);
+            plugin.bosses.hitBall(ball, p);
             return;
         }
         if (hit == null) return;
@@ -302,14 +380,14 @@ public final class Weapons implements Listener {
         Location from = muzzle(p, dir);
         Snowball s = p.getWorld().spawn(from, Snowball.class, e -> {
             e.setShooter(p);
-            e.setItem(w.kind() == WeaponKind.COHETE ? new ItemStack(Material.FIREWORK_ROCKET) : w.item().createItemStack());
+            e.setItem(w.kind() == WeaponKind.COHETE ? new ItemStack(Material.FIREWORK_ROCKET) : new ItemStack(Material.FIRE_CHARGE));
             e.setGravity(w.kind() == WeaponKind.GRANADA);
             e.setVelocity(dir.clone().multiply(w.speed()));
             e.setPersistent(false);
             e.getPersistentDataContainer().set(plugin.projKey, PersistentDataType.STRING, w.id());
         });
         projectiles.put(s.getUniqueId(), new Proj(w, p, from, plugin.tick(), w.bounces()));
-        plugin.fx.sound(p.getLocation(), w.sound(), 1.2f, w.pitch(), true);
+        play(p, p.getLocation(), w.sound(), 1.2f, w.pitch());
     }
 
     private void tickProjectiles(long now) {
@@ -331,8 +409,7 @@ public final class Weapons implements Listener {
                     plugin.fx.particle(l, Particle.FLAME, 2, 0.04, 0.01, false);
                     plugin.fx.particle(l, Particle.SMOKE, 2, 0.06, 0.01, false);
                 }
-                boolean far = l.distanceSquared(pr.origin) > pr.def.range() * pr.def.range();
-                if (far) {
+                if (l.distanceSquared(pr.origin) > pr.def.range() * pr.def.range()) {
                     it.remove();
                     e.remove();
                     later.add(() -> explode(l, pr));
@@ -355,7 +432,6 @@ public final class Weapons implements Listener {
         if (pr == null) return;
         Location l = e.getEntity().getLocation();
         if (e.getHitEntity() != null && plugin.mobs.get(e.getHitEntity()) == null) {
-            // atraviesa cosas que no son del juego
             e.setCancelled(true);
             projectiles.put(e.getEntity().getUniqueId(), pr);
             return;
@@ -390,6 +466,7 @@ public final class Weapons implements Listener {
         double r = pr.def.radius();
         plugin.fx.explosion(l, r, r >= 5);
         plugin.fx.particle(l, Particle.FLASH, 1, 0, 0, 0, 0, Color.ORANGE, true);
+        if (pr.owner != null) play(pr.owner, l, "basedefense:arma.explosion|entity.generic.explode", 3f, 0.9f);
         for (GameMob gm : new ArrayList<>(plugin.mobs.all())) {
             if (gm.dead || !gm.entity.isValid()) continue;
             var box = gm.entity.getBoundingBox();
@@ -405,8 +482,8 @@ public final class Weapons implements Listener {
             }
             plugin.mobs.damage(gm, dmg, pr.owner);
         }
-        for (Bosses.Ball b : plugin.bosses.balls())
-            if (!b.returned() && b.entity().getLocation().distanceSquared(l) < (r + 1.5) * (r + 1.5) && pr.owner != null) plugin.bosses.returnBall(b, pr.owner);
+        for (Bosses.Ball b : new ArrayList<>(plugin.bosses.balls()))
+            if (!b.returned() && b.entity().isValid() && b.entity().getLocation().distanceSquared(l) < (r + 1.5) * (r + 1.5) && pr.owner != null) plugin.bosses.hitBall(b, pr.owner);
     }
 
     public void clearProjectiles() {

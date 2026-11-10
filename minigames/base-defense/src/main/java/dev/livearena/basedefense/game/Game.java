@@ -111,6 +111,8 @@ public final class Game implements Listener {
         plugin.mobs.purgeStrays(w);
         tickets(w, true);
         prepare(who, true);
+        plugin.waves.reset();
+        plugin.pack.send(who);
         plugin.hud.show();
         banner("&c&lBASE DEFENSE", "&7¡Defiende la base! &eRonda 1", Sound.EVENT_RAID_HORN, 1f);
         plugin.getLogger().info("Partida iniciada por " + who.getName());
@@ -146,10 +148,12 @@ public final class Game implements Listener {
         plugin.bosses.removeAllBalls();
         plugin.weapons.clearProjectiles();
         plugin.fx.clearStains();
+        plugin.loot.clear();
         plugin.hud.hide();
         Player p = streamer();
         if (p != null) {
             restoreInventory(p);
+            plugin.pack.remove(p);
         }
         plugin.saveData();
         if (announce) plugin.getLogger().info("Partida detenida.");
@@ -214,16 +218,30 @@ public final class Game implements Listener {
             p.showTitle(Title.title(net.kyori.adventure.text.Component.empty(), Txt.fmt(plugin.settings.msg("golpeBase"), "danio", (int) amount),
                 Title.Times.times(Duration.ZERO, Duration.ofMillis(350), Duration.ofMillis(250))));
             // destello rojo breve: viñeta de borde del mundo + partículas en la puerta
-            p.setWorldBorder(redFlash(p));
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                Player q = streamer();
-                if (q != null) q.setWorldBorder(null);
-            }, 8L);
+            redFlash(8);
+            if (amount >= 40) shake();
             Location gate = plugin.arena.baseCenter().toLocation(p.getWorld());
             plugin.fx.particle(gate, Particle.DUST, 30, 3, 1, 1, 0, new Particle.DustOptions(Color.RED, 2f), true);
         }
         plugin.hud.update();
         if (baseHp <= 0) baseFallen();
+    }
+
+    /** Pantalla teñida de rojo durante unos ticks. */
+    public void redFlash(int ticks) {
+        Player p = streamer();
+        if (p == null) return;
+        p.setWorldBorder(redFlash(p));
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            Player q = streamer();
+            if (q != null) q.setWorldBorder(null);
+        }, ticks);
+    }
+
+    /** Sacudida de cámara (la animación de daño del jugador, sin daño). */
+    public void shake() {
+        Player p = streamer();
+        if (p != null) p.playHurtAnimation(plugin.fx.rnd().nextFloat() * 360);
     }
 
     /** Un borde de mundo diminuto y lejano tiñe la pantalla de rojo (efecto de daño). */
@@ -267,6 +285,7 @@ public final class Game implements Listener {
         baseHp = plugin.settings.baseHealth;
         ticksLeft = plugin.settings.roundSeconds * 20;
         roundStartedTick = plugin.tick();
+        plugin.waves.reset(false);
         plugin.mobs.kills = 0;
         plugin.getLogger().info("BASE CAÍDA → victorias " + v);
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -288,6 +307,7 @@ public final class Game implements Listener {
         round++;
         ticksLeft = plugin.settings.roundSeconds * 20;
         roundStartedTick = plugin.tick();
+        plugin.waves.reset(false);
         plugin.mobs.kills = 0;
         pausedUntil = plugin.tick() + 100;
     }
@@ -315,6 +335,7 @@ public final class Game implements Listener {
     }
 
     public void onKill(GameMob gm) {
+        plugin.alerts.onKill();
         // reservado para estadísticas por donante
     }
 

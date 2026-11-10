@@ -88,6 +88,13 @@ public final class Fx {
         }
     }
 
+    /** ¿Queda presupuesto de sonido este tick? (lo consume) */
+    public boolean soundBudget() {
+        if (sounds >= plugin.settings.soundsPerTick * 2) return false;
+        sounds++;
+        return true;
+    }
+
     public void sound(Location l, String key, float vol, float pitch, boolean high) {
         if (key == null || key.isBlank()) return;
         if (sounds >= plugin.settings.soundsPerTick * (high ? 3 : 1)) return;

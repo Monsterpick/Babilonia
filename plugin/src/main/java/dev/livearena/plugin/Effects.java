@@ -234,6 +234,7 @@ final class Effects {
     boolean run(String id, Player p, String viewer, String[] args) {
         Def d = defs.get(id);
         if (d == null) return false;
+        if (Minijuego.en(p)) return true; // en Base Defense los efectos survival no hacen nada
         announce(p, d, viewer);
         d.fx().run(p, viewer, args);
         return true;

@@ -144,6 +144,10 @@ public final class MobManager implements Listener {
             boolean inBase = gm.isBoss() && gm.manual
                 ? l.getX() >= base.getMinX() && l.getX() <= base.getMaxX() && l.getZ() >= base.getMinZ() && l.getZ() <= base.getMaxZ()
                 : base.contains(l.getX(), l.getY(), l.getZ());
+            if (inBase && active && gm.isBoss()) {
+                plugin.bosses.atBase(gm);
+                inBase = false;
+            }
             if (inBase && active) {
                 if (reached == null) reached = new ArrayList<>();
                 reached.add(gm);
@@ -181,14 +185,17 @@ public final class MobManager implements Listener {
 
     public GameMob spawn(World w, Settings.MobDef def, String donor, boolean label) {
         Location at = spawnPoint(w);
-        Mob m = spawnEntity(w, at, def.entity(), def.health(), def.speed(), 1.0, plugin.fx.rnd().nextInt(6) != 0);
+        // cada fase los mobs salen con más vida y algo más rápidos
+        double hp = def.health() * plugin.waves.healthMult(), speed = def.speed() * plugin.waves.speedMult();
+        Mob m = spawnEntity(w, at, def.entity(), hp, speed, 1.0, plugin.fx.rnd().nextInt(6) != 0);
         if (m == null) return null;
         double off = (plugin.fx.rnd().nextDouble() * 2 - 1) * Math.max(1, plugin.arena.laneHalfWidth - 1.5);
-        GameMob gm = new GameMob(m, donor, def, null, def.health(), off);
+        GameMob gm = new GameMob(m, donor, def, null, hp, off);
         mobs.put(m.getUniqueId(), gm);
         spawned++;
-        attachBrain(gm, def.speed());
+        attachBrain(gm, speed);
         if (label) addLabel(gm, 1f);
+        updateBar(gm);
         spawnFx(at, false);
         return gm;
     }
@@ -234,6 +241,7 @@ public final class MobManager implements Listener {
             else m.setAI(false);
         } else attachBrain(gm, def.speed());
         addLabel(gm, 1.6f);
+        updateBar(gm);
         spawnFx(at, true);
         return gm;
     }
@@ -286,6 +294,20 @@ public final class MobManager implements Listener {
             if (m instanceof AbstractSkeleton s) {
                 s.setShouldBurnInDay(false);
                 if (eq != null) eq.setItemInMainHand(new ItemStack(Material.BOW));
+            }
+            if (m instanceof org.bukkit.entity.PiglinAbstract pa) pa.setImmuneToZombification(true);
+            if (m instanceof org.bukkit.entity.Hoglin h) h.setImmuneToZombification(true);
+            if (eq != null) {
+                Material hand = switch (type.name()) {
+                    case "PIGLIN" -> Material.GOLDEN_SWORD;
+                    case "PIGLIN_BRUTE" -> Material.GOLDEN_AXE;
+                    case "WITHER_SKELETON" -> Material.STONE_SWORD;
+                    case "VINDICATOR" -> Material.IRON_AXE;
+                    case "PILLAGER" -> Material.CROSSBOW;
+                    case "STRAY", "BOGGED" -> Material.BOW;
+                    default -> null;
+                };
+                if (hand != null) eq.setItemInMainHand(new ItemStack(hand));
             }
             if (m instanceof Creeper c) {
                 c.setExplosionRadius(0);
@@ -341,7 +363,7 @@ public final class MobManager implements Listener {
         Mob m = gm.entity;
         TextDisplay t = m.getWorld().spawn(m.getLocation(), TextDisplay.class, d -> {
             d.setPersistent(false);
-            d.text(Txt.fmt(plugin.settings.label, "usuario", gm.donor, "tipo", gm.typeName()));
+            d.text(labelText(gm));
             d.setBillboard(Display.Billboard.CENTER);
             d.setShadowed(true);
             d.setSeeThrough(false);
@@ -357,6 +379,29 @@ public final class MobManager implements Listener {
         }
         gm.label = t;
         labels++;
+    }
+
+    private net.kyori.adventure.text.Component labelText(GameMob gm) {
+        return Txt.fmt(plugin.settings.label, "usuario", gm.donor, "tipo", gm.typeName()).append(net.kyori.adventure.text.Component.newline()).append(healthBar(gm));
+    }
+
+    /** Barra de vida en 10 tramos (verde → amarillo → rojo). */
+    net.kyori.adventure.text.Component healthBar(GameMob gm) {
+        double f = Math.max(0, Math.min(1, gm.hp / gm.maxHp));
+        int n = (int) Math.ceil(f * 10);
+        String col = f > 0.6 ? "&a" : f > 0.3 ? "&e" : "&c";
+        return Txt.fmt("&c❤ " + col + "▮".repeat(n) + "&8" + "▮".repeat(10 - n));
+    }
+
+    /** Vida visible: en el TextDisplay del donante o, si no lo lleva, como nombre del mob. */
+    void updateBar(GameMob gm) {
+        if (gm.label != null && gm.label.isValid()) {
+            gm.label.text(labelText(gm));
+            return;
+        }
+        if (gm.isBoss()) return;
+        gm.entity.customName(healthBar(gm));
+        gm.entity.setCustomNameVisible(true);
     }
 
     private void spawnFx(Location at, boolean big) {
@@ -449,18 +494,27 @@ public final class MobManager implements Listener {
     /** Jefes voladores y mobs sin goals: el plugin los mueve por el carril a altura fija. */
     private void moveManual(GameMob gm, Location l) {
         List<Vector> wp = plugin.arena.waypoints;
-        while (reached(gm, l)) gm.waypoint++;
-        Vector t = gm.waypoint >= wp.size() - 1 ? plugin.arena.baseCenter().clone().setY(wp.get(wp.size() - 1).getY()) : target(gm);
+        Vector t;
+        double sp;
+        if (gm.isBoss()) {
+            // los jefes van a su puesto de ataque frente a la base (o embisten, el warden)
+            t = plugin.bosses.target(gm);
+            sp = gm.speed * plugin.bosses.speedMul(gm);
+        } else {
+            while (reached(gm, l)) gm.waypoint++;
+            t = gm.waypoint >= wp.size() - 1 ? plugin.arena.baseCenter().clone().setY(wp.get(wp.size() - 1).getY()) : target(gm);
+            sp = gm.speed * (gm.furious ? plugin.settings.furySpeed : 1.0);
+        }
         double y = plugin.arena.groundY + 1 + (gm.isBoss() && gm.boss.flying() ? gm.boss.height() : 0);
         Vector d = new Vector(t.getX() - l.getX(), 0, t.getZ() - l.getZ());
         double len = d.length();
-        double sp = gm.speed * (gm.furious ? plugin.settings.furySpeed : 1.0);
         Location to = l.clone();
         if (len > 1e-3) to.add(d.multiply(Math.min(sp, len) / len));
         // vaivén suave de los voladores
         if (gm.isBoss() && gm.boss.flying()) y += Math.sin((plugin.tick() + gm.entity.getEntityId() * 7) * 0.06) * 0.8;
         to.setY(to.getY() + (y - to.getY()) * 0.15);
-        float yaw = (float) Math.toDegrees(Math.atan2(-(t.getX() - l.getX()), t.getZ() - l.getZ()));
+        Vector look = len > 0.4 ? new Vector(t.getX() - l.getX(), 0, t.getZ() - l.getZ()) : plugin.arena.baseCenter().clone().subtract(l.toVector());
+        float yaw = (float) Math.toDegrees(Math.atan2(-look.getX(), look.getZ()));
         if (gm.entity.getType() == EntityType.ENDER_DRAGON) yaw += 180f;
         to.setYaw(yaw);
         to.setPitch(0);
@@ -491,6 +545,7 @@ public final class MobManager implements Listener {
         m.setHealth(Math.max(1, Math.min(max, max * gm.hp / gm.maxHp)));
         m.playHurtAnimation(by == null ? 0 : by.getYaw());
         m.setNoDamageTicks(0);
+        updateBar(gm);
         if (gm.isBoss()) plugin.bosses.onDamage(gm);
     }
 
@@ -502,7 +557,10 @@ public final class MobManager implements Listener {
         kills++;
         Location l = gm.entity.getLocation();
         if (gm.isBoss()) plugin.bosses.onDeath(gm);
-        else plugin.fx.blood(l, gm.entity.getHeight() > 1.2 ? 1.0 : 0.7);
+        else {
+            plugin.fx.blood(l, gm.entity.getHeight() > 1.2 ? 1.0 : 0.7);
+            plugin.loot.onKill(gm, l);
+        }
         plugin.game.onKill(gm);
         gm.entity.setHealth(0);
     }
@@ -511,8 +569,7 @@ public final class MobManager implements Listener {
         Location l = gm.entity.getLocation();
         int dmg = gm.baseDamage();
         discard(gm, true);
-        if (gm.isBoss()) plugin.bosses.onReachBase(gm, l);
-        else {
+        {
             plugin.fx.particle(l.clone().add(0, 1, 0), Particle.LARGE_SMOKE, 8, 0.3, 0.5, 0.3, 0.03, null, false);
             plugin.fx.particle(l.clone().add(0, 1, 0), Particle.DUST, 10, 0.4, 0.6, 0.4, 0, new Particle.DustOptions(Color.RED, 1.6f), false);
         }

@@ -81,6 +81,17 @@ function Step({ ok, warn, title, detail }: { ok: boolean; warn?: boolean; title:
   )
 }
 
+/** Modos separados: con Base Defense en marcha, las cinemáticas no actúan en su mundo. */
+function MinigameNotice() {
+  const mg = useLiveState<{ baseDefense: { game: { running: boolean } | null } }>('minigames')
+  if (!mg?.baseDefense.game?.running) return null
+  return (
+    <div className="rounded-2xl border border-amber-400/30 bg-amber-400/10 px-5 py-3 text-sm text-amber-100">
+      <b>Base Defense está en marcha.</b> Son modos separados: mientras juegas al minijuego las cinemáticas y los efectos survival no se ejecutan en su mundo (y sus regalos usan el perfil «Base Defense»). Al detener la partida vuelve todo como estaba.
+    </div>
+  )
+}
+
 export function CinematicsPage() {
   const live = useLiveState<CineStatus>('cinemod')
   const [status, setStatus] = useState<CineStatus | null>(null)
@@ -166,6 +177,7 @@ export function CinematicsPage() {
       <div className="grid gap-4 px-8 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className="space-y-4">
           <VersionWarning />
+          <MinigameNotice />
           <div className="card overflow-hidden">
             <div className="flex items-center gap-3 border-b border-line bg-gradient-to-r from-violet-600/20 via-fuchsia-500/10 to-transparent px-5 py-4">
               <Clapperboard className="text-violet-300" />

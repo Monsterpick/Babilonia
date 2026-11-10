@@ -23,6 +23,8 @@ export interface BaseDefenseGame {
   mobs: number
   queue: number
   bosses: number
+  phase: number
+  wave: number
   kills: number
   likes: number
   likesMissing: number
@@ -143,6 +145,8 @@ export function parseBdStatus(line: string): BaseDefenseGame | null {
     mobs: n('mobs'),
     queue: n('queue'),
     bosses: n('bosses'),
+    phase: n('phase') || 1,
+    wave: n('wave'),
     kills: n('kills'),
     likes: n('likes'),
     likesMissing: n('likesMissing'),
@@ -169,6 +173,8 @@ export class MinigamesService {
   private lastLikesSent = -1
   private lastLikesAt = 0
   private polling = false
+  /** Perfil que estaba activo antes de empezar Base Defense (se recupera al terminar). */
+  previousProfile: string | null = null
 
   constructor(
     private readonly cfg: ConfigStore,
