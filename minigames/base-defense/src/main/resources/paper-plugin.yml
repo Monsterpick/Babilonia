@@ -1,0 +1,15 @@
+name: BaseDefense
+version: '${version}'
+main: dev.livearena.basedefense.BaseDefense
+bootstrapper: dev.livearena.basedefense.BdBootstrap
+api-version: '26.1.2'
+load: POSTWORLD
+description: Minijuego de defender la base para TikTok LIVE (hordas, armas y jefes).
+authors: [LiveArena]
+permissions:
+  basedefense.admin:
+    description: /bd (iniciar, arena, ajustes, pruebas)
+    default: op
+  basedefense.tiktok:
+    description: Comandos /tt* que envía la app de TikTok (la consola y RCON siempre pueden)
+    default: false

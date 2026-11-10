@@ -16,3 +16,8 @@ mod/build/
 mod/run/
 mod/.gradle/
 apps/server/assets/mods/
+
+# minijuego Base Defense (Gradle)
+minigames/base-defense/build/
+minigames/base-defense/.gradle/
+minigames/base-defense/run/

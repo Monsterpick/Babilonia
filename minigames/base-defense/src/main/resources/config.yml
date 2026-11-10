@@ -1,0 +1,284 @@
+# ╔══════════════════════════════════════════════════════════════════╗
+# ║  BASE DEFENSE · minijuego de defender la base para TikTok LIVE  ║
+# ╚══════════════════════════════════════════════════════════════════╝
+# Recarga en caliente con /bd reload (los cambios de "arena" se aplican al regenerar).
+# Colores con & (&a verde, &c rojo, &e amarillo, &6 dorado, &l negrita…).
+
+# ── Mundo y arena ───────────────────────────────────────────────────
+mundo:
+  nombre: basedefense
+  # Bioma de la arena. "basedefense:ceniza" es el bioma propio del plugin (niebla y cielo
+  # apagados, ceniza cayendo). Alternativas vanilla: minecraft:pale_garden, minecraft:basalt_deltas.
+  bioma: basedefense:ceniza
+  # Hora fija (0-24000). 12600 ≈ atardecer, 13400 ≈ anochecer, 18000 = medianoche.
+  hora: 12400
+  # despejado | lluvia | tormenta
+  clima: despejado
+
+arena:
+  semilla: 1337
+  largo: 80          # bloques de carril (de la base al portal)
+  ancho: 15          # bloques de ancho del carril
+  bosque: 13         # grosor del bosque a cada lado del carril
+  altura: 64         # Y del suelo del carril
+  alturaBase: 5      # bloques que la plataforma está por encima del carril
+  # 0.0 – 2.0 · cantidad de árboles, ruinas y restos
+  densidadDecorado: 1.0
+  # luz invisible del carril (0-15). Sube si en el stream los mobs se ven oscuros.
+  luzCarril: 12
+  # bloques colocados por tick al generar (más = más rápido, pero más tirón)
+  bloquesPorTick: 12000
+
+# ── Base ─────────────────────────────────────────────────────────────
+base:
+  vida: 1500
+  # Al caer: segundos de pausa antes de reiniciar la ronda
+  pausaAlCaer: 6
+  # Vaciar la cola de mobs pendientes cuando cae la base
+  vaciarColaAlCaer: false
+
+# ── Rondas ───────────────────────────────────────────────────────────
+ronda:
+  duracion: 900      # segundos (15:00)
+  # Al ganar una ronda: limpiar mobs y curar la base
+  limpiarAlGanar: true
+  curarAlGanar: true
+
+# ── Mobs ─────────────────────────────────────────────────────────────
+mobs:
+  tope: 300             # máximo de mobs del juego vivos a la vez (lo demás espera en cola)
+  spawnPorTick: 6       # cuántos salen del portal por tick como máximo
+  hordaGrande: 25       # a partir de esta cantidad se anuncia "¡LLEGA LA HORDA!"
+  maxPorComando: 500    # tope de cantidad por /ttspawn
+  # Nombre sobre cada mob. {usuario} = nombre del donante.
+  etiqueta: "&e[Donante] &a{usuario}"
+  # En hordas grandes solo se etiqueta una parte para no saturar.
+  etiquetasPorHorda: 6
+  etiquetasMax: 90
+  # Tipos. Añadir uno nuevo = añadir una entrada (entidad = tipo de Minecraft).
+  tipos:
+    zombie:
+      entidad: zombie
+      vida: 20
+      velocidad: 0.23
+      danio: 10
+      nombre: "Zombi"
+    skeleton:
+      entidad: skeleton
+      vida: 16
+      velocidad: 0.25
+      danio: 8
+      nombre: "Esqueleto"
+    spider:
+      entidad: spider
+      vida: 14
+      velocidad: 0.32
+      danio: 6
+      nombre: "Araña"
+    creeper:
+      entidad: creeper
+      vida: 18
+      velocidad: 0.22
+      danio: 35
+      nombre: "Creeper"
+    # Ejemplos para añadir más (descomenta):
+    # husk:     { entidad: husk, vida: 26, velocidad: 0.22, danio: 14, nombre: "Momia" }
+    # piglin:   { entidad: zombified_piglin, vida: 30, velocidad: 0.24, danio: 16, nombre: "Piglin" }
+
+# ── Jefes ────────────────────────────────────────────────────────────
+jefes:
+  # % de vida por debajo del cual el jefe se enfurece y acelera
+  furia: 35
+  aceleracionFuria: 1.6
+  tipos:
+    wither:
+      entidad: wither
+      vida: 600
+      velocidad: 0.16      # bloques por tick para los voladores
+      danio: 300
+      escala: 1.6
+      altura: 9            # altura de vuelo sobre el carril
+      nombre: "WITHER"
+    dragon:
+      entidad: ender_dragon
+      vida: 900
+      velocidad: 0.14
+      danio: 450
+      escala: 1.0
+      altura: 14
+      nombre: "DRAGÓN"
+    ghast:
+      entidad: ghast
+      vida: 400
+      velocidad: 0.10
+      danio: 250
+      escala: 1.3
+      altura: 15
+      nombre: "GHAST"
+      # Bolas de fuego hacia la base (cada N segundos). Dispárale a la bola para devolverla.
+      bolaCada: 6
+      bolaDanioBase: 60
+      bolaDanioJefe: 80
+    blaze:
+      entidad: blaze
+      vida: 300
+      velocidad: 0.18
+      danio: 200
+      escala: 2.2
+      altura: 6
+      nombre: "BLAZE"
+    ravager:
+      entidad: ravager
+      vida: 500
+      velocidad: 0.20
+      danio: 350
+      escala: 1.5
+      nombre: "DEVASTADOR"
+    warden:
+      entidad: warden
+      vida: 800
+      velocidad: 0.13
+      danio: 500
+      escala: 1.25
+      nombre: "WARDEN"
+
+# ── Meta de likes ────────────────────────────────────────────────────
+likes:
+  meta: 5000
+  jefe: ghast
+  donante: "la comunidad"
+
+# ── Armas ────────────────────────────────────────────────────────────
+# tipo: hitscan | cohete | granada
+# cadencia = disparos por segundo · dispersion en grados · recarga en segundos
+# modelo: id de item_model para un resource pack (vacío = ítem vanilla)
+armas:
+  pistola:
+    slot: 0
+    item: crossbow
+    modelo: ""
+    nombre: "&ePistola"
+    tipo: hitscan
+    automatica: false
+    danio: 9
+    cadencia: 5
+    alcance: 110
+    dispersion: 0.4
+    cargador: 15
+    recarga: 1.2
+    sonido: entity.firework_rocket.blast
+    tono: 1.8
+  subfusil:
+    slot: 1
+    item: iron_hoe
+    modelo: ""
+    nombre: "&bSubfusil"
+    tipo: hitscan
+    automatica: true
+    danio: 5
+    cadencia: 12
+    alcance: 90
+    dispersion: 2.2
+    cargador: 40
+    recarga: 1.8
+    sonido: entity.firework_rocket.blast
+    tono: 2.0
+  metralleta:
+    slot: 2
+    item: netherite_hoe
+    modelo: ""
+    nombre: "&cMetralleta"
+    tipo: hitscan
+    automatica: true
+    danio: 6
+    cadencia: 20
+    alcance: 120
+    dispersion: 1.6
+    cargador: 150
+    recarga: 3.5
+    sonido: entity.firework_rocket.large_blast
+    tono: 1.7
+  lanzacohetes:
+    slot: 3
+    item: firework_rocket
+    modelo: ""
+    nombre: "&6Lanzacohetes"
+    tipo: cohete
+    automatica: false
+    danio: 40
+    cadencia: 1.2
+    alcance: 140
+    dispersion: 0
+    cargador: 4
+    recarga: 2.6
+    radio: 5
+    velocidad: 2.2
+    sonido: entity.firework_rocket.launch
+    tono: 0.7
+  lanzagranadas:
+    slot: 4
+    item: fire_charge
+    modelo: ""
+    nombre: "&aLanzagranadas"
+    tipo: granada
+    automatica: false
+    danio: 30
+    cadencia: 2
+    alcance: 80
+    dispersion: 0
+    cargador: 6
+    recarga: 2.4
+    radio: 4.5
+    velocidad: 1.35
+    rebotes: 2
+    mecha: 2.2
+    sonido: entity.snowball.throw
+    tono: 0.6
+
+# ── Rendimiento ──────────────────────────────────────────────────────
+rendimiento:
+  particulasPorTick: 900
+  sonidosPorTick: 14
+  puntosTrazo: 18
+  manchasSangre: 40
+  cenizaPorTick: 6
+
+# ── Ambiente ─────────────────────────────────────────────────────────
+ambiente:
+  sonidos: true
+  # segundos entre sonidos lejanos (al azar entre min y max)
+  intervaloMin: 6
+  intervaloMax: 16
+  lista:
+    - ambient.cave
+    - entity.zombie.ambient
+    - entity.wolf.howl
+    - ambient.basalt_deltas.additions
+    - entity.zombie_villager.ambient
+    - block.bell.resonate
+
+# ── Textos ───────────────────────────────────────────────────────────
+mensajes:
+  prefijo: "&8[&cBase Defense&8] &7"
+  bossbarBase: "&c&lVIDA DE LA BASE &f{vida}&7/&f{max} &8(&e{porcentaje}%&8)"
+  bossbarRonda: "&6RONDA {ronda} &8· &f⏱ {tiempo} &8· &e🏆 Victorias: {victorias}"
+  bossbarLikes: "&d❤ Faltan &f{faltan} &dlikes para &c&l{jefe}"
+  hordaTitulo: "&c&l¡LLEGA LA HORDA!"
+  hordaSubtitulo: "&e{usuario} &7envía &f{cantidad} {tipo}"
+  jefeTitulo: "&4&l¡LLEGA EL JEFE!"
+  jefeSubtitulo: "&c{jefe} &7de &e{usuario}"
+  furiaTitulo: "&4&l¡ESTÁ FURIOSO!"
+  furiaSubtitulo: "&c{jefe} &7acelera"
+  devuelvelaTitulo: "&6&l¡DEVUÉLVELA!"
+  devuelvelaSubtitulo: "&eDispárale a la bola de fuego"
+  baseCaidaTitulo: "&4&lBASE CAÍDA"
+  baseCaidaSubtitulo: "&c-1 victoria &8· &7la ronda se reinicia"
+  rondaGanadaTitulo: "&a&l¡RONDA SUPERADA!"
+  rondaGanadaSubtitulo: "&e+1 victoria &8· &7total {victorias}"
+  golpeBase: "&c-{danio} &7base"
+  curaTitulo: "&a+{cantidad} &7vida"
+  curaSubtitulo: "&7gracias a &e{usuario}"
+  victoriasCambio: "&e{usuario} &7{signo}{n} victoria(s) &8→ &f{victorias}"
+  jefeDerrotado: "&a&l¡{jefe} DERROTADO!"
+  municion: "{arma} &8| &f{balas}&7/{cargador}"
+  recargando: "{arma} &8| &eRECARGANDO {barra}"
