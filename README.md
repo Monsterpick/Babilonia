@@ -4,6 +4,14 @@ Plataforma de juegos interactivos para **TikTok LIVE**. Los regalos, likes, come
 
 > Estado: **v0.5 · app de escritorio para Windows** (instalador y portable). Incluye plugin propio LiveArena (tótems apilables, 80+ efectos survival en español, efectos espectaculares, Akaza y Gojo, retos), overlays completos con vista previa, TTS, estudio de escenas y temas de color.
 
+## Novedades v0.6
+
+- **Minijuegos → Base Defense** (nueva pestaña): defiende tu base en primera persona con pistola, subfusil, metralleta, lanzacohetes y lanzagranadas mientras los regalos mandan zombis, esqueletos, arañas y creepers por un carril de un bosque muerto postapocalíptico. Jefes con barra de vida propia (Devastador, Blaze, Ghast con bolas de fuego que puedes devolver de un disparo, Wither, Warden y Dragón), rondas de 15:00, victorias que se guardan, meta de likes con jefe y carteles («¡LLEGA LA HORDA!», «¡ESTÁ FURIOSO!», «BASE CAÍDA»). El plugin (Paper 26.1.2, Gradle KTS + run-paper, código en `minigames/base-defense`) **genera la arena él solo** a partir de una semilla: isla flotante con bordes rotos, carril de tierra pisada, árboles muertos y quemados, ruinas, base elevada con barricadas y torre de vigilancia, y un portal en ruinas por el que entran los monstruos, con un bioma propio de ceniza. Probado con 300 mobs + jefe + metralleta sin parar: 20 TPS (7,5 ms/tick).
+  - La app lo instala en el servidor, genera la arena, activa el perfil de regalos «Base Defense», lo inicia/detiene, muestra la partida en vivo y deja probar cada regalo sin TikTok. Le pasa sola el total de likes del directo.
+  - Con otras apps (TikFinity…) por RCON: `ttspawn <tipo> <n> <usuario>`, `ttboss <jefe> <usuario>`, `ttheal <n> <usuario>`, `ttwin <+n|-n> <usuario>`, `ttlikes <total>`.
+- **Cinemáticas v7**: Sangre Perforante sin esfera (manos juntas, zoom a la cara con destellos rojos bajo los ojos, la flecha de sangre se forma entre las palmas y sale disparada) y Ataque orbital rehecho (plano del satélite con la Tierra de fondo, el cañón cargando, el rayo cruzando el espacio hasta el planeta y bajada a la vista del objetivo, sin tinte rojo a pantalla completa).
+- Barra lateral que cabe en pantallas de 768 px de alto y estado correcto del servidor cuando lo abres fuera de la app.
+
 ## Novedades v0.5
 
 - **Habilidades cinemáticas** (12, según el kit): escudo, onda de repulsión, corona de espadas, súper rayo, trueno + explosión, carrusel de creepers, ojo del vacío, agujero negro, juicio arcano, esfera de energía, meteorito y mil cortes. El servidor sigue siendo **Paper** (plugin LiveArena: línea de tiempo, daño, destrucción con restauración) y tu PC lleva el mod **LiveArena Cinemáticas** (NeoForge 26.1.2 + GeckoLib 5.5): cámara de cine, FOV, franjas, destellos, cielo especial y modelos animados. La app lo instala en un clic (página **Cinemáticas**). Comandos: `/habilidad <id> <jugador>` o `la efecto cine_<id> {player} {nickname}` en tus reglas.

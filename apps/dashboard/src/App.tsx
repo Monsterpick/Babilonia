@@ -78,21 +78,21 @@ export function App() {
   return (
     <AppCtx.Provider value={{ state, reload, profile, go }}>
       <div className="flex h-full">
-        <aside className="relative z-10 flex w-[92px] shrink-0 flex-col items-center gap-1 border-r border-white/5 bg-black/30 py-5 backdrop-blur-xl">
-          <button onClick={() => go('plugins')} className="mb-5 grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-accent via-hot to-coral text-white shadow-[0_10px_30px_-10px_var(--color-hot)]" title="LiveArena">
+        <aside className="relative z-10 flex w-[92px] shrink-0 flex-col items-center gap-1 border-r border-white/5 bg-black/30 py-4 backdrop-blur-xl">
+          <button onClick={() => go('plugins')} className="mb-3 grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-accent via-hot to-coral text-white shadow-[0_10px_30px_-10px_var(--color-hot)]" title="LiveArena">
             <Zap size={24} strokeWidth={2.5} />
           </button>
-          <nav className="flex w-full flex-1 flex-col items-center gap-1 px-2">
+          <nav className="no-scrollbar flex min-h-0 w-full flex-1 flex-col items-center gap-0.5 overflow-y-auto px-2">
             {PAGES.map((p) => {
               const on = p.id === current.id
               return (
                 <button
                   key={p.id}
                   onClick={() => go(p.id)}
-                  className={`group relative flex w-full flex-col items-center gap-1 rounded-2xl px-1 py-2.5 text-[11px] font-medium transition ${on ? 'text-white' : 'text-muted hover:text-white'}`}
+                  className={`group relative flex w-full flex-col items-center gap-1 shrink-0 rounded-2xl px-1 py-2 text-[11px] font-medium transition [@media(max-height:860px)]:py-1 ${on ? 'text-white' : 'text-muted hover:text-white'}`}
                 >
                   {on && <span className="absolute top-1/2 -left-2 h-8 w-1 -translate-y-1/2 rounded-r-full bg-gradient-to-b from-accent to-hot" />}
-                  <span className={`grid h-10 w-10 place-items-center rounded-xl transition ${on ? 'bg-gradient-to-br from-accent/30 to-hot/20 ring-1 ring-accent/60' : 'group-hover:bg-white/5'}`}>{p.icon}</span>
+                  <span className={`grid h-10 w-10 place-items-center rounded-xl transition [@media(max-height:860px)]:h-8 [@media(max-height:860px)]:w-8 ${on ? 'bg-gradient-to-br from-accent/30 to-hot/20 ring-1 ring-accent/60' : 'group-hover:bg-white/5'}`}>{p.icon}</span>
                   <span className="leading-none">{p.label}</span>
                   {p.id === 'plugins' && profile && <span className="absolute top-1.5 right-2.5 min-w-4 rounded-full bg-hot px-1 text-[9px] leading-4 font-bold text-white">{profile.events.length}</span>}
                 </button>
@@ -238,9 +238,11 @@ function MinecraftPill() {
       setBusy(false)
     }
   }
-  const canStart = !!mc?.server?.folder && proc !== 'running' && proc !== 'starting'
+  // RCON vinculado con el servidor apagado desde la app = servidor abierto por fuera (otra ventana, host…)
+  const external = link === 'connected' && (proc === 'stopped' || proc === 'crashed')
+  const canStart = !!mc?.server?.folder && proc !== 'running' && proc !== 'starting' && !external
   const dot = link === 'connected' ? 'bg-ok shadow-[0_0_8px_var(--color-ok)]' : link === 'error' ? 'bg-bad' : proc === 'starting' ? 'bg-warn animate-pulse' : 'bg-muted'
-  const procText = mc?.server?.folder ? { stopped: 'apagado', starting: 'arrancando…', running: 'encendido', stopping: 'apagando…', crashed: 'se cayó' }[proc as string] : 'sin servidor'
+  const procText = external ? 'encendido' : mc?.server?.folder ? { stopped: 'apagado', starting: 'arrancando…', running: 'encendido', stopping: 'apagando…', crashed: 'se cayó' }[proc as string] : 'sin servidor'
   const on = proc === 'running' || proc === 'starting'
   return (
     <div className="flex items-center gap-1 rounded-full border border-line bg-black/30 p-1 pl-3 text-sm">
