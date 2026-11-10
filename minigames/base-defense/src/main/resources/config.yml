@@ -196,7 +196,7 @@ recompensa:
 # Los regalan los espectadores para ayudar. Solo dañan a los mobs del juego (a los jefes, la mitad).
 aliados:
   misil: { danio: 90, radio: 6 }                  # cae sobre el grupo más denso
-  bombardeo: { bombas: 10, danio: 45, radio: 4 }  # fila de bombas del portal a la base
+  bombardeo: { bombas: 10, danio: 45, radio: 4, altura: 20, duracionVuelo: 90, tamanoAvion: 7 }  # un avión cruza el carril soltando bombas
   rayo: { danio: 10, ancho: 3, duracion: 3 }      # rayo orbital que barre el carril (daño cada 2 ticks)
 
 # ── Pack de texturas ─────────────────────────────────────────────────

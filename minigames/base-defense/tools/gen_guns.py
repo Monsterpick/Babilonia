@@ -324,6 +324,36 @@ def granada_vuelo():
     return e
 
 
+def avion():
+    """Bombardero (la nariz mira a +Z). En el juego va a escala ~5."""
+    e = []
+    e += tube(8, 8, -12.0, 26.0, 2.6, 'gris')                               # fuselaje
+    e += tube(8, 8, 26.0, 30.0, 1.8, 'gris')                                # morro
+    e += [box((6.6, 9.4, 18.0), (9.4, 11.4, 24.0), 'boca')]                 # cabina
+    e += [box((6.7, 9.6, 18.4), (9.3, 11.2, 23.6), 'mira')]                 # cristal (brillo)
+    e += [box((-14.0, 7.3, 4.0), (30.0, 8.3, 13.0), 'gris')]                # alas
+    e += [box((-14.0, 7.25, 4.0), (-10.0, 8.35, 13.0), 'cabeza'), box((26.0, 7.25, 4.0), (30.0, 8.35, 13.0), 'cabeza')]  # puntas
+    for x in (-3.5, 19.5):                                                   # motores
+        e += tube(x, 7.2, 4.0, 15.0, 1.4, 'acero')
+        e += [box((x - 0.3, 3.8, 15.0), (x + 0.3, 10.6, 15.4), 'polimero'), box((x - 3.4, 6.9, 15.0), (x + 3.4, 7.5, 15.4), 'polimero')]  # hélices
+    e += [box((1.0, 7.6, -12.0), (15.0, 8.4, -6.0), 'gris')]                # estabilizador
+    e += [box((7.6, 8.0, -12.0), (8.4, 15.0, -5.0), 'gris')]                # deriva
+    e += [box((7.55, 11.0, -11.6), (8.45, 14.0, -9.0), 'cabeza')]           # marca roja
+    e += [box((6.0, 5.0, 2.0), (10.0, 5.6, 14.0), 'boca')]                  # compuerta de bombas
+    return e
+
+
+def bomba():
+    """Bomba de caída (la punta mira a +Z)."""
+    e = []
+    e += tube(8, 8, 3.0, 12.0, 1.8, 'oliva')
+    e += tube(8, 8, 12.0, 14.5, 1.2, 'oliva')
+    e += [box((7.4, 7.4, 14.5), (8.6, 8.6, 15.4), 'acero')]
+    e += [box((5.0, 7.8, 0.5), (11.0, 8.2, 4.0), 'acero'), box((7.8, 5.0, 0.5), (8.2, 11.0, 4.0), 'acero')]
+    e += [box((6.1, 6.1, 9.0), (9.9, 9.9, 9.6), 'cabeza')]                  # franja
+    return e
+
+
 def bloqueada():
     """Candado (arma aún bloqueada)."""
     e = [box((4.5, 2.5, 6.5), (11.5, 9.5, 9.5), 'gris'),
@@ -414,6 +444,8 @@ def guns():
         write(name, fn(), display(k), 100 + i * 31, fp=arms(g, f, True, top))
     write('caja_municion', caja_municion(), {'gui': {'rotation': [30, 45, 0], 'scale': [0.62] * 3}, 'ground': {'scale': [0.5] * 3}, 'fixed': {'scale': [0.8] * 3}}, 900)
     write('cohete_vuelo', cohete_vuelo(), {}, 970)
+    write('avion', avion(), {}, 990)
+    write('bomba', bomba(), {}, 995)
     write('granada_vuelo', granada_vuelo(), {}, 980)
     ip = os.path.join(BD, 'items', 'vacio.json')
     json.dump({'model': {'type': 'minecraft:empty'}}, open(ip, 'w'))
