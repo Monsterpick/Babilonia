@@ -126,8 +126,20 @@ export function TimerV2() {
     if (ms > prev.current + 1500) setBump(Date.now())
     prev.current = ms
   }, [ms])
+  // Si el reloj no cabe en el ancho de la fuente (p. ej. al aparecer las horas), se encoge para no salir cortado.
+  const box = useRef<HTMLDivElement>(null)
+  const [fit, setFit] = useState(1)
+  useEffect(() => {
+    const measure = () => {
+      const w = box.current?.offsetWidth ?? 0
+      if (w > 0) setFit(Math.min(1, (window.innerWidth - 8) / w))
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [txt.length, size, showRule])
   return (
-    <div style={{ ...base, display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+    <div ref={box} style={{ ...base, display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 4, transform: fit < 1 ? `scale(${fit})` : undefined, transformOrigin: 'top left' }}>
       <Styles />
       <div
         key={bump}
@@ -675,7 +687,8 @@ export function GoalBar({ metric }: { metric: 'coins' | 'likes' | 'combined' | '
   const stripes = `repeating-linear-gradient(115deg, ${theme.a} 0 14px, ${theme.b} 14px 28px)`
   const w = Number(params.get('w') ?? 640)
   return (
-    <div style={{ ...base, width: w }}>
+    // Nunca más ancha que la fuente de navegador: si esta mide menos, la barra se ajusta en vez de salir cortada.
+    <div style={{ ...base, width: w, maxWidth: 'calc(100vw - 8px)' }}>
       <Styles />
       <div
         key={pct}

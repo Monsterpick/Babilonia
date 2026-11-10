@@ -24,6 +24,9 @@ interface Def {
   demoFirst?: boolean
 }
 
+/** Overlays que siempre muestran algo (marcadores y metas): no llevan el aviso «vacío hasta el primer evento». */
+const ALWAYS_VISIBLE = new Set(['tarjetas', 'contador', 'cronometro', 'vidas', 'totems', 'reset-salvar', 'meta-regalo', 'duelo', 'meta-monedas', 'meta-likes', 'meta-seguidores', 'meta-combinada'])
+
 const copy = (url: string) => navigator.clipboard.writeText(url).then(() => toast('Enlace copiado'), () => toast('No se pudo copiar', 'error'))
 const post = (path: string, body: unknown) => api('POST', path, body).catch((e) => toast((e as Error).message, 'error'))
 
@@ -218,8 +221,8 @@ const SECTIONS: { title: string; hint: string; items: Def[] }[] = [
         id: 'cronometro',
         name: 'Cronómetro',
         desc: 'Hacia arriba o cuenta atrás, con sonido al llegar a 0.',
-        w: 420,
-        h: 160,
+        w: 480,
+        h: 170,
         tools: TimerTools,
         settings: (c, set) => (
           <>
@@ -518,7 +521,7 @@ function Stage({ id, w, h, nonce, example, bg, height, maxScale = 2 }: { id: str
   return (
     <div ref={box} className="relative grid place-items-center overflow-hidden rounded-xl border border-white/5" style={{ height, background: bgCss(bg) }}>
       <div style={{ width: w * scale, height: h * scale, position: 'relative' }} className="rounded-[3px] outline outline-1 outline-dashed outline-white/20">
-        {!example && (
+        {!example && !ALWAYS_VISIBLE.has(id) && (
           <span className="pointer-events-none absolute bottom-1 left-1.5 text-[10px] font-semibold whitespace-nowrap text-white/30">vacío hasta el primer evento</span>
         )}
         <iframe key={`${nonce}-${example}`} title={id} src={overlayUrl(id, example ? { demo: '1' } : {})} style={{ position: 'absolute', top: 0, left: 0, width: w, height: h, transform: `scale(${scale})`, transformOrigin: 'top left', border: 0, background: 'transparent', pointerEvents: 'none' }} />

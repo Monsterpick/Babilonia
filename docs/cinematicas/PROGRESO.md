@@ -31,3 +31,14 @@ paquete de recursos (ver ASSETS.md). Los sonidos son vanilla en capas; se cambia
 Sin DamageType propio en JSON: el servidor es Paper (los plugins no registran tipos de daño); se usa el daño del
 motor con el «golpe letal final» de LiveArena.
 Durante las habilidades Paper no expulsa por «volar» (y la app pone allow-flight=true).
+
+## v4 — Efectos con shaders propios y voces
+
+- **Motor de efectos del mod (`CineVfx`)**: esferas de plasma, halos, ondas expansivas, haces, tajos, auras de llamas,
+  vórtices, rayos, estelas y partículas propias, dibujados con shaders (`assets/livearena/shaders/core/fx.*`).
+  El plugin los crea como un modelo más: `fx_azul`, `fx_rojo`, `fx_purpura`, `fx_genki`, `fx_aura`, `fx_onda`, `fx_pilar`,
+  `fx_cortes`, `fx_brujula`, `fx_golpe`, `fx_cometa`, `fx_rayos` (escala = tamaño, animación = estado, color = tinte).
+- **Brújula de Akaza**: calco sobre el terreno bloque a bloque (sigue el relieve, sin parpadeos). Textura: `tools/gen_brujula.py`.
+- **Voces**: `assets/livearena/sounds/voz/*.ogg` (audios aportados por el usuario). Las líneas de tiempo de genkidama,
+  mil_cortes, vacio_purpura y akaza están sincronizadas con ellas. Se configuran en `habilidades.yml → voces`.
+- Sin el mod se siguen viendo los efectos de respaldo (partículas y displays) y los sonidos de Minecraft.

@@ -27,8 +27,8 @@ juicio_arcano:     { radioZona: 15.0, numeroRayos: 33, danioRayo: 8.0, danioFina
 genkidama:         { alturaVuelo: 16.0, radioMax: 12.0, velocidad: 0.4, danio: 50.0, radioCrater: 14, profundidadCrater: 8, energiaDeJugadores: true, distanciaGokuSinLanzador: 30.0 }
 meteorito:         { radioCrater: 18, profundidadCrater: 10, radioLetal: 6.0, radioDanio: 30.0, danioMax: 100.0, bloquesEyeccion: 80, radioSacudida: 150 }
 mil_cortes:        { alturaSantuario: 20.0, enterrarSantuario: 0.3, distanciaSantuario: 14.0, radio: 10.0, cortesPorTick: 3, danioCorte: 1.0, danioFinal: 30.0, romperBloques: true, distanciaSukunaSinLanzador: 12.0 }
-vacio_purpura:     { velocidad: 0.6, radioDestruccion: 3.0, radioAtraccion: 10.0, radioNucleo: 1.5, danioTick: 2.0, ticksMax: 100, distanciaMax: 60.0, radioDetonacion: 7, danioFinal: 30.0 }
-akaza:             { distanciaAparicion: 8.0, radioCopo: 10.0, radioCrater: 6, danio: 20.0, knockbackHorizontal: 2.5, knockbackVertical: 1.2, tickImpacto: 85 }
+vacio_purpura:     { velocidad: 0.6, radioOrbe: 3.0, radioDestruccion: 3.0, radioAtraccion: 10.0, radioNucleo: 1.5, danioTick: 2.0, distanciaMax: 80.0, radioDetonacion: 7, danioFinal: 30.0 }
+akaza:             { distanciaAparicion: 8.0, radioCopo: 10.0, radioCrater: 7, danio: 20.0, danioGolpe: 0.5, impulsoGancho: 1.7, knockbackHorizontal: 2.5, knockbackVertical: 1.2 }
 
 # Sonidos de cada habilidad. Si tienes un resource pack con sonidos propios, pon aquí su id
 # (p. ej. "livearena:cortes.tajo"). Mientras tanto se usan sonidos vanilla parecidos.
@@ -82,14 +82,32 @@ sonidos:
   akaza.aparicion: entity.breeze.land,entity.player.attack.strong
   akaza.despliegue: block.amethyst_block.resonate,block.beacon.activate
   akaza.golpe: entity.generic.explode,entity.warden.attack_impact,entity.lightning_bolt.thunder
+  akaza.punetazo: entity.player.attack.crit,entity.player.attack.knockback
+  akaza.rafaga: entity.breeze.shoot,entity.player.attack.sweep
 
 # Frases de los personajes (subtítulo en pantalla; sin el mod salen en la barra de acción). Vacío = sin frase.
 frases:
-  genkidama: "¡Gente de la Tierra, por favor, denme un poco de su energía!"
-  vacio_purpura: "Nueve cuerdas, luz polarizada, cuervos y declaración... Técnica Imaginaria: Púrpura."
-  mil_cortes_dominio: "Conoce tu lugar, maldito insecto... Expansión de Dominio: Santuario Malévolo."
-  mil_cortes_cortes: "Te cortaré en mil pedazos hasta que no quede nada de ti."
-  akaza_aparicion: "¡Siente el poder de la destrucción!"
-  akaza_despliegue: "¡Despliegue de técnica!"
-  akaza_ataque: "¡Muerte destructiva, estilo del caos!"
+  goku_1: "¡Escúchenme todos!"
+  goku_2: "¡Denme un poco de su energía!"
+  goku_3: "¡La necesito!"
+  gojo_azul: "Ritual maldito de amplificación: Azul."
+  gojo_rojo: "Ritual maldito de inversión: Rojo."
+  gojo_vacio: "Vacío…"
+  gojo_purpura: "¡Púrpura!"
+  sukuna_dominio: "Extensión de dominio…"
+  sukuna_templo: "Templo del mal."
+  akaza_muerte: "Muerte destructiva…"
+  akaza_brujula: "¡Aguja de brújula!"
   ojo_vacio: "Te estoy viendo..."
+
+# Voces de los personajes: audios incluidos en el mod «LiveArena Cinemáticas» (los oye quien tiene el mod).
+# Las cinemáticas de Goku, Gojo, Sukuna y Akaza están sincronizadas con estos audios.
+#   activadas: false  → sin voces (vuelven los sonidos de Minecraft).
+#   volumen: 0.0 a 1.0.  Para usar otro audio de un resource pack: gojo: "mipack:mi.sonido"
+voces:
+  activadas: true
+  volumen: 1.0
+  goku: "livearena:voz.goku"
+  gojo: "livearena:voz.gojo"
+  sukuna: "livearena:voz.sukuna"
+  akaza: "livearena:voz.akaza"

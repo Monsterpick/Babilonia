@@ -5,7 +5,8 @@ import { ComboTracker, Deduper, PriorityWorker, RuleEngine, renderTemplate, type
 import { effect, give, summon, titleCommands } from '@livearena/minecraft'
 import { TikTokSource } from '@livearena/source-tiktok'
 import { LiveEventSchema, normalizeTikTokUser, safeDisplayText, type ActionMessage, type LiveEvent, type Profile, type RawGift, type Step } from '@livearena/shared'
-import { ConfigStore, paths } from './config.js'
+import path from 'node:path'
+import { ConfigStore, DATA_DIR, paths } from './config.js'
 import { Hub } from './hub.js'
 import { Logger } from './logger.js'
 import { MinecraftService } from './minecraft-service.js'
@@ -38,7 +39,7 @@ export class App {
   readonly hub = new Hub(VERSION)
   readonly profiles = new ProfileStore()
   readonly stats = new StatsStore(paths.db)
-  readonly gifts = new GiftCatalog()
+  readonly gifts = new GiftCatalog(path.join(DATA_DIR, 'regalos-aprendidos.json'))
   readonly textures: TextureService
   readonly tts: TtsService
   readonly mc: MinecraftService
@@ -128,6 +129,14 @@ export class App {
     this.cfg.update((c) => (c.tiktok.username = u))
     this.tiktok.configure({ signApiKey: this.cfg.eulerKey() })
     await this.tiktok.connect(u)
+    // Con el directo abierto se pide el catálogo de la sala: trae el icono real de cada regalo.
+    this.tiktok
+      .fetchGiftCatalog()
+      .then((list) => {
+        this.gifts.learnMany(list)
+        if (list.length) this.log.info('live', `Catálogo de regalos actualizado desde TikTok (${list.length})`)
+      })
+      .catch(() => undefined)
   }
 
   newSession(target: string): void {
@@ -171,7 +180,17 @@ export class App {
     if (ev.type === 'gift') this.subathonAdd(ev.payload.diamonds * ev.payload.count)
     const changed = this.stats.record(ev)
     if (changed.leaderboard || changed.best) this.publishStats(true)
-    else if (changed.likes) this.publishStats(false)
+    else if (changed.likes) {
+      this.publishStats(false)
+      // El ranking de likes también cambia: se republica, como mucho, un par de veces por segundo.
+      if (!this.likersTimer) {
+        this.likersTimer = setTimeout(() => {
+          this.likersTimer = null
+          this.publishStats(true)
+        }, 400)
+        this.likersTimer.unref?.()
+      }
+    }
 
     if ((ev as { simulated?: boolean }).simulated && Date.now() < this.simDryUntil) (ev as { dry?: boolean }).dry = true
     const res = this.paused ? { jobs: [], skipped: [], trimmed: 0 } : this.engine.handle(ev)
@@ -557,6 +576,7 @@ export class App {
   }
 
   private lastLikesPublish = 0
+  private likersTimer: NodeJS.Timeout | null = null
   private publishStats(full: boolean): void {
     const now = Date.now()
     if (!full && now - this.lastLikesPublish < 250) return // likes: como mucho 4 veces/s

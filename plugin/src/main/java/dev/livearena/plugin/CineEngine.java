@@ -16,6 +16,7 @@ import java.util.Set;
 import java.util.UUID;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.sound.Sound;
+import net.kyori.adventure.sound.SoundStop;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
@@ -101,6 +102,7 @@ final class CineEngine implements Listener, TabExecutor {
         final Set<Integer> models = new HashSet<>();
         int t;
         boolean cameraOn;
+        Key voiceKey;
         boolean ended;
 
         Ctx(Ability ab, Player target, Player launcher, String viewer) {
@@ -294,6 +296,37 @@ final class CineEngine implements Listener, TabExecutor {
             }
         }
 
+        /**
+         * Voz del personaje: un audio del mod (livearena:voz.<nombre>) que suena «en los auriculares» de cada jugador
+         * cercano con el mod. Devuelve true si el objetivo la oye (entonces se omiten los sonidos que duplicaría).
+         * habilidades.yml → voces.activadas: false las apaga; voces.<nombre> cambia el sonido.
+         */
+        boolean voice(String name) {
+            if (!cfgFile.getBoolean("voces.activadas", true)) return false;
+            String key = cfgFile.getString("voces." + name, "livearena:voz." + name);
+            if (key == null || key.isBlank()) return false;
+            Key k;
+            try {
+                k = Key.key(key);
+            } catch (Exception e) {
+                return false;
+            }
+            voiceKey = k;
+            float vol = (float) cfgFile.getDouble("voces.volumen", 1.0);
+            Sound s = Sound.sound(k, Sound.Source.MASTER, vol, 1f);
+            for (Player p : w.getPlayers()) {
+                if (!CineNet.hasMod(p) || p.getLocation().distanceSquared(origin) > 160 * 160) continue;
+                p.playSound(s, Sound.Emitter.self());
+            }
+            return CineNet.hasMod(target);
+        }
+
+        /** Tajos que cruzan la pantalla (solo con mod). */
+        void screenSlashes(int rgb, int ticks) {
+            for (Player p : w.getPlayers())
+                if (p == target || p.getLocation().distanceSquared(origin) < 40 * 40) net.send(p, CineNet.screen(CineNet.SLASHES, 0xff000000 | rgb, 0, ticks, 0));
+        }
+
         void anim(Entity holder, String anim) {
             for (Player p : w.getPlayers()) net.send(p, CineNet.modelAnim(holder.getEntityId(), anim));
         }
@@ -353,6 +386,7 @@ final class CineEngine implements Listener, TabExecutor {
             {"gojo.aparicion", "entity.illusioner.mirror_move,block.amethyst_block.resonate"}, {"gojo.carga", "block.beacon.power_select,block.respawn_anchor.charge"},
             {"gojo.disparo", "entity.warden.sonic_boom,entity.wither.shoot"}, {"gojo.detonacion", "entity.generic.explode,entity.lightning_bolt.thunder,block.beacon.deactivate"},
             {"akaza.aparicion", "entity.breeze.land,entity.player.attack.strong"}, {"akaza.despliegue", "block.amethyst_block.resonate,block.beacon.activate"},
+            {"akaza.punetazo", "entity.player.attack.crit,entity.player.attack.knockback"}, {"akaza.rafaga", "entity.breeze.shoot,entity.player.attack.sweep"},
             {"akaza.golpe", "entity.generic.explode,entity.warden.attack_impact,entity.lightning_bolt.thunder"}, {"cortes.ambiente", "ambient.crimson_forest.mood,entity.warden.heartbeat"},
         };
         for (String[] e : s) DEFAULT_SOUNDS.put(e[0], e[1]);
@@ -528,6 +562,7 @@ final class CineEngine implements Listener, TabExecutor {
             plugin.getLogger().warning("Habilidad " + c.ab.id + " falló al terminar: " + ex);
         }
         endCamera(c);
+        if (cancelled && c.voiceKey != null) for (Player p : c.w.getPlayers()) p.stopSound(SoundStop.named(c.voiceKey));
         c.skyReset();
         for (Integer id : c.models) for (Player p : c.w.getPlayers()) net.send(p, CineNet.modelRemove(id));
         for (Entity e : c.actors) if (e.isValid()) e.remove();

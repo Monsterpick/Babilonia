@@ -381,6 +381,25 @@ public final class CineClient {
                     g.fill(0, 0, w, bar, 0xff000000);
                     g.fill(0, h - bar, w, h, 0xff000000);
                 }
+                case 4 -> { // tajos que cruzan la pantalla: cada uno dura 4 ticks
+                    float t = now - f.start();
+                    for (int k = 0; k < 3; k++) {
+                        int slot = (int) Math.floor((t + k * 1.7f) / 5f);
+                        float lt = (t + k * 1.7f) - slot * 5f;
+                        if (lt > 4f) continue;
+                        java.util.Random r = new java.util.Random(f.start() * 31L + slot * 7919L + k * 104729L);
+                        float cx = w * (0.15f + r.nextFloat() * 0.7f), cy = h * (0.15f + r.nextFloat() * 0.7f);
+                        float ang = (r.nextFloat() - 0.5f) * 2.6f, len = w * (0.5f + r.nextFloat() * 0.6f);
+                        float prog = Math.min(1, lt / 1.2f), fade = lt < 1.2f ? 1 : 1 - (lt - 1.2f) / 2.8f;
+                        g.pose().pushMatrix();
+                        g.pose().translate(cx, cy);
+                        g.pose().rotate(ang);
+                        int x0 = (int) (-len / 2), x1 = (int) (-len / 2 + len * prog);
+                        g.fill(x0, -3, x1, 3, withAlpha(f.argb(), 0.35f * fade));
+                        g.fill(x0, -1, x1, 1, withAlpha(0xffffffff, fade));
+                        g.pose().popMatrix();
+                    }
+                }
                 default -> {}
             }
         }

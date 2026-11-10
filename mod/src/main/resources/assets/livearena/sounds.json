@@ -1,0 +1,6 @@
+{
+  "voz.gojo": {"sounds": [{"name": "livearena:voz/gojo", "stream": true}]},
+  "voz.goku": {"sounds": [{"name": "livearena:voz/goku", "stream": true}]},
+  "voz.sukuna": {"sounds": [{"name": "livearena:voz/sukuna", "stream": true}]},
+  "voz.akaza": {"sounds": [{"name": "livearena:voz/akaza", "stream": true}]}
+}

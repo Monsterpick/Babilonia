@@ -280,6 +280,19 @@ def akaza():
             'cuerpo': {'scale': {0: [1, 1, 1], 1.0: (1.01, 1.02, 1.01, E), 2.0: (1, 1, 1, E)}},
         })),
         'idle': anim(2.0, True, {'cuerpo': {'scale': {0: [1, 1, 1], 1.0: (1.01, 1.02, 1.01, E), 2.0: (1, 1, 1, E)}}}),
+        # Ráfaga de puñetazos (bucle rápido): al frente y hacia arriba.
+        'rafaga': punch(-95, -25, 12),
+        'rafaga_arriba': punch(-172, -110, -14),
+    })
+
+
+def punch(ext, back, lean):
+    return anim(0.3, True, {
+        'pierna_izquierda': {'rotation': {0: [-20, 0, -18], 0.3: [-20, 0, -18]}},
+        'pierna_derecha': {'rotation': {0: [25, 0, 18], 0.3: [25, 0, 18]}},
+        'cuerpo': {'rotation': {0: [lean, -14, 0], 0.15: [lean, 14, 0], 0.3: [lean, -14, 0]}},
+        'brazo_derecho': {'rotation': {0: [ext, 0, 4], 0.15: [back, 0, 22], 0.3: [ext, 0, 4]}},
+        'brazo_izquierdo': {'rotation': {0: [back, 0, -22], 0.15: [ext, 0, -4], 0.3: [back, 0, -22]}},
     })
 
 

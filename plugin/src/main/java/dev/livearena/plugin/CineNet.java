@@ -22,7 +22,7 @@ final class CineNet {
     static final byte LINEAR = 0, EASE_IN_OUT = 1, EASE_IN_EXPO = 2, EASE_OUT_EXPO = 3, CUT = 4;
 
     /** Efectos de pantalla. */
-    static final byte FLASH = 0, VIGNETTE = 1, TINT = 2, LETTERBOX = 3;
+    static final byte FLASH = 0, VIGNETTE = 1, TINT = 2, LETTERBOX = 3, SLASHES = 4;
 
     /** Cielos. */
     static final byte SKY_NORMAL = 0, SKY_SPACE = 1, SKY_STORM = 2, SKY_TINT = 3;
