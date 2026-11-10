@@ -267,16 +267,43 @@ def aura():
 
 
 def desvanecer():
-    """Desvanecerse: destellos cristalinos que suben y un soplo suave que se apaga."""
-    d = 2.2
-    x = np.zeros(int(SR * d))
-    for i in range(26):
-        at = int((i / 26) * 1.5 * SR + rng.random() * 0.05 * SR)
-        f = 900 * 2 ** (i / 26 * 2 + rng.random() * 0.3)
-        g = (np.sin(2 * np.pi * f * t_(0.5)) + 0.4 * np.sin(2 * np.pi * f * 2.01 * t_(0.5))) * env(0.5, 0.003, 0.5, 3)
-        x[at:at + len(g)] += g[:len(x) - at] * 0.35
-    breath = sweep_filter(noise(d), 600, 3000, 2, 25) * np.sin(np.pi * t_(d) / d) * 0.5
-    save('desvanecer', reverb(mix(x, breath), 1.8, 0.4))
+    """Salida imponente del personaje (4,5 s): subida en tensión, golpe grave con acorde de metales que cae, energía
+    que se deshace crepitando hacia arriba y una cola larga con eco, como el final de un tráiler."""
+    d = 4.6
+    n = int(SR * d)
+    t = t_(d)
+    hit = 0.55
+    hi = int(SR * hit)
+    # 1) subida: ruido que se abre y un tono que sube hasta el golpe (efecto «inverso»)
+    up_t = t_(hit)
+    swell = sweep_filter(noise(hit), 200, 4000, 2.5, 20) * (up_t / hit) ** 2.2 * 0.9
+    rise = chirp(hit, 90, 340, 'saw', 1.6) * (up_t / hit) ** 2.5 * 0.25
+    pre = np.concatenate([spectral(swell + rise, 40, 9000), np.zeros(n - hi)])
+    # 2) golpe: sub que cae, pegada de bombo y acorde de metales grave (La-Mi-La) que se cierra
+    rest = d - hit
+    rt = t_(rest)
+    sub = np.sin(2 * np.pi * np.cumsum(np.linspace(62, 26, len(rt))) / SR) * env(rest, 0.004, 2.6, 1.8) * 1.6
+    thump = spectral(noise(rest), 30, 180) * env(rest, 0.002, 0.35, 3) * 1.4
+    chord = np.zeros(len(rt))
+    for f, g in ((55, 1.0), (55.4, 0.8), (82.4, 0.7), (110, 0.55), (110.7, 0.4), (164.8, 0.25)):
+        ph = 2 * np.pi * f * rt
+        chord += g * (2 * ((ph / (2 * np.pi)) % 1) - 1)
+    chord = sweep_filter(chord, 1400, 120, 1.2, 40) * env(rest, 0.02, 3.4, 1.4) * 0.55
+    # 3) energía que se deshace: granos oscuros que suben de tono y se apagan
+    grains = np.zeros(len(rt))
+    for i in range(70):
+        at = int((0.15 + (i / 70) ** 1.3 * 2.6) * SR + rng.random() * 0.04 * SR)
+        f = 220 * 2 ** (i / 70 * 3 + rng.random() * 0.4)
+        gd = 0.18 + rng.random() * 0.2
+        g = np.sin(2 * np.pi * f * t_(gd)) * env(gd, 0.002, gd, 4) * (0.5 + 0.5 * rng.random())
+        if at < len(grains):
+            grains[at:at + len(g)] += g[:len(grains) - at] * 0.22 * (1 - i / 90)
+    crackle = spectral(noise(rest), 2500, 11000) * (rng.random(len(rt)) < 0.004) * env(rest, 0.2, 2.6, 1.2) * 2.5
+    wind = sweep_filter(noise(rest), 1500, 300, 2, 30) * env(rest, 0.05, 3.8, 1.3) * 0.45
+    post = np.concatenate([np.zeros(hi), mix(sub, thump, chord, grains, crackle, wind)])
+    x = mix(pre, post)
+    x = echo(x, (0.42, 0.85), (0.35, 0.16))
+    save('desvanecer', reverb(x, 2.8, 0.38))
 
 
 # ---------------------------------------------------------------- genkidama

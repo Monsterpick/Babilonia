@@ -190,7 +190,17 @@ final class CineCharacters {
         c.anim(d, "disolver:" + ticks * 50);
         for (Entity x : extra) if (x != null && x.isValid()) c.anim(x, "disolver:" + ticks * 50);
         once(c, at, "fx_disolver", 1f, String.format("ff%06x", rgb & 0xffffff), ticks + 30);
-        c.sound(at, "personaje.desvanecer", 1.5f, 1f);
+        // Salida imponente; cada personaje con su tono (Sukuna el más grave).
+        float pitch = switch (model) {
+            case "sukuna" -> 0.84f;
+            case "choso" -> 0.9f;
+            case "akaza" -> 0.96f;
+            case "gojo" -> 1.04f;
+            case "goku" -> 1.08f;
+            default -> 1f;
+        };
+        c.sound(at, "personaje.desvanecer", 2.4f, pitch);
+        c.shake(0.35, 12, 0.9);
         Entity stand = get(c, "stand_" + model);
         CineFx.part(c.w, Particle.DUST, at.clone().add(0, 1, 0), 40, 0.35, 0.8, 0.35, 0, CineFx.dust(rgb, 1.4f));
         CineFx.part(c.w, Particle.END_ROD, at.clone().add(0, 1, 0), 12, 0.3, 0.6, 0.3, 0.02, null);

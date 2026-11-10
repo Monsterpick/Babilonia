@@ -113,7 +113,7 @@ sonidos:
   aura.vibrar: "livearena:sfx.aura|block.beacon.ambient"
   genkidama.viento: "livearena:sfx.viento_energia|item.elytra.flying"
   genkidama.viaje: "livearena:sfx.rugido_esfera|block.beacon.ambient"
-  personaje.desvanecer: "livearena:sfx.desvanecer|block.amethyst_block.resonate,entity.illusioner.mirror_move"
+  personaje.desvanecer: "livearena:sfx.desvanecer|block.respawn_anchor.deplete,entity.warden.sonic_boom"
   choso.aparicion: block.bubble_column.whirlpool_inside,entity.warden.emerge
   choso.carga: "livearena:sfx.sangre_burbujas,livearena:sfx.aura|block.bubble_column.whirlpool_inside,block.beacon.ambient"
   choso.destello: "livearena:sfx.destello|block.amethyst_block.chime,item.trident.return"

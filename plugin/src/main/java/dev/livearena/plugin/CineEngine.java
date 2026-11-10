@@ -465,6 +465,7 @@ final class CineEngine implements Listener, TabExecutor {
     static final Map<String, String> DEFAULT_SOUNDS = new LinkedHashMap<>();
     /** Sonidos por defecto de versiones anteriores (se sustituyen solos por los nuevos). */
     static final Map<String, String> OLD_SOUNDS = Map.ofEntries(
+            Map.entry("personaje.desvanecer", "livearena:sfx.desvanecer|block.amethyst_block.resonate,entity.illusioner.mirror_move"),
             Map.entry("juicio.carga", "block.beacon.power_select"), Map.entry("juicio.final", "entity.wither.spawn"),
             Map.entry("esfera.carga", "block.beacon.ambient"), Map.entry("esfera.lanzar", "entity.wither.shoot"), Map.entry("esfera.detonar", "entity.generic.explode"),
             Map.entry("cortes.final", "entity.wither.break_block"),
@@ -503,7 +504,7 @@ final class CineEngine implements Listener, TabExecutor {
             {"gojo.aparicion", "entity.illusioner.mirror_move,block.amethyst_block.resonate"}, {"gojo.carga", "block.beacon.power_select,block.respawn_anchor.charge"},
             {"gojo.disparo", "entity.warden.sonic_boom,entity.wither.shoot"}, {"gojo.detonacion", "livearena:sfx.explosion_grave,livearena:sfx.onda_choque|entity.generic.explode,entity.lightning_bolt.thunder,block.beacon.deactivate"},
             {"akaza.aparicion", "entity.breeze.land,entity.player.attack.strong"}, {"akaza.despliegue", "block.amethyst_block.resonate,block.beacon.activate"},
-            {"aura.vibrar", "livearena:sfx.aura|block.beacon.ambient"}, {"personaje.desvanecer", "livearena:sfx.desvanecer|block.amethyst_block.resonate,entity.illusioner.mirror_move"},
+            {"aura.vibrar", "livearena:sfx.aura|block.beacon.ambient"}, {"personaje.desvanecer", "livearena:sfx.desvanecer|block.respawn_anchor.deplete,entity.warden.sonic_boom"},
             {"choso.aparicion", "block.bubble_column.whirlpool_inside,entity.warden.emerge"}, {"choso.carga", "livearena:sfx.sangre_burbujas,livearena:sfx.aura|block.bubble_column.whirlpool_inside,block.beacon.ambient"},
             {"choso.destello", "livearena:sfx.destello|block.amethyst_block.chime,item.trident.return"}, {"orbital.rayo", "livearena:sfx.rayo_espacio,livearena:sfx.laser_disparo|entity.warden.sonic_boom,block.beacon.deactivate"},
             {"choso.compresion", "livearena:sfx.sangre_burbujas|block.respawn_anchor.charge,block.honey_block.break"}, {"choso.disparo", "livearena:sfx.silbido_perforante,livearena:sfx.onda_choque|entity.warden.sonic_boom,item.trident.riptide_3,entity.arrow.shoot"},
