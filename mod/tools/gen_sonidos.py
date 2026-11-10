@@ -279,8 +279,54 @@ def desvanecer():
     save('desvanecer', reverb(mix(x, breath), 1.8, 0.4))
 
 
+# ---------------------------------------------------------------- genkidama
+
+def energia_carga():
+    """Energía acumulándose: zumbido grave con coro, brillo agudo que sube y chispas (4 s, se encadena)."""
+    d = 4.0
+    t = t_(d)
+    hum = sum(np.sin(2 * np.pi * f * t + p) for f, p in ((65, 0), (65.8, 1.0), (130.4, 2.0), (196.5, 0.5))) * 0.35
+    pulse = 0.75 + 0.25 * np.sin(2 * np.pi * 3.2 * t)
+    shimmer = chirp(d, 700, 1500, 'sin', 1.0) * 0.12 + chirp(d, 1400, 3000, 'sin', 1.0) * 0.06
+    choir = spectral(noise(d), 300, 1200) * 0.25 * (0.6 + 0.4 * np.sin(2 * np.pi * 0.5 * t))
+    sparks = spectral(noise(d), 3000, 12000) * (rng.random(len(t)) < 0.003) * 3
+    x = (hum * pulse + shimmer + choir + sparks) * np.minimum(1, t / 0.5) * np.minimum(1, (d - t) / 0.5)
+    save('energia_carga', reverb(x, 1.5, 0.3))
+
+
+def viento_energia():
+    """Viento de energía que llega de todas partes hacia la esfera."""
+    d = 3.5
+    t = t_(d)
+    a = sweep_filter(noise(d), 300, 2200, 3, 40) * (0.5 + 0.5 * np.sin(np.pi * t / d))
+    b = sweep_filter(noise(d), 1800, 500, 3, 40) * 0.6 * np.sin(np.pi * t / d) ** 2
+    save('viento_energia', reverb(mix(a, b), 1.2, 0.3))
+
+
+def genkidama_lanzar():
+    """Lanzamiento: golpe de aire enorme y rugido que cae de tono."""
+    d = 3.0
+    t = t_(d)
+    roar = spectral(noise(d), 40, 900, -0.6) * env(d, 0.05, 2.9, 1.6) * 1.3
+    tone = chirp(d, 180, 45, 'saw', 0.6) * env(d, 0.02, 2.5, 2) * 0.5
+    swoosh = sweep_filter(noise(d), 4000, 200, 3, 40) * env(d, 0.01, 1.6, 1.5)
+    sub = np.sin(2 * np.pi * np.cumsum(np.linspace(60, 25, len(t))) / SR) * env(d, 0.01, 2.0, 2) * 1.2
+    save('genkidama_lanzar', reverb(mix(spectral(roar + tone, 30, 6000), swoosh, sub), 1.8, 0.3))
+
+
+def rugido_esfera():
+    """La esfera gigante avanzando: rumor grave y continuo con crepitar de energía (2 s, se encadena)."""
+    d = 2.2
+    t = t_(d)
+    rumble = spectral(noise(d), 25, 220, -0.4) * 1.2
+    hum = (np.sin(2 * np.pi * 55 * t) + 0.6 * np.sin(2 * np.pi * 82.5 * t)) * 0.4 * (0.8 + 0.2 * np.sin(2 * np.pi * 6 * t))
+    crackle = spectral(noise(d), 2500, 10000) * (rng.random(len(t)) < 0.006) * 2.5
+    x = (rumble + hum + crackle) * np.minimum(1, t / 0.25) * np.minimum(1, (d - t) / 0.3)
+    save('rugido_esfera', reverb(x, 1.2, 0.25))
+
+
 if __name__ == '__main__':
     print('Sonidos ->', os.path.normpath(OUT))
     for f in (carga_canon, laser_disparo, explosion_grave, objetivo_fijado, pitido, whoosh,
-              silbido_perforante, sangre_burbujas, golpe_impacto, tajo, onda_choque, aura, desvanecer):
+              silbido_perforante, sangre_burbujas, golpe_impacto, tajo, onda_choque, aura, desvanecer, energia_carga, viento_energia, genkidama_lanzar, rugido_esfera):
         f()

@@ -62,7 +62,7 @@ Durante las habilidades Paper no expulsa por «volar» (y la app pone allow-flig
 ## v5.1 — Voz de Choso y efectos de sonido propios
 
 - Voz de Choso (`sounds/voz/choso.ogg`, 1,6 s): «Sangre Perforante» en el tick 76 y el disparo en el 103 (1,35 s del audio).
-- 13 efectos sintetizados desde cero con `tools/gen_sonidos.py` (`sounds/sfx/*.ogg`): carga del cañón, disparo del láser,
+- Efectos sintetizados desde cero (13 + 4 de la Genkidama: energia_carga, viento_energia, genkidama_lanzar, rugido_esfera) con `tools/gen_sonidos.py` (`sounds/sfx/*.ogg`): carga del cañón, disparo del láser,
   explosión grave con eco, objetivo fijado, pitido, whoosh, silbido perforante, burbujas de sangre, golpe de impacto,
   tajo, onda de choque, aura y desvanecer.
 - Sonidos con formato `mod|vanilla` en `habilidades.yml`: lo de la izquierda lo oyen los jugadores con el mod y lo de

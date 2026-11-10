@@ -129,5 +129,33 @@
         "name": "livearena:sfx/whoosh"
       }
     ]
+  },
+  "sfx.energia_carga": {
+    "sounds": [
+      {
+        "name": "livearena:sfx/energia_carga"
+      }
+    ]
+  },
+  "sfx.genkidama_lanzar": {
+    "sounds": [
+      {
+        "name": "livearena:sfx/genkidama_lanzar"
+      }
+    ]
+  },
+  "sfx.rugido_esfera": {
+    "sounds": [
+      {
+        "name": "livearena:sfx/rugido_esfera"
+      }
+    ]
+  },
+  "sfx.viento_energia": {
+    "sounds": [
+      {
+        "name": "livearena:sfx/viento_energia"
+      }
+    ]
   }
 }

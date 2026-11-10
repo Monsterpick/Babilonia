@@ -235,7 +235,7 @@ final class CineCharacters {
                 c.data.put("yaw", yaw);
                 boolean voiced = c.voice("goku");
                 c.data.put("voiced", voiced);
-                if (!voiced) c.sound(at, "genkidama.aparicion", 2f, 0.9f);
+                c.sound(at, "genkidama.aparicion", voiced ? 0.5f : 2f, 0.9f);
                 List<Location> src = new ArrayList<>();
                 for (int i = 0; i < 120 && src.size() < 14; i++) {
                     Block b = c.w.getHighestBlockAt(at.getBlockX() + c.rnd.nextInt(57) - 28, at.getBlockZ() + c.rnd.nextInt(57) - 28);
@@ -324,10 +324,15 @@ final class CineCharacters {
                         for (Player p : c.w.getPlayers())
                             if (p.getLocation().distanceSquared(base) < 64 * 64)
                                 CineFx.stream(c.w, p.getLocation().add(0, 1.2, 0), center, p == c.launcher ? Particle.FLASH : Particle.ELECTRIC_SPARK, 1);
-                    if (t % 30 == 10 && (!voiced || t > 190)) c.sound(center, "genkidama.carga", 1.5f, 0.6f + (float) f * 0.8f);
+                    // Carga continua: zumbido de energía encadenado cada 4 s y viento de energía entre medias.
+                    // Mientras habla el guerrero suena más bajo para no tapar la voz.
+                    float vol = voiced && t < 190 ? 0.45f : 1f;
+                    if ((t - 74) % 80 == 0) c.sound(center, "genkidama.carga", vol, 0.85f + (float) f * 0.5f);
+                    if ((t - 114) % 80 == 0) c.sound(center, "genkidama.viento", vol * 0.8f, 1f);
                     if (t % 40 == 0) c.shake(0.2 + f * 0.4, 12, 0.96);
                 }
                 if (t == 270) {
+                    c.sound((Location) get(c, "center"), "genkidama.viaje", 1.5f, 0.8f);
                     // Pausa: la esfera vibra. Plano sobre el hombro del objetivo mirando al cielo.
                     Location center = get(c, "center");
                     Vector back = c.target.getLocation().toVector().subtract(center.toVector()).setY(0).normalize();
@@ -367,6 +372,7 @@ final class CineCharacters {
                         c.data.put("contact", t);
                         c.target.setVelocity(new Vector(0, -1.2, 0));
                     } else {
+                        if ((t - 300) % 40 == 0) c.sound(center, "genkidama.viaje", 2f, 1f);
                         Vector step = to.normalize().multiply(c.cfg("velocidad", 0.4));
                         center.add(step);
                         sphere.teleport(center);
