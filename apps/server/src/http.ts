@@ -13,6 +13,7 @@ import { SceneSchema } from '@livearena/shared'
 import { ASSETS_DIR, DASHBOARD_DIST } from './resources.js'
 import { SimRequestSchema, Simulator } from './simulator.js'
 import { VERSION, type App } from './app.js'
+import { baseDefenseProfile } from './default-profiles.js'
 
 
 class HttpError extends Error {
@@ -403,6 +404,23 @@ export async function buildHttp(app: App): Promise<FastifyInstance> {
     const out = await writeCineSettings(app.cfg.get().minecraft.server.folder, body)
     await app.mc.link.enqueue('habilidad recargar', 500).catch(() => undefined)
     return out
+  })
+  /* ---------------- minijuegos (Base Defense) ---------------- */
+  f.get('/api/minigames/status', async () => app.minigames.status())
+  f.post('/api/minigames/basedefense/install', async () => app.minigames.install())
+  f.post('/api/minigames/basedefense/command', async (req) => {
+    const { command } = parse(z.object({ command: z.string().min(1).max(120) }), req.body)
+    return { response: await app.minigames.command(command) }
+  })
+  f.get('/api/minigames/basedefense/settings', async () => app.minigames.getSettings())
+  f.put('/api/minigames/basedefense/settings', async (req) => {
+    const values = parse(z.record(z.union([z.string().max(120), z.number()])), req.body)
+    return app.minigames.saveSettings(values as never)
+  })
+  f.post('/api/minigames/basedefense/profile', async () => {
+    const p = app.profiles.get('base-defense') ?? (await app.profiles.save(baseDefenseProfile(), false))
+    app.setProfile(p)
+    return { id: p.id, name: p.name }
   })
   f.post('/api/minecraft/kit/give', async () => ({ commands: await app.mc.giveKit(app.activeProfile.kit) }))
   f.get('/api/minecraft/java', async () => app.mc.javaInfo())

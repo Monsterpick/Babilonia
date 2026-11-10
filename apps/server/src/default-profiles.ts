@@ -312,3 +312,58 @@ export function laEpicProfile(): Profile {
     ],
   })
 }
+
+/**
+ * Perfil del minijuego Base Defense: cada regalo manda monstruos por el carril, cura la base o invoca un jefe.
+ * Los comandos /tt* del plugin toman el nombre del espectador al final ({user}, con espacios y emojis).
+ */
+export function baseDefenseProfile(): Profile {
+  const fn = (id: string, name: string, color: string, commands: string[], alignment: 'good' | 'bad' = 'bad'): ActionInput => ({
+    id,
+    name,
+    color,
+    alignment,
+    steps: [{ type: 'minecraft.command' as const, commands, mode: 'all' as const }],
+  })
+  const gift = (id: string, name: string, diamonds: number, action: string) => ({ id, trigger: { type: 'gift' as const, gifts: [{ name, diamonds }] }, actionIds: [action] })
+  return ProfileSchema.parse({
+    id: 'base-defense',
+    name: 'Base Defense',
+    mode: 'basedefense',
+    actions: [
+      fn('bd-zombies', 'ZOMBIS', '#65a30d', ['ttspawn zombie 2 {user}']),
+      fn('bd-esqueleto', 'ESQUELETO', '#a3a3a3', ['ttspawn skeleton 1 {user}']),
+      fn('bd-aranas', 'ARAÑAS', '#7c3aed', ['ttspawn spider 2 {user}']),
+      fn('bd-creepers', 'CREEPERS', '#16a34a', ['ttspawn creeper 2 {user}']),
+      fn('bd-horda', 'HORDA', '#84cc16', ['ttspawn zombie 10 {user}']),
+      fn('bd-horda-mixta', 'HORDA MIXTA', '#ca8a04', ['ttspawn zombie 12 {user}', 'ttspawn skeleton 10 {user}', 'ttspawn spider 8 {user}']),
+      fn('bd-lluvia-creepers', 'CREEPERS x15', '#15803d', ['ttspawn creeper 15 {user}']),
+      fn('bd-curar', 'CURAR BASE', '#22c55e', ['ttheal 100 {user}'], 'good'),
+      fn('bd-curar-poco', 'REPARAR', '#4ade80', ['ttheal 25 {user}'], 'good'),
+      fn('bd-devastador', 'DEVASTADOR', '#78350f', ['ttboss ravager {user}']),
+      fn('bd-blaze', 'BLAZE', '#f59e0b', ['ttboss blaze {user}']),
+      fn('bd-ghast', 'GHAST', '#e5e7eb', ['ttboss ghast {user}']),
+      fn('bd-wither', 'WITHER', '#111827', ['ttboss wither {user}']),
+      fn('bd-warden', 'WARDEN', '#0e7490', ['ttboss warden {user}']),
+      fn('bd-dragon', 'DRAGÓN', '#7e22ce', ['ttboss dragon {user}']),
+    ],
+    events: [
+      gift('bd-ev-rose', 'Rose', 1, 'bd-zombies'),
+      gift('bd-ev-tiktok', 'TikTok', 1, 'bd-esqueleto'),
+      gift('bd-ev-gg', 'GG', 1, 'bd-aranas'),
+      gift('bd-ev-finger', 'Finger Heart', 5, 'bd-creepers'),
+      gift('bd-ev-perfume', 'Perfume', 20, 'bd-horda'),
+      gift('bd-ev-donut', 'Doughnut', 30, 'bd-curar'),
+      gift('bd-ev-hearts', 'Hand Hearts', 100, 'bd-horda-mixta'),
+      gift('bd-ev-confetti', 'Confetti', 100, 'bd-lluvia-creepers'),
+      gift('bd-ev-corgi', 'Corgi', 299, 'bd-devastador'),
+      gift('bd-ev-moneygun', 'Money Gun', 500, 'bd-blaze'),
+      gift('bd-ev-galaxy', 'Galaxy', 1000, 'bd-wither'),
+      { id: 'bd-ev-big', trigger: { type: 'diamonds', min: 3000, max: 4999 }, actionIds: ['bd-warden'] },
+      { id: 'bd-ev-huge', trigger: { type: 'diamonds', min: 5000 }, actionIds: ['bd-dragon'] },
+      { id: 'bd-ev-follow', trigger: { type: 'follow', oncePerUser: true }, actionIds: ['bd-curar-poco'] },
+      { id: 'bd-ev-share', trigger: { type: 'share' }, actionIds: ['bd-esqueleto'], cooldown: { perUserMs: 30000 } },
+    ],
+    notes: 'La meta de likes (jefe Ghast) la lleva el propio plugin: la app le envía el total de likes con /ttlikes.',
+  })
+}

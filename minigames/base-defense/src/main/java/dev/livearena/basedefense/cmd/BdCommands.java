@@ -248,12 +248,10 @@ public final class BdCommands {
                 return ok(ctx, "config.yml recargada");
             }))
             .then(Commands.literal("status").executes(this::status))
-            .then(Commands.literal("tp").executes(ctx -> {
-                if (!(ctx.getSource().getSender() instanceof Player p)) return err(ctx, "solo jugadores");
-                if (plugin.arena == null || !plugin.arena.valid()) return err(ctx, "no hay arena");
-                p.teleport(plugin.arena.spawn(plugin.world(true)));
-                return ok(ctx, "en la base");
-            }))
+            .then(Commands.literal("tp")
+                .executes(ctx -> tp(ctx, ctx.getSource().getSender() instanceof Player p ? p : null))
+                .then(word("jugador").suggests(suggest(() -> Bukkit.getOnlinePlayers().stream().map(Player::getName).toList()))
+                    .executes(ctx -> tp(ctx, Bukkit.getPlayerExact(arg(ctx, "jugador"))))))
             .then(Commands.literal("armas").executes(ctx -> {
                 if (!(ctx.getSource().getSender() instanceof Player p)) return err(ctx, "solo jugadores");
                 plugin.weapons.give(p);
@@ -275,6 +273,13 @@ public final class BdCommands {
             "&7App: &f/ttspawn <tipo> <n> <usuario> · /ttboss <tipo> <usuario> · /ttheal <n> <usuario> · /ttwin <+n|-n> <usuario> · /ttlikes <total>"))
             s.sendMessage(Txt.fmt(l));
         return Command.SINGLE_SUCCESS;
+    }
+
+    private int tp(CommandContext<CommandSourceStack> ctx, Player p) {
+        if (p == null) return err(ctx, "indica el jugador: /bd tp <jugador>");
+        if (plugin.arena == null || !plugin.arena.valid()) return err(ctx, "no hay arena: usa /bd arena generate");
+        p.teleport(plugin.arena.spawn(plugin.world(true)));
+        return ok(ctx, p.getName() + " está en la base");
     }
 
     private int start(CommandContext<CommandSourceStack> ctx, String name) {

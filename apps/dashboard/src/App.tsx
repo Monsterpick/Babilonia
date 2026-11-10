@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
-import { Activity, Boxes, FlaskConical, ListChecks, Mic, MonitorPlay, Server, Settings, Loader2, Radio, Power, Zap, Pickaxe, Wand2, Clapperboard } from 'lucide-react'
+import { Activity, Boxes, FlaskConical, ListChecks, Mic, MonitorPlay, Server, Settings, Loader2, Radio, Power, Zap, Pickaxe, Wand2, Clapperboard, Gamepad2 } from 'lucide-react'
 import type { Profile, SourceStatus } from '@livearena/shared'
 import { api } from './lib/api'
 import { useLiveConnected, useLiveState } from './lib/live'
@@ -11,6 +11,7 @@ import { ServerPage } from './pages/Server'
 import { TtsPage } from './pages/Tts'
 import { StudioPage } from './pages/Studio'
 import { CinematicsPage } from './pages/Cinematics'
+import { MinigamesPage } from './pages/Minigames'
 import { ActivityPage } from './pages/Activity'
 import { SettingsPage } from './pages/Settings'
 import { Dialogs } from './components/Dialog'
@@ -40,6 +41,7 @@ const PAGES: { id: string; label: string; icon: ReactNode; el: () => ReactNode }
   { id: 'plugins', label: 'Plugins', icon: <ListChecks size={20} />, el: () => <PluginsPage /> },
   { id: 'overlays', label: 'Overlays', icon: <MonitorPlay size={20} />, el: () => <OverlaysPage /> },
   { id: 'cinematicas', label: 'Cinemáticas', icon: <Clapperboard size={20} />, el: () => <CinematicsPage /> },
+  { id: 'minijuegos', label: 'Minijuegos', icon: <Gamepad2 size={20} />, el: () => <MinigamesPage /> },
   { id: 'tts', label: 'TTS', icon: <Mic size={20} />, el: () => <TtsPage /> },
   { id: 'estudio', label: 'Estudio', icon: <Wand2 size={20} />, el: () => <StudioPage /> },
   { id: 'kit', label: 'Kit', icon: <Boxes size={20} />, el: () => <KitPage /> },

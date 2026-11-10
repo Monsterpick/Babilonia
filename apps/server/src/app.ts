@@ -1,4 +1,5 @@
 import { CineModService } from './cine-mod.js'
+import { MinigamesService } from './minigames.js'
 import { TextureService } from './textures.js'
 import { TtsService } from './tts.js'
 import { ComboTracker, Deduper, PriorityWorker, RuleEngine, renderTemplate, type Job } from '@livearena/core'
@@ -44,6 +45,7 @@ export class App {
   readonly tts: TtsService
   readonly mc: MinecraftService
   readonly cine: CineModService
+  readonly minigames: MinigamesService
   readonly tiktok: TikTokSource
   private readonly dedup = new Deduper(10_000)
   private readonly combos: ComboTracker
@@ -80,6 +82,7 @@ export class App {
     this.mc.on('status', (s) => this.hub.setState('minecraft', s))
     this.tts = new TtsService(this.cfg, this.hub)
     this.cine = new CineModService(this.cfg, this.mc, this.log, () => void this.cine.status().then((st) => this.hub.setState('cinemod', st)))
+    this.minigames = new MinigamesService(this.cfg, this.mc, this.log, () => this.engine.totalRoomLikes, () => void this.minigames.status().then((st) => this.hub.setState('minigames', st)))
     this.textures = new TextureService(this.log)
     this.textures.on('status', (s) => this.hub.setState('textures', s))
     this.mc.on('serverLog', (line: string) => this.hub.log({ level: 'info', scope: 'consola', msg: line, ts: Date.now() }))
