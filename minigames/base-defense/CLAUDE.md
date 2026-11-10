@@ -132,3 +132,16 @@ Decisiones:
 - **Shader de cámara**: `post_effect basedefense:apocalipsis` en el pack (grano, aberración, gradación, viñeta); lo
   activa el mod LiveArena mientras el pack está cargado (`CineClient.minigamePost`).
 - **Armas**: `tools/gen_guns.py` (modelos con más piezas y texturas de materiales 128×128 sin estirar).
+
+## v5 (táctico)
+
+- **Primera persona** (mod LiveArena, `client/BdGuns`): FOV ×0,86 en el minijuego; **Shift = apuntar** (arma al centro,
+  zoom y −70 % de dispersión en el servidor); animaciones de retroceso, recarga, desenfundar y balanceo. Se detectan por
+  los sonidos `basedefense:arma.*` que suenan junto al jugador (sin paquetes nuevos).
+- **Modelos en primera persona con brazos** (guantes y mangas): `items/<arma>.json` usa `select` por `display_context`
+  → `<arma>_fp` (arma + brazos) en primera persona; el resto ve el arma sola.
+- **Proyectiles**: cohete y granada de 40 mm en 3D montados en el proyectil y orientados por su velocidad (el snowball
+  lleva el modelo vacío `basedefense:vacio`); estelas, explosiones `Fx.blast` (fogonazo, onda expansiva, escombros,
+  humo), agujeros de bala con chispas y casquillos.
+- **Jefes**: estelas de calaveras/bolas de fuego, impactos grandes con onda; Warden con anillos sónicos, onda en la
+  base y oscuridad breve; proyectiles más rápidos.

@@ -1,6 +1,22 @@
 {
  "model": {
-  "type": "minecraft:model",
-  "model": "basedefense:item/pistola"
+  "type": "minecraft:select",
+  "property": "minecraft:display_context",
+  "cases": [
+   {
+    "when": [
+     "firstperson_righthand",
+     "firstperson_lefthand"
+    ],
+    "model": {
+     "type": "minecraft:model",
+     "model": "basedefense:item/pistola_fp"
+    }
+   }
+  ],
+  "fallback": {
+   "type": "minecraft:model",
+   "model": "basedefense:item/pistola"
+  }
  }
 }

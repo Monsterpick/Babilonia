@@ -339,7 +339,23 @@ public final class Bosses implements Listener {
             Vector d = base.clone().add(new Vector(0, 1, 0)).subtract(from.toVector());
             double len = d.length();
             d.normalize();
-            for (double s = 1; s < len; s += 1.6) plugin.fx.particle(from.clone().add(d.clone().multiply(s)), Particle.SONIC_BOOM, 1, 0, 0, true);
+            for (double s = 1; s < len; s += 1.2) plugin.fx.particle(from.clone().add(d.clone().multiply(s)), Particle.SONIC_BOOM, 1, 0, 0, true);
+            // anillos sónicos a lo largo del rayo y onda en la base
+            Vector u = d.clone().crossProduct(new Vector(0, 1, 0));
+            if (u.lengthSquared() < 1e-4) u = new Vector(1, 0, 0);
+            u.normalize();
+            Vector v2 = u.clone().crossProduct(d).normalize();
+            Particle.DustOptions cyan = new Particle.DustOptions(Color.fromRGB(60, 220, 230), 1.6f);
+            for (double s = 3; s < len; s += 3.5)
+                for (int k = 0; k < 14; k++) {
+                    double a = k * Math.PI * 2 / 14, rr = 1.2 + s * 0.04;
+                    plugin.fx.particle(from.clone().add(d.clone().multiply(s)).add(u.clone().multiply(Math.cos(a) * rr)).add(v2.clone().multiply(Math.sin(a) * rr)), Particle.DUST, 1, 0, 0, 0, 0, cyan, true);
+                }
+            Location bh = base.toLocation(l.getWorld()).add(0, 1, 0);
+            plugin.fx.blast(bh, 3.5, Color.fromRGB(40, 220, 230), true);
+            plugin.fx.particle(bh, Particle.SCULK_SOUL, 40, 2, 1, 2, 0.08, null, true);
+            Player sp = plugin.game.streamer();
+            if (sp != null) sp.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.DARKNESS, 40, 0, false, false, false));
             plugin.fx.sound(from, Sound.ENTITY_WARDEN_SONIC_BOOM, 5f, 0.9f, true);
             plugin.fx.sound(base.toLocation(l.getWorld()), Sound.ENTITY_WARDEN_SONIC_BOOM, 4f, 1.1f, true);
             plugin.game.damageBase(gm.boss.attackDamage(), gm);
@@ -361,8 +377,8 @@ public final class Bosses implements Listener {
                 cb.ramPhase = 0;
                 cb.ramUntil = now + 20;
                 Location hit = base.toLocation(l.getWorld()).add(toSpawn().multiply(1.5)).add(0, 1, 0);
-                plugin.fx.particle(hit, Particle.EXPLOSION, 3, 1.5, 0.1, true);
-                plugin.fx.particle(hit, Particle.BLOCK, 40, 2, 1, 0.5, 0.2, org.bukkit.Material.SPRUCE_PLANKS.createBlockData(), true);
+                plugin.fx.blast(hit, 4, Color.fromRGB(40, 200, 210), true);
+                plugin.fx.particle(hit, Particle.BLOCK, 60, 2, 1, 0.5, 0.3, org.bukkit.Material.SPRUCE_PLANKS.createBlockData(), true);
                 plugin.fx.sound(hit, Sound.ENTITY_WARDEN_ATTACK_IMPACT, 5f, 0.7f, true);
                 plugin.fx.sound(hit, Sound.ENTITY_ZOMBIE_BREAK_WOODEN_DOOR, 3f, 0.6f, true);
                 plugin.game.damageBase(gm.boss.ramDamage(), gm);
@@ -428,19 +444,28 @@ public final class Bosses implements Listener {
             if (dist < hitR) {
                 it.remove();
                 b.e.remove();
-                plugin.fx.explosion(l, 3, false);
+                if (b.kind == Kind.CALAVERA) {
+                    plugin.fx.blast(l, 3.5, Color.fromRGB(70, 200, 230), true);
+                    plugin.fx.particle(l, Particle.SOUL_FIRE_FLAME, 60, 1.6, 0.8, 1.6, 0.08, null, true);
+                    plugin.fx.particle(l, Particle.SOUL, 20, 1.2, 0.6, 1.2, 0.05, null, true);
+                    plugin.fx.sound(l, Sound.ENTITY_WITHER_BREAK_BLOCK, 3f, 0.7f, true);
+                } else {
+                    plugin.fx.blast(l, 4.5, Color.fromRGB(255, 110, 30), true);
+                    plugin.fx.particle(l, Particle.DRAGON_BREATH, 60, 2, 0.6, 2, 0.02, 1f, true);
+                    for (int k = 0; k < 8; k++) plugin.fx.particle(l.clone().add(0, k * 0.8, 0), Particle.FLAME, 10, 0.4, 0.2, 0.4, 0.02, null, true);
+                }
                 if (b.returned) {
                     plugin.mobs.damage(b.owner, b.owner.boss.returnDamage(), null);
                     plugin.fx.sound(l, Sound.ENTITY_ENDER_DRAGON_HURT, 3f, 0.8f, true);
                 } else plugin.game.damageBase(b.owner.boss.attackDamage(), null);
                 continue;
             }
-            double speed = b.returned ? 0.95 : b.kind == Kind.CALAVERA ? 0.55 : 0.42;
+            double speed = b.returned ? 1.1 : b.kind == Kind.CALAVERA ? 0.8 : 0.62;
             Vector v = d.multiply(1 / dist).multiply(speed);
             b.e.setVelocity(v);
             b.e.setDirection(v);
             b.e.setAcceleration(new Vector());
-            if (now % 2 == 0) plugin.fx.particle(l, b.kind == Kind.CALAVERA ? Particle.SMOKE : Particle.FLAME, 3, 0.2, 0.02, false);
+            plugin.fx.trail(l, b.kind == Kind.CALAVERA ? "calavera" : "fuego");
         }
     }
 

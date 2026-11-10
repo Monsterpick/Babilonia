@@ -122,6 +122,8 @@ public final class Weapons implements Listener {
         final Location origin;
         final long born;
         int bounces;
+        /** Modelo 3D que viaja montado en el proyectil (solo con el pack). */
+        org.bukkit.entity.ItemDisplay vis;
 
         Proj(WeaponDef def, Player owner, Location origin, long born, int bounces) {
             this.def = def;
@@ -402,7 +404,8 @@ public final class Weapons implements Listener {
     /** Un único ray trace por disparo, filtrado a los mobs del juego. */
     private void hitscan(Player p, WeaponDef w, boolean sound) {
         Location eye = p.getEyeLocation();
-        Vector dir = spread(eye.getDirection(), w.spread());
+        // apuntando con la mira (Shift) la dispersión baja mucho
+        Vector dir = spread(eye.getDirection(), w.spread() * (p.isSneaking() ? 0.3 : 1));
         Location from = eye.clone().add(dir.clone().multiply(3.2)).add(0, -0.25, 0);
         RayTraceResult hit = p.getWorld().rayTrace(eye, dir, w.range(), FluidCollisionMode.NEVER, true, 0.18,
             e -> plugin.mobs.get(e) != null, Weapons::solid);
@@ -422,7 +425,10 @@ public final class Weapons implements Listener {
         Location end = eye.clone().add(dir.clone().multiply(hitDist));
         Color trace = w.shotsPerTick() > 1 ? Color.fromRGB(255, 160, 255) : w.automatic() ? Color.fromRGB(255, 214, 120) : Color.fromRGB(255, 245, 200);
         if (hitDist > 3.5) plugin.fx.tracer(from, end, trace);
-        if (sound) play(p, p.getLocation(), w.sound(), 0.8f, w.pitch() + (plugin.fx.rnd().nextFloat() - 0.5f) * 0.08f);
+        if (sound) {
+            play(p, p.getLocation(), w.sound(), 0.8f, w.pitch() + (plugin.fx.rnd().nextFloat() - 0.5f) * 0.08f);
+            plugin.fx.casing(p, w.shotsPerTick() > 1);
+        }
         if (ball != null) {
             plugin.bosses.hitBall(ball, p);
             return;
@@ -444,7 +450,7 @@ public final class Weapons implements Listener {
                 p.playSound(p.getLocation(), Sound.ENTITY_ARROW_HIT_PLAYER, 0.35f, head ? 1.8f : 1.3f);
             }
         } else if (hit.getHitBlock() != null) {
-            plugin.fx.particle(end, Particle.BLOCK, 3, 0.05, 0.05, 0.05, 0.05, hit.getHitBlock().getBlockData(), false);
+            plugin.fx.bulletHole(end, hit.getHitBlockFace(), hit.getHitBlock().getBlockData());
         }
     }
 
@@ -461,8 +467,43 @@ public final class Weapons implements Listener {
             e.setPersistent(false);
             e.getPersistentDataContainer().set(plugin.projKey, PersistentDataType.STRING, w.id());
         });
-        projectiles.put(s.getUniqueId(), new Proj(w, p, from, plugin.tick(), w.bounces()));
+        Proj pr = new Proj(w, p, from, plugin.tick(), w.bounces());
+        if (plugin.pack.loaded(p)) {
+            boolean rocket = w.kind() == WeaponKind.COHETE;
+            ItemStack hidden = new ItemStack(Material.SNOWBALL);
+            var hm = hidden.getItemMeta();
+            hm.setItemModel(Settings.key("basedefense:vacio"));
+            hidden.setItemMeta(hm);
+            s.setItem(hidden);
+            pr.vis = flying(s, rocket);
+        }
+        projectiles.put(s.getUniqueId(), pr);
         play(p, p.getLocation(), w.sound(), 1.2f, w.pitch());
+    }
+
+    /** Cohete o granada de 40 mm en 3D, montado en el proyectil y orientado según su velocidad. */
+    private org.bukkit.entity.ItemDisplay flying(Snowball s, boolean rocket) {
+        ItemStack it = new ItemStack(Material.STICK);
+        var m = it.getItemMeta();
+        m.setItemModel(Settings.key(rocket ? "basedefense:cohete_vuelo" : "basedefense:granada_vuelo"));
+        it.setItemMeta(m);
+        var d = s.getWorld().spawn(s.getLocation(), org.bukkit.entity.ItemDisplay.class, e -> {
+            e.setPersistent(false);
+            e.setItemStack(it);
+            e.setBrightness(new org.bukkit.entity.Display.Brightness(15, 15));
+            e.setInterpolationDuration(1);
+        });
+        s.addPassenger(d);
+        orient(d, s.getVelocity(), rocket ? 1.5f : 1.0f, 0);
+        return d;
+    }
+
+    private static void orient(org.bukkit.entity.ItemDisplay d, Vector v, float scale, float spin) {
+        if (d == null || !d.isValid() || v.lengthSquared() < 1e-6) return;
+        org.joml.Quaternionf q = new org.joml.Quaternionf().rotationTo(new org.joml.Vector3f(0, 0, 1), new org.joml.Vector3f((float) v.getX(), (float) v.getY(), (float) v.getZ()).normalize());
+        if (spin != 0) q.rotateZ(spin);
+        d.setInterpolationDelay(0);
+        d.setTransformation(new org.bukkit.util.Transformation(new org.joml.Vector3f(0, 0.1f, 0), q, new org.joml.Vector3f(scale), new org.joml.Quaternionf()));
     }
 
     private void tickProjectiles(long now) {
@@ -479,20 +520,23 @@ public final class Weapons implements Listener {
             }
             Location l = e.getLocation();
             boolean nearCam = now - pr.born < 4;
+            if (pr.vis != null) {
+                if (!pr.vis.isValid()) pr.vis = null;
+                else orient(pr.vis, e.getVelocity(), pr.def.kind() == WeaponKind.COHETE ? 1.5f : 1.0f, pr.def.kind() == WeaponKind.GRANADA ? (now - pr.born) * 0.9f : (now - pr.born) * 0.3f);
+            }
             if (pr.def.kind() == WeaponKind.COHETE) {
-                if (!nearCam) {
-                    plugin.fx.particle(l, Particle.FLAME, 2, 0.04, 0.01, false);
-                    plugin.fx.particle(l, Particle.SMOKE, 2, 0.06, 0.01, false);
-                }
+                if (!nearCam) plugin.fx.trail(l, "cohete");
                 if (l.distanceSquared(pr.origin) > pr.def.range() * pr.def.range()) {
                     it.remove();
+                    if (pr.vis != null) pr.vis.remove();
                     e.remove();
                     later.add(() -> explode(l, pr));
                 }
             } else {
-                if (!nearCam && now % 2 == 0) plugin.fx.particle(l, Particle.SMOKE, 1, 0.02, 0.0, false);
+                if (!nearCam) plugin.fx.trail(l, "granada");
                 if (now - pr.born >= Math.round(pr.def.fuse() * 20)) {
                     it.remove();
+                    if (pr.vis != null) pr.vis.remove();
                     e.remove();
                     later.add(() -> explode(l, pr));
                 }
@@ -505,6 +549,7 @@ public final class Weapons implements Listener {
     public void onHit(ProjectileHitEvent e) {
         Proj pr = projectiles.remove(e.getEntity().getUniqueId());
         if (pr == null) return;
+        org.bukkit.entity.ItemDisplay vis = pr.vis;
         Location l = e.getEntity().getLocation();
         if (e.getHitEntity() != null && plugin.mobs.get(e.getHitEntity()) == null) {
             e.setCancelled(true);
@@ -519,6 +564,7 @@ public final class Weapons implements Listener {
                 Vector r = v.clone().subtract(n.clone().multiply(2 * v.dot(n))).multiply(0.5);
                 Location at = l.clone().add(n.clone().multiply(0.15));
                 Proj next = new Proj(pr.def, pr.owner, pr.origin, pr.born, pr.bounces - 1);
+                if (vis != null) vis.leaveVehicle();
                 plugin.getServer().getScheduler().runTask(plugin, () -> {
                     Snowball s = at.getWorld().spawn(at, Snowball.class, sb -> {
                         sb.setShooter(pr.owner);
@@ -527,20 +573,24 @@ public final class Weapons implements Listener {
                         sb.setPersistent(false);
                         sb.getPersistentDataContainer().set(plugin.projKey, PersistentDataType.STRING, pr.def.id());
                     });
+                    if (vis != null && vis.isValid()) {
+                        s.addPassenger(vis);
+                        next.vis = vis;
+                    }
                     projectiles.put(s.getUniqueId(), next);
                 });
                 plugin.fx.sound(l, Sound.BLOCK_STONE_HIT, 1f, 1.3f, false);
                 return;
             }
         }
+        if (vis != null) vis.remove();
         explode(l, pr);
     }
 
     /** Daño en área solo a mobs del juego; no rompe bloques ni daña al jugador. */
     private void explode(Location l, Proj pr) {
         double r = pr.def.radius();
-        plugin.fx.explosion(l, r, r >= 5);
-        plugin.fx.particle(l, Particle.FLASH, 1, 0, 0, 0, 0, Color.ORANGE, true);
+        plugin.fx.blast(l, r, pr.def.kind() == WeaponKind.COHETE ? Color.fromRGB(255, 140, 40) : Color.fromRGB(255, 190, 90), false);
         if (pr.owner != null) play(pr.owner, l, "basedefense:arma.explosion|entity.generic.explode", 3f, 0.9f);
         for (GameMob gm : new ArrayList<>(plugin.mobs.all())) {
             if (gm.dead || !gm.entity.isValid()) continue;
@@ -562,6 +612,7 @@ public final class Weapons implements Listener {
     }
 
     public void clearProjectiles() {
+        for (Proj pr : projectiles.values()) if (pr.vis != null && pr.vis.isValid()) pr.vis.remove();
         for (UUID id : projectiles.keySet()) {
             Entity e = plugin.getServer().getEntity(id);
             if (e != null) e.remove();

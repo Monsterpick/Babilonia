@@ -88,6 +88,15 @@ def mat(name, seed):
     elif name == 'tela':         # correa
         img = base((80, 76, 58), 7)
         img[:, ::2] *= 0.9
+    elif name == 'guante':       # guante táctico negro con nudillos reforzados
+        img = base((40, 40, 42), 6)
+        img[::6, :] += 10
+        img[(fine > 0.9)] += 12
+    elif name == 'manga':        # manga de camuflaje ceniza
+        c1 = noise2(SW, SW, 8, seed + 3)
+        img = np.where((c1 > 0.6)[..., None], np.array([70, 72, 58.]), np.where((c1 < 0.38)[..., None], np.array([118, 112, 92.]), np.array([92, 92, 76.])))
+        img = img + ((fine - 0.5) * 10)[..., None]
+        img[:, ::5] *= 0.92
     elif name == 'gris':
         img = base((120, 122, 128), 9)
     else:
@@ -101,7 +110,7 @@ def mat(name, seed):
     return img
 
 
-MATS = ['acero', 'acero_claro', 'polimero', 'goma', 'madera', 'oliva', 'arena', 'laton', 'cabeza', 'mira', 'boca', 'quemado', 'tela', 'gris']
+MATS = ['acero', 'acero_claro', 'polimero', 'goma', 'madera', 'oliva', 'arena', 'laton', 'cabeza', 'mira', 'boca', 'quemado', 'tela', 'gris', 'guante', 'manga']
 
 
 def texture(seed):
@@ -293,6 +302,28 @@ def caja_municion():
     return e
 
 
+def cohete_vuelo():
+    """Cohete en vuelo: la punta mira a +Z (el plugin lo orienta según la velocidad)."""
+    e = []
+    e += tube(8, 8, 2.0, 11.0, 1.3, 'oliva')
+    e += tube(8, 8, 11.0, 13.5, 1.3, 'cabeza')
+    e += tube(8, 8, 13.5, 15.2, 0.8, 'cabeza')
+    e += [box((7.7, 7.7, 15.2), (8.3, 8.3, 16.0), 'acero_claro')]
+    e += [box((5.4, 7.8, 1.0), (10.6, 8.2, 4.0), 'acero'), box((7.8, 5.4, 1.0), (8.2, 10.6, 4.0), 'acero')]  # aletas
+    e += [box((7.1, 7.1, 0.4), (8.9, 8.9, 2.0), 'quemado', ends='boca')]
+    return e
+
+
+def granada_vuelo():
+    """Proyectil de 40 mm: vaina de latón y ojiva verde."""
+    e = []
+    e += tube(8, 8, 4.0, 9.0, 1.6, 'laton')
+    e += tube(8, 8, 9.0, 11.5, 1.6, 'oliva')
+    e += tube(8, 8, 11.5, 12.8, 1.0, 'oliva')
+    e += [box((6.3, 6.3, 3.6), (9.7, 9.7, 4.2), 'laton')]
+    return e
+
+
 def bloqueada():
     """Candado (arma aún bloqueada)."""
     e = [box((4.5, 2.5, 6.5), (11.5, 9.5, 9.5), 'gris'),
@@ -302,6 +333,37 @@ def bloqueada():
     return e
 
 
+def arms(grip, fore, two_hand=True, fore_top=False):
+    """Brazos en primera persona: guante derecho en la empuñadura con el antebrazo saliendo hacia la cámara (abajo a la
+    derecha) y guante izquierdo en el guardamanos con el antebrazo cruzando hacia abajo a la izquierda."""
+    gx, gy, gz = grip
+    e = []
+    e += [box((gx - 1.25, gy - 1.6, gz - 1.3), (gx + 1.25, gy + 1.6, gz + 1.3), 'guante')]                       # mano derecha
+    e += [box((gx - 0.6, gy + 0.4, gz - 2.2), (gx + 0.2, gy + 1.0, gz - 1.2), 'guante')]                         # dedo en el gatillo
+    e += [box((gx - 1.4, gy - 4.0, gz + 0.6), (gx + 1.6, gy - 0.6, gz + 13.0), 'guante', rx(22.5, (gx, gy - 0.6, gz + 0.6)))]  # muñeca
+    e += [box((gx - 1.9, gy - 5.2, gz + 6.0), (gx + 2.2, gy - 0.8, gz + 22.0), 'manga', rx(22.5, (gx, gy - 0.6, gz + 0.6)))]   # manga
+    if two_hand and fore:
+        fx, fy, fz = fore
+        if fore_top:
+            e += [box((fx - 1.3, fy - 0.4, fz - 1.3), (fx + 1.3, fy + 1.4, fz + 1.3), 'guante')]
+            e += [box((fx - 4.2, fy - 1.5, fz + 0.2), (fx - 1.0, fy + 1.2, fz + 14.0), 'manga', rx(22.5, (fx, fy, fz)))]
+        else:
+            e += [box((fx - 1.6, fy - 1.4, fz - 1.4), (fx + 1.6, fy + 0.6, fz + 1.4), 'guante')]                  # mano izquierda
+            e += [box((fx - 3.6, fy - 3.4, fz + 0.4), (fx - 0.8, fy - 0.6, fz + 10.0), 'guante', rx(22.5, (fx, fy - 0.6, fz)))]
+            e += [box((fx - 4.3, fy - 4.6, fz + 6.0), (fx - 0.4, fy - 0.6, fz + 21.0), 'manga', rx(22.5, (fx, fy - 0.6, fz)))]
+    return e
+
+
+# empuñadura (mano derecha) y guardamanos (mano izquierda) de cada arma
+HANDS = {
+    'pistola': ((8, 6.0, 8.6), (8.2, 4.6, 7.2), False),
+    'subfusil': ((8, 6.2, 7.4), (8, 7.4, -4.0), False),
+    'ametralladora': ((8, 6.2, 7.2), (8, 7.8, -7.0), False),
+    'lanzagranadas': ((8, 6.4, 7.8), (8, 6.6, -5.3), False),
+    'lanzacohetes': ((8, 5.0, 4.0), (8, 5.2, 9.8), False),
+    'minigun': ((8, 4.6, 8.0), (8, 12.9, 6.8), True),
+}
+
 GUNS = {
     'pistola': (pistola, 1.2), 'subfusil': (subfusil, 0.95), 'ametralladora': (ametralladora, 0.72),
     'lanzagranadas': (lanzagranadas, 0.88), 'lanzacohetes': (lanzacohetes, 0.7), 'minigun': (minigun, 0.74),
@@ -309,11 +371,11 @@ GUNS = {
 
 
 def display(k):
-    fp = round(0.82 * k, 3)
+    fp = round(1.0 * k, 3)
     return {
         'thirdperson_righthand': {'rotation': [0, 0, 0], 'translation': [0, 2.5, -1.5], 'scale': [0.62 * k] * 3},
         'thirdperson_lefthand': {'rotation': [0, 0, 0], 'translation': [0, 2.5, -1.5], 'scale': [0.62 * k] * 3},
-        'firstperson_righthand': {'rotation': [0, 5, 0], 'translation': [-1.5, 1, -4], 'scale': [fp] * 3},
+        'firstperson_righthand': {'rotation': [2, 4, 0], 'translation': [-5.5, 4.0, -2.0], 'scale': [fp] * 3},
         'firstperson_lefthand': {'rotation': [0, -5, 0], 'translation': [-0.5, 0.5, -4], 'scale': [fp] * 3},
         'gui': {'rotation': [15, -90, 0], 'translation': [0, 0, 0], 'scale': [0.62 * k] * 3},
         'ground': {'rotation': [0, 0, 0], 'translation': [0, 2, 0], 'scale': [0.5] * 3},
@@ -321,7 +383,7 @@ def display(k):
     }
 
 
-def write(name, elements, disp, seed):
+def write(name, elements, disp, seed, fp=None):
     img = texture(seed)
     p = os.path.join(BD, 'textures', 'item', name + '.png')
     mkdir(os.path.dirname(p))
@@ -333,13 +395,28 @@ def write(name, elements, disp, seed):
     json.dump(model, open(mp, 'w'), indent=1)
     ip = os.path.join(BD, 'items', name + '.json')
     mkdir(os.path.dirname(ip))
-    json.dump({'model': {'type': 'minecraft:model', 'model': 'basedefense:item/' + name}}, open(ip, 'w'), indent=1)
+    base = {'type': 'minecraft:model', 'model': 'basedefense:item/' + name}
+    if fp is None:
+        json.dump({'model': base}, open(ip, 'w'), indent=1)
+        return
+    # en primera persona, el modelo con los brazos sujetando el arma
+    fpm = dict(model)
+    fpm['elements'] = elements + fp
+    json.dump(fpm, open(os.path.join(BD, 'models', 'item', name + '_fp.json'), 'w'), indent=1)
+    json.dump({'model': {'type': 'minecraft:select', 'property': 'minecraft:display_context',
+                         'cases': [{'when': ['firstperson_righthand', 'firstperson_lefthand'], 'model': {'type': 'minecraft:model', 'model': 'basedefense:item/' + name + '_fp'}}],
+                         'fallback': base}}, open(ip, 'w'), indent=1)
 
 
 def guns():
     for i, (name, (fn, k)) in enumerate(GUNS.items()):
-        write(name, fn(), display(k), 100 + i * 31)
+        g, f, top = HANDS[name]
+        write(name, fn(), display(k), 100 + i * 31, fp=arms(g, f, True, top))
     write('caja_municion', caja_municion(), {'gui': {'rotation': [30, 45, 0], 'scale': [0.62] * 3}, 'ground': {'scale': [0.5] * 3}, 'fixed': {'scale': [0.8] * 3}}, 900)
+    write('cohete_vuelo', cohete_vuelo(), {}, 970)
+    write('granada_vuelo', granada_vuelo(), {}, 980)
+    ip = os.path.join(BD, 'items', 'vacio.json')
+    json.dump({'model': {'type': 'minecraft:empty'}}, open(ip, 'w'))
     write('bloqueada', bloqueada(), {'gui': {'rotation': [15, -30, 0], 'scale': [0.8] * 3}, 'firstperson_righthand': {'rotation': [0, -20, 0], 'translation': [2, -1, -2], 'scale': [0.28] * 3},
                                      'thirdperson_righthand': {'scale': [0.4] * 3}, 'ground': {'scale': [0.4] * 3}, 'fixed': {'scale': [0.8] * 3}}, 950)
     print('armas: modelos', len(GUNS) + 2)

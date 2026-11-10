@@ -95,6 +95,7 @@ public final class CineClient {
         NeoForge.EVENT_BUS.addListener(CineClient::hideHud);
         NeoForge.EVENT_BUS.addListener(CineClient::hideHand);
         CineModels.init(modBus);
+        BdGuns.init();
     }
 
     private static void layers(RegisterGuiLayersEvent e) {
@@ -371,6 +372,11 @@ public final class CineClient {
      * mirar como un creeper en espectador) no se pisa.
      */
     private static long packSeenAt = -1;
+
+    /** ¿Está puesto el pack de Base Defense (partida del minijuego)? */
+    public static boolean minigameActive() {
+        return packSeenAt >= 0;
+    }
 
     private static void minigamePost(Minecraft mc) {
         var gr = mc.gameRenderer;

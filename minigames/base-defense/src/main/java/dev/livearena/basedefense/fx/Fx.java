@@ -38,6 +38,10 @@ public final class Fx {
         particles = 0;
         sounds = 0;
         long now = plugin.tick();
+        while (!holes.isEmpty() && (holes.peekFirst().until() <= now || !holes.peekFirst().e().isValid())) {
+            Stain h = holes.pollFirst();
+            if (h.e().isValid()) h.e().remove();
+        }
         while (!stains.isEmpty() && (stains.peekFirst().until() <= now || !stains.peekFirst().e().isValid())) {
             Stain s = stains.pollFirst();
             if (s.e().isValid()) s.e().remove();
@@ -117,6 +121,118 @@ public final class Fx {
         sound(l, org.bukkit.Sound.ENTITY_GENERIC_EXPLODE, big ? 4f : 2.2f, big ? 0.6f : 0.9f + rnd.nextFloat() * 0.2f, true);
     }
 
+    /**
+     * Explosión grande: fogonazo, núcleo de fuego, onda expansiva (anillo que se abre en el suelo), escombros del
+     * suelo, columna de humo y lluvia de brasas. tint = color de la onda (naranja, alma, morado…).
+     */
+    public void blast(Location l, double r, Color tint, boolean shakeNear) {
+        World w = l.getWorld();
+        particle(l, Particle.FLASH, 1, 0, 0, 0, 0, tint, true);
+        particle(l, Particle.EXPLOSION_EMITTER, r >= 4 ? 2 : 1, r * 0.2, 0, true);
+        particle(l, Particle.EXPLOSION, (int) (r * 3), r * 0.45, 0, true);
+        particle(l, Particle.FLAME, (int) (r * 18), r * 0.3, r * 0.25, r * 0.3, 0.12, null, true);
+        particle(l, Particle.LAVA, (int) (r * 4), r * 0.3, 0, true);
+        // escombros del suelo
+        var ground = l.clone().add(0, -1, 0).getBlock().getBlockData();
+        if (ground.getMaterial().isAir()) ground = Material.DIRT.createBlockData();
+        particle(l, Particle.BLOCK, (int) (r * 22), r * 0.4, 0.3, r * 0.4, 0.3, ground, true);
+        // columna de humo
+        particle(l.clone().add(0, 1, 0), Particle.CAMPFIRE_SIGNAL_SMOKE, (int) (r * 3), r * 0.25, 0.4, r * 0.25, 0.02, null, true);
+        particle(l, Particle.LARGE_SMOKE, (int) (r * 10), r * 0.4, 0.4, r * 0.4, 0.05, null, true);
+        sound(l, org.bukkit.Sound.ENTITY_GENERIC_EXPLODE, 4f, 0.55f + rnd.nextFloat() * 0.15f, true);
+        sound(l, org.bukkit.Sound.ENTITY_DRAGON_FIREBALL_EXPLODE, 2.5f, 0.6f, true);
+        ring(l.clone().add(0, 0.25, 0), r * 1.6, tint, 8);
+        if (shakeNear) for (var p : w.getPlayers()) if (p.getLocation().distanceSquared(l) < (r * 6) * (r * 6)) plugin.game.shake();
+    }
+
+    /** Onda expansiva: anillo de polvo que se abre en `ticks`. */
+    public void ring(Location c, double radius, Color col, int ticks) {
+        org.bukkit.Bukkit.getScheduler().runTaskTimer(plugin, new java.util.function.Consumer<org.bukkit.scheduler.BukkitTask>() {
+            int t;
+
+            @Override
+            public void accept(org.bukkit.scheduler.BukkitTask task) {
+                if (t++ >= ticks) {
+                    task.cancel();
+                    return;
+                }
+                double rr = radius * t / (double) ticks;
+                int n = (int) Math.max(12, rr * 6);
+                Particle.DustOptions d = new Particle.DustOptions(col, (float) (2.2 - 1.4 * t / (double) ticks));
+                for (int i = 0; i < n; i++) {
+                    double a = i * Math.PI * 2 / n;
+                    particle(c.clone().add(Math.cos(a) * rr, 0, Math.sin(a) * rr), Particle.DUST, 1, 0, 0, 0, 0, d, true);
+                }
+                if (t % 2 == 0) for (int i = 0; i < n / 3; i++) {
+                    double a = rnd.nextDouble() * Math.PI * 2;
+                    particle(c.clone().add(Math.cos(a) * rr, 0.1, Math.sin(a) * rr), Particle.CLOUD, 1, 0, 0, 0, 0.02, null, false);
+                }
+            }
+        }, 0L, 1L);
+    }
+
+    /** Estela de un proyectil (cada tick). kind: cohete, granada, calavera, fuego. */
+    public void trail(Location l, String kind) {
+        switch (kind) {
+            case "cohete" -> {
+                particle(l, Particle.FLAME, 4, 0.06, 0.06, 0.06, 0.02, null, false);
+                particle(l, Particle.CAMPFIRE_COSY_SMOKE, 1, 0.05, 0.05, 0.05, 0.01, null, false);
+                particle(l, Particle.LARGE_SMOKE, 2, 0.1, 0.1, 0.1, 0.01, null, false);
+            }
+            case "granada" -> {
+                particle(l, Particle.SMOKE, 2, 0.04, 0.04, 0.04, 0.01, null, false);
+                if (plugin.tick() % 4 < 2) particle(l, Particle.DUST, 2, 0.02, 0.02, 0.02, 0, new Particle.DustOptions(Color.RED, 1.2f), false);
+            }
+            case "calavera" -> {
+                particle(l, Particle.SOUL_FIRE_FLAME, 4, 0.18, 0.18, 0.18, 0.02, null, false);
+                particle(l, Particle.SMOKE, 3, 0.2, 0.2, 0.2, 0.02, null, false);
+                particle(l, Particle.DUST, 3, 0.25, 0.25, 0.25, 0, new Particle.DustOptions(Color.fromRGB(20, 20, 24), 2.2f), false);
+                particle(l, Particle.SOUL, 1, 0.2, 0.2, 0.2, 0.02, null, false);
+            }
+            default -> {
+                particle(l, Particle.FLAME, 8, 0.35, 0.35, 0.35, 0.03, null, false);
+                particle(l, Particle.DRAGON_BREATH, 4, 0.4, 0.4, 0.4, 0.01, 1f, false);
+                particle(l, Particle.LAVA, 1, 0.2, 0.2, 0.2, 0, null, false);
+                particle(l, Particle.LARGE_SMOKE, 2, 0.3, 0.3, 0.3, 0.02, null, false);
+            }
+        }
+    }
+
+    private final ArrayDeque<Stain> holes = new ArrayDeque<>();
+
+    /** Agujero de bala en un bloque (unos segundos), con chispas. */
+    public void bulletHole(Location at, org.bukkit.block.BlockFace face, BlockData hit) {
+        particle(at, Particle.ELECTRIC_SPARK, 3, 0.05, 0.05, 0.05, 0.15, null, false);
+        particle(at, Particle.BLOCK, 4, 0.05, 0.05, 0.05, 0.1, hit, false);
+        if (face == null || holes.size() > 60 && !take(1, false)) return;
+        while (holes.size() >= 60) {
+            Stain s = holes.pollFirst();
+            if (s != null && s.e().isValid()) s.e().remove();
+        }
+        org.bukkit.util.Vector n = face.getDirection();
+        Location l = at.clone().add(n.clone().multiply(0.01));
+        float sz = 0.1f + rnd.nextFloat() * 0.05f;
+        BlockDisplay d = at.getWorld().spawn(l, BlockDisplay.class, e -> {
+            e.setPersistent(false);
+            e.setBlock(Material.BLACK_CONCRETE.createBlockData());
+            Quaternionf q = new Quaternionf().rotationTo(new Vector3f(0, 0, 1), new Vector3f((float) n.getX(), (float) n.getY(), (float) n.getZ()));
+            e.setTransformation(new Transformation(new Vector3f(-sz / 2, -sz / 2, 0).rotate(q), q, new Vector3f(sz, sz, 0.002f), new Quaternionf()));
+            e.setBrightness(new Display.Brightness(0, 0));
+            e.setViewRange(0.6f);
+        });
+        holes.addLast(new Stain(d, plugin.tick() + 160));
+    }
+
+    /** Casquillo que sale despedido a la derecha del jugador. */
+    public void casing(org.bukkit.entity.Player p, boolean big) {
+        Location eye = p.getEyeLocation();
+        org.bukkit.util.Vector dir = eye.getDirection();
+        org.bukkit.util.Vector right = dir.clone().crossProduct(new org.bukkit.util.Vector(0, 1, 0)).normalize();
+        Location at = eye.clone().add(dir.clone().multiply(0.9)).add(right.clone().multiply(0.45)).add(0, -0.35, 0);
+        org.bukkit.util.Vector v = right.clone().multiply(0.18 + rnd.nextDouble() * 0.08).add(new org.bukkit.util.Vector(0, 0.16 + rnd.nextDouble() * 0.06, 0));
+        at.getWorld().spawnParticle(Particle.ITEM, at, 0, v.getX(), v.getY(), v.getZ(), 1.0, new org.bukkit.inventory.ItemStack(big ? Material.GOLD_INGOT : Material.GOLD_NUGGET), true);
+    }
+
     /** Sangre al morir: chorro de partículas y una mancha temporal en el suelo. */
     public void blood(Location l, double size) {
         particle(l.clone().add(0, 0.6, 0), Particle.BLOCK, (int) (14 * size), 0.25 * size, 0.2 * size, 0.25 * size, 0.08, BLOOD, false);
@@ -171,7 +287,13 @@ public final class Fx {
         }, 0L, 1L);
     }
 
+    public void clearHoles() {
+        for (Stain s : holes) if (s.e().isValid()) s.e().remove();
+        holes.clear();
+    }
+
     public void clearStains() {
+        clearHoles();
         for (Stain s : stains) if (s.e().isValid()) s.e().remove();
         stains.clear();
     }
