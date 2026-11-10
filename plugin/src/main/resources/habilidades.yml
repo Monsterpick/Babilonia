@@ -29,7 +29,7 @@ meteorito:         { radioCrater: 18, profundidadCrater: 10, radioLetal: 6.0, ra
 mil_cortes:        { alturaSantuario: 20.0, enterrarSantuario: 0.3, distanciaSantuario: 14.0, radio: 10.0, cortesPorTick: 3, danioCorte: 1.0, danioFinal: 30.0, romperBloques: true, distanciaSukunaSinLanzador: 12.0 }
 vacio_purpura:     { velocidad: 0.6, radioOrbe: 3.0, radioDestruccion: 3.0, radioAtraccion: 10.0, radioNucleo: 1.5, danioTick: 2.0, distanciaMax: 80.0, radioDetonacion: 7, danioFinal: 30.0 }
 sangre_perforante: { distancia: 9.0, velocidadFlecha: 2.25, danio: 30.0, perforacion: 0.6, witherSegundos: 4, witherNivel: 2, empuje: 2.8, grosor: 0.22, distanciaDestruccion: 28.0, radioDestruccion: 1.4, romperBloques: true }
-ataque_orbital:    { altura: 180.0, inclinacion: 72.0, escalaSatelite: 4.0, anchoLaser: 6.0, radioCrater: 22, profundidadCrater: 16, bloquesPorTick: 1500, danio: 60.0, radioDanio: 26.0, impulso: 1.6 }
+ataque_orbital:    { altura: 180.0, inclinacion: 72.0, alturaEspacio: 340.0, tamanoSatelite: 2.0, anchoLaser: 6.0, radioCrater: 22, profundidadCrater: 16, bloquesPorTick: 1500, danio: 60.0, radioDanio: 26.0, impulso: 1.6 }
 akaza:             { distanciaAparicion: 8.0, radioCopo: 10.0, radioCrater: 7, danio: 20.0, danioGolpe: 0.5, impulsoGancho: 1.7, knockbackHorizontal: 2.5, knockbackVertical: 1.2 }
 
 # Daño de cada habilidad al jugador objetivo (lo cambia la app en Cinemáticas → Daño y tótems):
@@ -115,6 +115,8 @@ sonidos:
   personaje.desvanecer: "livearena:sfx.desvanecer|block.amethyst_block.resonate,entity.illusioner.mirror_move"
   choso.aparicion: block.bubble_column.whirlpool_inside,entity.warden.emerge
   choso.carga: "livearena:sfx.sangre_burbujas,livearena:sfx.aura|block.bubble_column.whirlpool_inside,block.beacon.ambient"
+  choso.destello: "livearena:sfx.destello|block.amethyst_block.chime,item.trident.return"
+  orbital.rayo: "livearena:sfx.rayo_espacio,livearena:sfx.laser_disparo|entity.warden.sonic_boom,block.beacon.deactivate"
   choso.compresion: "livearena:sfx.sangre_burbujas|block.respawn_anchor.charge,block.honey_block.break"
   choso.disparo: "livearena:sfx.silbido_perforante,livearena:sfx.onda_choque|entity.warden.sonic_boom,item.trident.riptide_3,entity.arrow.shoot"
   choso.impacto: "livearena:sfx.golpe_impacto,livearena:sfx.onda_choque|entity.player.attack.crit,entity.generic.explode,block.slime_block.break"

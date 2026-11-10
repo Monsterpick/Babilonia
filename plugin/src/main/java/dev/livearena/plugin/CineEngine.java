@@ -504,6 +504,7 @@ final class CineEngine implements Listener, TabExecutor {
             {"akaza.aparicion", "entity.breeze.land,entity.player.attack.strong"}, {"akaza.despliegue", "block.amethyst_block.resonate,block.beacon.activate"},
             {"aura.vibrar", "livearena:sfx.aura|block.beacon.ambient"}, {"personaje.desvanecer", "livearena:sfx.desvanecer|block.amethyst_block.resonate,entity.illusioner.mirror_move"},
             {"choso.aparicion", "block.bubble_column.whirlpool_inside,entity.warden.emerge"}, {"choso.carga", "livearena:sfx.sangre_burbujas,livearena:sfx.aura|block.bubble_column.whirlpool_inside,block.beacon.ambient"},
+            {"choso.destello", "livearena:sfx.destello|block.amethyst_block.chime,item.trident.return"}, {"orbital.rayo", "livearena:sfx.rayo_espacio,livearena:sfx.laser_disparo|entity.warden.sonic_boom,block.beacon.deactivate"},
             {"choso.compresion", "livearena:sfx.sangre_burbujas|block.respawn_anchor.charge,block.honey_block.break"}, {"choso.disparo", "livearena:sfx.silbido_perforante,livearena:sfx.onda_choque|entity.warden.sonic_boom,item.trident.riptide_3,entity.arrow.shoot"},
             {"choso.impacto", "livearena:sfx.golpe_impacto,livearena:sfx.onda_choque|entity.player.attack.crit,entity.generic.explode,block.slime_block.break"},
             {"orbital.fijado", "livearena:sfx.objetivo_fijado|block.beacon.power_select,block.note_block.bit"}, {"orbital.alarma", "livearena:sfx.pitido|block.note_block.pling"},

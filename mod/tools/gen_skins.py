@@ -12,7 +12,7 @@ ANCHORS = {
     'gojo': [('mano_izquierda', 'brazo_izquierdo', (6, 10.5, 0)), ('mano_derecha', 'brazo_derecho', (-6, 10.5, 0)), ('mano_proyectil', 'cuerpo', (0, 18, -5))],
     'sukuna': [('manos', 'cuerpo', (0, 19, -5))],
     'akaza': [('puno_derecho', 'brazo_derecho', (-6, 10.5, 0))],
-    'choso': [('manos', 'cuerpo', (0, 21, -11))],
+    'choso': [('manos', 'cuerpo', (0, 21, -11)), ('ojos', 'cabeza', (0, 26.6, -4.6))],
 }
 
 

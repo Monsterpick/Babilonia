@@ -84,13 +84,21 @@ final class CineEspeciales {
 
     /** yScale: libre para pasar un dato al efecto (p. ej. la velocidad de la flecha, en bloques/s ÷ 100). */
     private static void setAxis(ItemDisplay d, Location from, Location to, float width, float yScale, int ticks) {
+        setAxis(d, from, to, width, yScale, ticks, 0);
+    }
+
+    /**
+     * lift: el display está `lift` bloques por debajo de `from` y el efecto sube con una traslación. La caja de dibujo de
+     * un display solo crece hacia arriba: un haz que baja desde su origen se dejaría de dibujar sin esto.
+     */
+    private static void setAxis(ItemDisplay d, Location from, Location to, float width, float yScale, int ticks, float lift) {
         if (d == null || !d.isValid()) return;
         Vector v = to.toVector().subtract(from.toVector());
         float len = (float) v.length();
         Quaternionf q = new Quaternionf().rotationTo(new Vector3f(0, 0, 1), new Vector3f((float) v.getX(), (float) v.getY(), (float) v.getZ()).normalize());
         d.setInterpolationDelay(0);
         d.setInterpolationDuration(ticks);
-        d.setTransformation(new Transformation(new Vector3f(), q, new Vector3f(width, yScale, Math.max(0.01f, len)), new Quaternionf()));
+        d.setTransformation(new Transformation(new Vector3f(0, lift, 0), q, new Vector3f(width, yScale, Math.max(0.01f, len)), new Quaternionf()));
     }
 
     /** Daño que atraviesa la armadura en una fracción `pierce` (esa parte es de tipo mágico). */
@@ -132,14 +140,18 @@ final class CineEspeciales {
                 CineNet.Shot s = c.shot();
                 s.key(0, m.clone().add(lat.clone().multiply(sep * 0.95 + 3)).add(0, 1.3, 0), m.clone().add(0, 1.2, 0), 60, LINEAR);
                 s.key(40, m.clone().add(lat.clone().multiply(sep * 0.85 + 2.5)).add(0, 1.4, 0), m.clone().add(0, 1.2, 0), 56, EASE_IN_OUT);
-                // 41–79: primer plano de las manos (3/4 frontal de Choso).
+                // 41–70: zoom lento a la cara de Choso (frontal), con las manos juntas bajo la barbilla.
                 Vector face = forward(yaw);
+                Location eyes = at.clone().add(0, 1.68, 0);
+                s.key(41, eyes.clone().add(face.clone().multiply(2.3)).add(lat.clone().multiply(0.35)).add(0, -0.15, 0), eyes.clone().add(0, -0.12, 0), 50, CUT);
+                s.key(70, eyes.clone().add(face.clone().multiply(1.55)).add(lat.clone().multiply(0.15)).add(0, -0.08, 0), eyes.clone().add(0, -0.1, 0), 40, EASE_IN_OUT);
+                // 71–92: 3/4 de las manos y la cara: la flecha de sangre toma forma entre las palmas.
                 Location hands = hands(at, yaw, 0.7);
-                s.key(41, at.clone().add(face.clone().multiply(2.6)).add(lat.clone().multiply(1.3)).add(0, 1.55, 0), hands, 52, CUT);
-                s.key(79, at.clone().add(face.clone().multiply(2.1)).add(lat.clone().multiply(1.0)).add(0, 1.5, 0), hands, 46, EASE_IN_OUT);
-                // 80–103: vuelta al panel lateral, más cerrado, mientras comprime la sangre.
-                s.key(80, m.clone().add(lat.clone().multiply(sep * 0.7 + 2)).add(0, 1.2, 0), m.clone().add(0, 1.25, 0), 50, CUT);
-                s.key(103, m.clone().add(lat.clone().multiply(sep * 0.62 + 1.8)).add(0, 1.2, 0), m.clone().add(0, 1.25, 0), 48, LINEAR);
+                s.key(71, at.clone().add(face.clone().multiply(2.4)).add(lat.clone().multiply(1.5)).add(0, 1.35, 0), hands.clone().add(0, 0.12, 0), 50, CUT);
+                s.key(92, at.clone().add(face.clone().multiply(1.9)).add(lat.clone().multiply(1.1)).add(0, 1.4, 0), hands.clone().add(0, 0.15, 0), 44, EASE_IN_OUT);
+                // 93–102: plano detalle de los ojos con el fogonazo rojo (justo antes del disparo).
+                s.key(93, eyes.clone().add(face.clone().multiply(1.45)).add(0, -0.05, 0), eyes.clone().add(0, -0.08, 0), 38, CUT);
+                s.key(102, eyes.clone().add(face.clone().multiply(1.25)).add(0, -0.05, 0), eyes.clone().add(0, -0.08, 0), 34, LINEAR);
                 c.cam(s);
             }
 
@@ -170,21 +182,38 @@ final class CineEspeciales {
                     c.vignette(0xa0200006, 10, 150, 20);
                 }
                 if (t == 40) c.say("choso_tecnica", "Técnica de manipulación de sangre…", 0xff5a64, 34);
-                if (t == 44) {
-                    // Esfera de sangre entre las manos (pegada al hueso «manos»).
-                    ItemDisplay sphere = k.vfx(c, hands(at, yaw, 0.7), "fx_sangre", 0.01f, null);
-                    c.attach(sphere, ch, "manos", 0, 0, 0);
-                    size(sphere, 0.45f, 30);
-                    c.data.put("sphere", sphere);
-                    c.sound(at, "choso.carga", 1.6f, 0.8f);
+                if (t == 46) {
+                    // Destellos rojos bajo los ojos (anclados a la cara; el display gira con Choso).
+                    Location eyeAt = at.clone().add(0, 1.66, 0);
+                    eyeAt.setYaw(yaw);
+                    ItemDisplay ojos = k.vfx(c, eyeAt, "fx_ojos", 1f / 16f, null);
+                    ojos.setRotation(yaw, 0);
+                    c.attach(ojos, ch, "ojos", 0, 0, 0);
+                    c.data.put("ojos", ojos);
+                }
+                if (t == 58 || t == 94) {
+                    c.anim(get(c, "ojos"), "destello");
+                    c.sound(at, "choso.destello", 1.4f, t == 58 ? 1.2f : 1.5f);
+                    c.shake(t == 58 ? 0.25 : 0.45, 6, 0.85);
+                    if (t == 94) c.screenFx(CineNet.SPEEDLINES, 0xff2a0006, 0, 9, 4);
                 }
                 if (t == 52) c.anim(ch, "cargar");
-                if (plain && t > 44 && t < 104 && t % 2 == 0)
+                if (t == 60) {
+                    // La flecha de sangre se forma entre las manos (sin esfera): punta que crece y late, hilos de sangre en espiral.
+                    Location h = hands(at, yaw, 0.72);
+                    Location aim = c.target.getLocation().add(0, 1.15, 0);
+                    Vector d = aim.toVector().subtract(h.toVector());
+                    if (d.lengthSquared() < 1e-4) d = forward(yaw);
+                    d.normalize();
+                    ItemDisplay arrow = axis(c, h, h.clone().add(d.clone().multiply(0.62)), "fx_perforante", 0.07f, null, "formar");
+                    c.attach(arrow, ch, "manos", 0, 0, 0);
+                    c.data.put("arrow", arrow);
+                    c.sound(at, "choso.carga", 1.6f, 0.8f);
+                }
+                if (plain && t > 60 && t < 104 && t % 2 == 0)
                     CineFx.part(c.w, Particle.DUST, hands(at, yaw, 0.7), 6, 0.25, 0.25, 0.25, 0, CineFx.dust(0x8a0010, 1.2f));
                 if (t >= 80 && t < 100 && t % 4 == 0) {
-                    // Compresión: la esfera se encoge a pulsos y tiembla todo.
-                    float r = (float) (0.45 - 0.23 * (t - 80) / 20.0);
-                    size(get(c, "sphere"), r + (t % 8 == 0 ? 0.05f : -0.03f), 4);
+                    // Compresión: la sangre late y tiembla todo.
                     c.shake(0.2 + (t - 80) / 20.0 * 0.4, 5, 0.9);
                     if (t % 8 == 0) c.sound(at, "choso.compresion", 1.2f, 0.9f + (t - 80) / 30f);
                 }
@@ -196,7 +225,7 @@ final class CineEspeciales {
                 if (t == 100) {
                     c.anim(ch, "perforar");
                     c.screenFx(CineNet.SPEEDLINES, 0xff000000, 0, 14, 6);
-                    c.tint(0x908a0010, 0, 2, 6);
+                    c.tint(0x508a0010, 0, 2, 5);
                     c.shake(0.8, 8, 0.85);
                 }
                 if (t == 103) fire(c, at, yaw);
@@ -214,7 +243,7 @@ final class CineEspeciales {
                         s.key(50, at.clone().add(face.clone().multiply(2.6)).add(0, 1.65, 0), at.clone().add(0, 1.5, 0), 52, LINEAR);
                         c.cam(s);
                     }
-                    if (since == 58) k.vanish(c, CHOSO, ch, 0xc0101c, 28, (Entity) get(c, "aura"));
+                    if (since == 58) k.vanish(c, CHOSO, ch, 0xc0101c, 28, (Entity) get(c, "aura"), (Entity) get(c, "ojos"));
                     if (since == 70) c.skyReset();
                     if (since >= 92) e.finish(c, false);
                 }
@@ -222,7 +251,7 @@ final class CineEspeciales {
 
             /** Disparo: el haz sale de las manos hacia el objetivo y sigue hasta `distanciaDestruccion` bloques detrás. */
             void fire(CineEngine.Ctx c, Location at, float yaw) {
-                remove((Entity) get(c, "sphere"));
+                remove((Entity) get(c, "arrow"));
                 Location from = hands(at, yaw, 0.85).add(0, 0.04, 0);
                 Location aim = c.target.getLocation().add(0, 1.15, 0);
                 Vector dir = aim.toVector().subtract(from.toVector());
@@ -299,11 +328,10 @@ final class CineEspeciales {
                 double push = c.cfg("empuje", 2.8);
                 c.target.setVelocity(dir.clone().setY(0).normalize().multiply(push).setY(0.45));
                 c.target.setFallDistance(0);
-                k.once(c, p, CineCharacters.FX_GOLPE, 1.8f, "ffd0101c", 16);
                 k.once(c, p, CineCharacters.FX_ONDA, 7, "ffff2030", 26);
                 CineFx.part(c.w, Particle.DUST, p, 50, 0.6, 0.6, 0.6, 0, CineFx.dust(0x8a0010, 1.8f));
                 CineFx.part(c.w, Particle.DAMAGE_INDICATOR, p, 12, 0.4, 0.4, 0.4, 0.2, null);
-                c.tint(0xa0ff2030, 0, 2, 8);
+                c.tint(0x50ff2030, 0, 2, 6);
                 c.shake(1.7, 18, 0.88);
                 c.screenFx(CineNet.SPEEDLINES, 0xffffffff, 0, 8, 6);
                 c.sound(p, "choso.impacto", 2.5f, 0.9f);
@@ -344,38 +372,42 @@ final class CineEspeciales {
 
     private void ataqueOrbital() {
         e.register(new CineEngine.Ability("ataque_orbital", "ATAQUE ORBITAL", "#ff1a2a", 300, 300,
-                "Un rayo rojo fija al objetivo; la cámara sube al espacio, un satélite cañón carga y dispara un láser colosal que abre un cráter enorme") {
+                "Un rayo rojo fija al objetivo; la cámara sube al espacio, un satélite cañón carga con la Tierra al fondo, dispara al planeta y el rayo cae sobre el objetivo abriendo un cráter enorme") {
             void start(CineEngine.Ctx c) {
                 Location g = c.ground(c.feet().add(0, 1, 0));
                 c.data.put("g", g);
-                // Satélite: a `altura` bloques sobre el objetivo, desplazado y apuntando con el cañón hacia él.
+                // Satélite a `altura` bloques sobre el objetivo, desplazado y con el cañón apuntándole.
                 double alt = c.cfg("altura", 180.0), el = Math.toRadians(c.cfg("inclinacion", 72.0));
                 Vector hz = forward(c.yaw0 + 90f);
                 double D = alt / Math.sin(el);
                 Vector dir = hz.clone().multiply(Math.cos(el)).add(new Vector(0, -Math.sin(el), 0)).normalize();
-                Location sat = g.clone().subtract(dir.clone().multiply(D));
-                float scale = (float) c.cfg("escalaSatelite", 4.0);
+                c.data.put("skyDir", g.clone().subtract(dir.clone().multiply(D)));
+                // La escena del espacio va muy por encima del terreno (el cielo del mod tapa todo lo que queda a más de
+                // 175 bloques de la cámara) y la Tierra del fondo va fijada a la cámara, como un cielo.
+                // Por encima de las nubes (y≈192) para que no se vean bajo el satélite.
+                Location sat = g.clone().add(0, c.cfg("alturaEspacio", 340.0), 0);
+                if (sat.getY() < 420) sat.setY(420);
+                float scale = (float) c.cfg("tamanoSatelite", 2.0);
                 Location muzzle = sat.clone().add(dir.clone().multiply(8.75 * scale));
                 c.data.put("sat", sat);
                 c.data.put("dir", dir);
                 c.data.put("muzzle", muzzle);
                 c.data.put("scale", scale);
+                c.data.put("hit", muzzle.clone().add(dir.clone().multiply(45)));
                 ItemDisplay marca = k.vfx(c, g.clone().add(0, 0.05, 0), "fx_marca", 1.2f, "ffff2030");
                 marca.setDisplayHeight(400f);
                 c.data.put("marca", marca);
-                c.target.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 200, 9, false, false));
+                c.target.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 220, 9, false, false));
                 c.sound(g, "orbital.fijado", 2f, 1.2f);
-                c.screenFx(CineNet.TARGET_HUD, 0xffff2a3a, 4, 44, 4);
-                // 0–49: vista cenital que se cierra sobre el objetivo marcado.
+                c.screenFx(CineNet.TARGET_HUD, 0xffff2a3a, 4, 40, 4);
+                // 0–44: vista cenital (algo ladeada) que se cierra sobre el objetivo marcado.
                 CineNet.Shot s = c.shot();
                 Vector side = dir.clone().crossProduct(new Vector(0, 1, 0)).normalize();
-                // Un poco ladeada para no mirar el rayo de frente (deslumbra).
                 s.key(0, g.clone().add(side.clone().multiply(14)).add(0, 40, 0), g, 62, LINEAR);
-                s.key(49, g.clone().add(side.clone().multiply(10)).add(0, 28, 0), g, 46, EASE_IN_OUT);
-                // 50–71: subida vertiginosa hacia el espacio.
-                s.key(50, g.clone().add(side.clone().multiply(10)).add(0, 28, 0), g, 50, LINEAR);
-                Location space0 = sat.clone().add(side.clone().multiply(70)).add(dir.clone().multiply(10)).add(0, 26, 0);
-                s.key(71, space0.clone().add(0, -40, 0), sat, 90, EASE_IN_EXPO);
+                s.key(44, g.clone().add(side.clone().multiply(10)).add(0, 28, 0), g, 46, EASE_IN_OUT);
+                // 45–62: subida vertiginosa hacia el espacio.
+                s.key(45, g.clone().add(side.clone().multiply(10)).add(0, 28, 0), g, 50, LINEAR);
+                s.key(62, g.clone().add(side.clone().multiply(10)).add(0, 150, 0), g.clone().add(0, 400, 0), 100, EASE_IN_EXPO);
                 c.cam(s);
             }
 
@@ -383,137 +415,147 @@ final class CineEspeciales {
                 Location g = get(c, "g");
                 Location sat = get(c, "sat");
                 Location muzzle = get(c, "muzzle");
+                Location hit = get(c, "hit");
                 Vector dir = get(c, "dir");
                 float scale = (float) c.data.get("scale");
                 boolean plain = !CineNet.hasMod(c.target);
                 Vector side = dir.clone().crossProduct(new Vector(0, 1, 0)).normalize();
                 Vector upv = side.clone().crossProduct(dir).normalize();
-                if (t < 190) c.target.setVelocity(new Vector(0, Math.min(0, c.target.getVelocity().getY()), 0));
-                if (t < 50 && t % 10 == 0) c.sound(g, "orbital.alarma", 1.5f, 1.4f + (t / 10) * 0.08f);
-                if (plain && t < 190 && t % 3 == 0) CineFx.line(c.w, g.clone().add(0, 40, 0), g, 1.0, 0xff2030, 1.2f);
-                if (t == 50) {
+                if (t < 198) c.target.setVelocity(new Vector(0, Math.min(0, c.target.getVelocity().getY()), 0));
+                if (t < 45 && t % 10 == 0) c.sound(g, "orbital.alarma", 1.5f, 1.4f + (t / 10) * 0.08f);
+                if (plain && t < 198 && t % 3 == 0) CineFx.line(c.w, g.clone().add(0, 40, 0), g, 1.0, 0xff2030, 1.2f);
+                if (t == 45) {
                     c.sound(g, "orbital.subida", 2f, 0.8f);
-                    c.screenFx(CineNet.WARP, 0xffff3040, 4, 14, 4);
+                    c.screenFx(CineNet.WARP, 0xffff3040, 4, 12, 4);
                 }
-                if (t == 60) {
-                    c.sky(CineNet.SKY_SPACE, 0, 120);
-                    // Satélite y fondo del espacio (solo los ve quien tiene el mod; están a mucha altura).
-                    // La caja de dibujo de un display solo crece hacia arriba: la entidad va 70 bloques más abajo y el
-                    // modelo sube con una traslación, así la caja cubre también la boca del cañón (que apunta abajo).
+                if (t == 56) {
+                    c.sky(CineNet.SKY_SPACE, 0, 140);
+                    // Satélite y fondo del espacio (solo los ve quien tiene el mod). La caja de dibujo de un display solo
+                    // crece hacia arriba: la entidad va más abajo y el modelo sube con una traslación.
                     ItemDisplay st = c.actor(fx.itemDisplay(sat.clone().add(0, -70, 0), new ItemStack(Material.AIR), 1f, 0));
-                    st.setDisplayWidth(140f);
-                    st.setDisplayHeight(140f);
+                    st.setDisplayWidth(160f);
+                    st.setDisplayHeight(160f);
                     st.setViewRange(16f);
                     c.model(st, SATELITE, "idle", scale);
                     Quaternionf q = new Quaternionf().rotationTo(new Vector3f(0, 0, 1), new Vector3f((float) dir.getX(), (float) dir.getY(), (float) dir.getZ()));
                     st.setTransformation(new Transformation(new Vector3f(0, 70, 0), q, new Vector3f(1, 1, 1), new Quaternionf()));
                     c.data.put("satD", st);
-                    ItemDisplay esp = c.actor(fx.itemDisplay(sat.clone().add(0, -200, 0), new ItemStack(Material.AIR), 1f, 0));
-                    esp.setDisplayWidth(400f);
-                    esp.setDisplayHeight(400f);
+                    ItemDisplay esp = c.actor(fx.itemDisplay(sat.clone().add(0, -300, 0), new ItemStack(Material.AIR), 1f, 0));
+                    esp.setDisplayWidth(800f);
+                    esp.setDisplayHeight(800f);
                     esp.setViewRange(16f);
                     c.model(esp, "fx_espacio", "idle", 1f);
-                    esp.setTransformation(new Transformation(new Vector3f(0, 200, 0), new Quaternionf(), new Vector3f(1, 1, 1), new Quaternionf()));
+                    esp.setTransformation(new Transformation(new Vector3f(0, 300, 0), new Quaternionf(), new Vector3f(1, 1, 1), new Quaternionf()));
                     c.data.put("esp", esp);
                 }
-                if (t == 72) {
-                    c.caption("SATÉLITE ORBITAL LA-1", "Cañón de partículas · órbita baja · objetivo: " + c.target.getName(), 0xff4050, 64);
-                    // 72–99: plano general del satélite con el planeta debajo; travelling a lo largo del casco.
+                if (t == 63) {
+                    // 63–102: plano general. El satélite entero con la Tierra enorme al fondo; travelling lento en arco.
+                    c.caption("SATÉLITE ORBITAL LA-1", "Cañón de partículas · órbita baja · objetivo: " + c.target.getName(), 0xff4050, 70);
                     CineNet.Shot s = c.shot();
-                    Location look0 = sat.clone().add(dir.clone().multiply(-10 * scale / 4));
-                    s.key(0, sat.clone().add(side.clone().multiply(62)).add(upv.clone().multiply(14)).add(dir.clone().multiply(-30)), look0, 66, CUT);
-                    s.key(28, sat.clone().add(side.clone().multiply(48)).add(upv.clone().multiply(10)).add(dir.clone().multiply(8)), sat, 62, LINEAR);
-                    // 100–129: primer plano de la boca del cañón y sus aros.
-                    s.key(29, muzzle.clone().add(side.clone().multiply(22)).add(upv.clone().multiply(5)).add(dir.clone().multiply(-12)), muzzle, 58, CUT);
-                    s.key(57, muzzle.clone().add(side.clone().multiply(17)).add(upv.clone().multiply(4)).add(dir.clone().multiply(-4)), muzzle, 54, EASE_IN_OUT);
-                    // 130–147: desde detrás del satélite, mirando por el cañón hacia el planeta.
-                    Location rear = sat.clone().add(dir.clone().multiply(-11 * scale)).add(upv.clone().multiply(3.5 * scale)).add(side.clone().multiply(1.2 * scale));
-                    s.key(58, rear, muzzle.clone().add(dir.clone().multiply(40)), 70, CUT);
-                    s.key(75, rear.clone().add(dir.clone().multiply(2 * scale)), muzzle.clone().add(dir.clone().multiply(40)), 64, LINEAR);
-                    // 148–159: disparo visto de lado.
-                    s.key(76, sat.clone().add(side.clone().multiply(70)).add(upv.clone().multiply(-6)).add(dir.clone().multiply(30)), muzzle.clone().add(dir.clone().multiply(25)), 72, CUT);
-                    s.key(87, sat.clone().add(side.clone().multiply(74)).add(upv.clone().multiply(-6)).add(dir.clone().multiply(32)), muzzle.clone().add(dir.clone().multiply(30)), 74, LINEAR);
+                    Location focus = sat.clone().add(dir.clone().multiply(4 * scale)).add(0, -14, 0);
+                    Location p0 = sat.clone().add(side.clone().multiply(36 * scale)).add(0, 9, 0).add(dir.clone().multiply(-8 * scale));
+                    Location p1 = sat.clone().add(side.clone().multiply(30 * scale)).add(0, 12, 0).add(dir.clone().multiply(-2 * scale));
+                    s.key(0, p0, focus, 64, CUT);
+                    s.key(39, p1, focus, 60, EASE_IN_OUT);
+                    // 103–142: primer plano del cañón mientras carga (los aros se encienden, el núcleo crece).
+                    s.key(40, muzzle.clone().add(side.clone().multiply(7.5 * scale)).add(upv.clone().multiply(2.2 * scale)).add(dir.clone().multiply(-4 * scale)), muzzle, 56, CUT);
+                    s.key(79, muzzle.clone().add(side.clone().multiply(5 * scale)).add(upv.clone().multiply(1.6 * scale)).add(dir.clone().multiply(-2 * scale)), muzzle, 50, EASE_IN_OUT);
+                    // 143–151: por encima del satélite, mirando por el cañón hacia el planeta (justo antes del disparo).
+                    Location rear = sat.clone().add(dir.clone().multiply(-8 * scale)).add(upv.clone().multiply(2.6 * scale)).add(side.clone().multiply(1.4 * scale));
+                    s.key(80, rear, hit, 70, CUT);
+                    s.key(88, rear.clone().add(dir.clone().multiply(1.5 * scale)), hit, 66, LINEAR);
+                    // 152–185: el disparo visto de lado y de lejos: el rayo baja del cañón hasta la Tierra.
+                    Location wide = sat.clone().add(side.clone().multiply(34 * scale)).add(0, -2, 0).add(dir.clone().multiply(6 * scale));
+                    s.key(89, wide, muzzle.clone().add(dir.clone().multiply(14)), 72, CUT);
+                    s.key(122, wide.clone().add(side.clone().multiply(-6 * scale)).add(0, 2, 0), muzzle.clone().add(dir.clone().multiply(18)), 66, LINEAR);
                     c.cam(s);
                 }
-                if (t == 100) {
+                if (t == 103) {
                     c.anim(get(c, "satD"), "activar");
                     c.sound(sat, "orbital.activar", 3f, 0.7f);
-                    ItemDisplay core = k.vfx(c, muzzle.clone().add(dir.clone().multiply(-2)), "fx_nucleo", 0.2f, null);
-                    size(core, 2.6f * scale / 4, 40);
+                    ItemDisplay core = k.vfx(c, muzzle.clone().add(dir.clone().multiply(-0.6 * scale)), "fx_nucleo", 0.1f, null);
+                    size(core, 0.7f * scale, 38);
                     c.data.put("core", core);
                 }
-                if (t == 120) c.anim(get(c, "satD"), "cargado");
-                if (t > 100 && t < 148 && t % 12 == 4) {
-                    c.sound(sat, "orbital.carga", 2f, 0.6f + (t - 100) / 60f);
-                    c.shake(0.15 + (t - 100) / 48.0 * 0.5, 10, 0.95);
+                if (t == 122) c.anim(get(c, "satD"), "cargado");
+                if (t > 103 && t < 152 && t % 12 == 7) {
+                    c.sound(sat, "orbital.carga", 2f, 0.6f + (t - 103) / 60f);
+                    c.shake(0.12 + (t - 103) / 48.0 * 0.45, 10, 0.95);
                 }
-                if (t == 148) {
+                if (t == 140) size(get(c, "core"), 0.95f * scale, 10);
+                if (t == 152) {
+                    // ¡Disparo! El rayo sale de la boca del cañón y cruza el vacío hasta la Tierra.
                     c.anim(get(c, "satD"), "disparo");
-                    c.flash(0xffffff, 0, 3, 10);
-                    c.shake(1.4, 14, 0.88);
+                    c.tint(0x38ffffff, 0, 1, 5);
+                    c.shake(1.2, 14, 0.88);
                     c.sound(sat, "orbital.disparo", 4f, 0.6f);
-                    size(get(c, "core"), 0.8f * scale / 4, 4);
-                    // El láser vive en el suelo (punto de impacto) y apunta hacia la boca del cañón.
-                    ItemDisplay laser = axis(c, g, muzzle, "fx_laser", (float) c.cfg("anchoLaser", 6.0), null, "fino");
+                    c.sound(sat, "orbital.rayo", 3f, 0.9f);
+                    size(get(c, "core"), 0.35f * scale, 4);
+                    float w = (float) (c.cfg("anchoLaser", 6.0) * 0.45);
+                    float lift = 160;
+                    ItemDisplay sb = c.actor(fx.itemDisplay(muzzle.clone().add(0, -lift, 0), new ItemStack(Material.AIR), 1f, 0));
+                    sb.setDisplayWidth(400f);
+                    sb.setDisplayHeight(400f);
+                    sb.setViewRange(16f);
+                    c.model(sb, "fx_laser", "tierra_fino", 1f);
+                    setAxis(sb, muzzle, muzzle.clone().add(dir.clone().multiply(1)), w, w, 0, lift);
+
+                    c.data.put("spaceBeam", sb);
+                }
+                if (t == 154) {
+                    // El rayo se alarga desde la boca del cañón hasta la Tierra (el efecto lo corta en la superficie).
+                    float w = (float) (c.cfg("anchoLaser", 6.0) * 0.45);
+                    setAxis(get(c, "spaceBeam"), muzzle, muzzle.clone().add(dir.clone().multiply(260)), w, w, 8, 160);
+                }
+                if (t == 158) c.anim(get(c, "spaceBeam"), "tierra_ancho");
+                if (t == 160) c.anim(get(c, "satD"), "cargado");
+                if (t == 186) {
+                    // Bajada: del espacio a la vista del objetivo siguiendo el rayo (hiperespacio corto).
+                    c.screenFx(CineNet.WARP, 0xffff2030, 2, 10, 3);
+                    c.skyReset();
+                    remove((Entity) get(c, "esp"), (Entity) get(c, "satD"), (Entity) get(c, "core"), (Entity) get(c, "spaceBeam"));
+                    Location sky = get(c, "skyDir");
+                    ItemDisplay laser = axis(c, g, sky, "fx_laser", (float) c.cfg("anchoLaser", 6.0), null, "fino");
                     c.data.put("laser", laser);
                     if (plain) c.data.put("beamB", c.actor(fx.beam(g, g.clone().add(0, 60, 0), 0.25f, Material.RED_CONCRETE, 0xff2030, 0)));
-                }
-                if (t == 156) c.anim(get(c, "satD"), "cargado");
-                if (t == 160) {
-                    // 160–175: descenso vertiginoso junto al rayo (hiperespacio).
-                    c.screenFx(CineNet.WARP, 0xffff2030, 2, 12, 3);
                     CineNet.Shot s = c.shot();
-                    Location top = muzzle.clone().add(dir.clone().multiply(20)).add(side.clone().multiply(10));
-                    Location low = g.clone().add(side.clone().multiply(12)).add(0, 40, 0);
-                    s.key(0, top, g, 80, CUT);
-                    s.key(15, low, g, 100, EASE_IN_EXPO);
+                    Location top = g.clone().subtract(dir.clone().multiply(110)).add(side.clone().multiply(14));
+                    Location low = g.clone().add(side.clone().multiply(26)).add(0, 14, 0);
+                    s.key(0, top, g, 90, CUT);
+                    s.key(11, low, g, 76, EASE_IN_EXPO);
+                    // 197–: a ras de suelo, el rayo fino toca tierra y se ensancha.
+                    Location ground = g.clone().add(side.clone().multiply(30)).add(0, 2.5, 0);
+                    s.key(12, ground, g.clone().add(0, 9, 0), 72, CUT);
                     c.cam(s);
                 }
-                if (t == 170) {
-                    c.skyReset();
-                    remove((Entity) get(c, "esp"));
-                }
-                if (t == 172) c.screenFx(CineNet.SPLASH, 0xff9a0010, 0, 10, 0);
-                if (t == 180) {
-                    // En el suelo: el rayo finísimo toca tierra (cielo teñido de rojo).
-                    remove((Entity) get(c, "marca"), (Entity) get(c, "satD"), (Entity) get(c, "core"));
-                    c.sky(CineNet.SKY_TINT, 0x5a0008, 160);
-                    c.tint(0x40ff0010, 4, 60, 30);
-                    Vector away = side.clone();
-                    CineNet.Shot s = c.shot();
-                    Location low = g.clone().add(away.clone().multiply(22)).add(0, 1.2, 0);
-                    s.key(0, low, g.clone().add(0, 20, 0), 74, CUT);
-                    s.key(14, low.clone().add(away.clone().multiply(2)), g.clone().add(0, 16, 0), 70, LINEAR);
-                    c.cam(s);
-                }
-                if (t == 194) impact(c, g, side);
-                if (t > 194 && t < 230 && t % 5 == 0) c.shake(0.9, 6, 0.95);
-                if (t == 236) c.anim(get(c, "laser"), "fin");
-                if (t == 244) c.anim(get(c, "domo"), "fin");
-                if (t == 250) {
-                    c.skyReset();
-                    // Final: el objetivo cae al fondo del cráter (cámara desde el borde, mirando abajo).
+                if (t == 197) remove((Entity) get(c, "marca"));
+                if (t == 200) impact(c, g, side);
+                if (t > 200 && t < 236 && t % 5 == 0) c.shake(0.9, 6, 0.95);
+                if (t == 240) c.anim(get(c, "laser"), "fin");
+                if (t == 246) c.anim(get(c, "domo"), "fin");
+                if (t == 254) {
+                    // Final: el objetivo en el fondo del cráter (cámara desde el borde, mirando abajo).
                     CineNet.Shot s = c.shot().followLook(c.target.getEntityId());
                     Location rim = g.clone().add(side.clone().multiply(c.cfgI("radioCrater", 22) + 6)).add(0, 10, 0);
                     s.key(0, rim, rim, 70, CUT);
                     s.key(30, rim.clone().add(0, 3, 0), rim, 72, LINEAR);
                     c.cam(s);
                 }
-                if (t == 270) remove((Entity) get(c, "laser"), (Entity) get(c, "domo"), (Entity) get(c, "beamB"));
-                if (t >= 280) e.finish(c, false);
+                if (t == 280) remove((Entity) get(c, "laser"), (Entity) get(c, "domo"), (Entity) get(c, "beamB"));
+                if (t >= 296) e.finish(c, false);
             }
 
             void impact(CineEngine.Ctx c, Location g, Vector side) {
                 c.anim(get(c, "laser"), "ancho");
                 if (get(c, "beamB") != null) FxBeam.widen(get(c, "beamB"), g, 3f);
-                c.flash(0xffd0d0, 0, 2, 10);
-                c.shake(2.8, 50, 0.95);
+                c.flash(0xfff0e0, 0, 2, 8);
+                c.shake(2.6, 50, 0.95);
                 c.sound(g, "orbital.impacto", 4f, 0.55f);
-                c.tint(0x48ff0010, 2, 30, 30);
-                // Cúpula roja que crece y el cráter que se abre desde el centro.
-                ItemDisplay domo = k.vfx(c, g.clone().add(0, 1, 0), "fx_domo", 2f, null);
-                size(domo, (float) (c.cfgI("radioCrater", 22) * 1.5), 24);
+                // Cúpula de energía que crece (translúcida, sin tapar la vista) y el cráter que se abre desde el centro.
+                ItemDisplay domo = k.vfx(c, g.clone().add(0, 1, 0), "fx_domo", 2f, "b0ff1a20");
+                size(domo, (float) (c.cfgI("radioCrater", 22) * 0.95), 22);
                 c.data.put("domo", domo);
+                k.once(c, g.clone().add(0, 0.3, 0), CineCharacters.FX_ONDA, (float) (c.cfgI("radioCrater", 22) * 1.6), "ffff4050", 30);
                 int r = c.cfgI("radioCrater", 22), depth = c.cfgI("profundidadCrater", 16);
                 world.boost(c.cfgI("bloquesPorTick", 1500), 120);
                 world.bowlCrater(g.clone().add(0, -1, 0), r, depth, false, 0.04, 0.06, 0.03, c.rnd);
@@ -530,11 +572,11 @@ final class CineEspeciales {
                     Vector v = new Vector(Math.cos(a) * (0.6 + c.rnd.nextDouble()), 1.0 + c.rnd.nextDouble() * 1.2, Math.sin(a) * (0.6 + c.rnd.nextDouble()));
                     world.flyVisual(g.clone().add(0, 1, 0), m.createBlockData(), CineWorld.Path.LAUNCH, null, v, 50, 0);
                 }
-                // Plano: de lado y lejos, con la cúpula roja creciendo y el objetivo por los aires.
+                // Plano: de lado y lejos, con la explosión creciendo y el objetivo por los aires.
                 CineNet.Shot s = c.shot();
-                Location wide = g.clone().add(side.clone().multiply(52)).add(0, 12, 0);
-                s.key(0, wide, g.clone().add(0, 10, 0), 76, CUT);
-                s.key(55, wide.clone().add(side.clone().multiply(6)).add(0, 4, 0), g.clone().add(0, 6, 0), 78, LINEAR);
+                Location wide = g.clone().add(side.clone().multiply(54)).add(0, 14, 0);
+                s.key(0, wide, g.clone().add(0, 8, 0), 76, CUT);
+                s.key(52, wide.clone().add(side.clone().multiply(6)).add(0, 4, 0), g.clone().add(0, 6, 0), 78, LINEAR);
                 c.cam(s);
             }
         });

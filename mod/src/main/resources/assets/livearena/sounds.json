@@ -157,5 +157,19 @@
         "name": "livearena:sfx/viento_energia"
       }
     ]
+  },
+  "sfx.destello": {
+    "sounds": [
+      {
+        "name": "livearena:sfx/destello"
+      }
+    ]
+  },
+  "sfx.rayo_espacio": {
+    "sounds": [
+      {
+        "name": "livearena:sfx/rayo_espacio"
+      }
+    ]
   }
 }

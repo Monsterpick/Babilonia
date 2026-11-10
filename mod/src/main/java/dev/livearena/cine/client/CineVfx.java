@@ -340,6 +340,7 @@ public final class CineVfx {
             case "fx_marca" -> marca(s, c, R, t, al, col == 0xffffff ? 0xff2030 : col);
             case "fx_espacio" -> espacio(s, c, R, t, al, collector);
             case "fx_domo" -> domo(s, c, wx, wy, wz, R, t, dt, al, col == 0xffffff ? 0xff1020 : col);
+            case "fx_ojos" -> ojos(s, c, m, t, al, col == 0xffffff ? 0xff1424 : col);
             default -> bill(a, c.x, c.y, c.z, R, R, 1, 0, al, col, 0xffffff, GLOW, s.seed, 0, 0);
         }
         s.lx = wx; s.ly = wy; s.lz = wz;
@@ -692,7 +693,12 @@ public final class CineVfx {
      */
     private static void perforante(St s, Vector3f c, Vector3f z, double wx, double wy, double wz, float W, float t, float dt, float al, float speed) {
         float L = z.length();
-        if (L < 0.01f || !("disparar".equals(s.anim))) return;
+        if (L < 0.01f) return;
+        if ("formar".equals(s.anim)) {
+            formar(s, c, new Vector3f(z).div(L), L, wx, wy, wz, W, t, dt, al);
+            return;
+        }
+        if (!("disparar".equals(s.anim))) return;
         Vector3f d = new Vector3f(z).div(L);
         float ta = t - s.animAt, travel = L / speed;
         float head = Math.min(L, ta * speed);
@@ -750,7 +756,6 @@ public final class CineVfx {
             float f = since / 0.3f;
             ringAround(A, c.x + d.x * k, c.y + d.y * k, c.z + d.z * k, uv, w * (1.5f + f * 6), (1 - f) * a * 0.6f, 0xff2030, 0xffffff, s.seed, 0.05f);
         }
-        bill(A, c.x, c.y, c.z, w * 3, w * 3, 1, 0, a * 0.6f, 0xff2030, 0xffffff, GLOW, 0, 1, 0);
         // Gotas que salen despedidas a los lados de la punta.
         s.emit += dt * (head < L ? 200 : 30) * fade;
         while (s.emit >= 1) {
@@ -769,6 +774,95 @@ public final class CineVfx {
         }
     }
 
+    /**
+     * La flecha de sangre tomando forma entre las manos (antes del disparo): hilos de sangre que giran y convergen
+     * en la punta, que crece y late. El eje Z del display es la dirección; su longitud, la de la punta.
+     */
+    private static void formar(St s, Vector3f c, Vector3f d, float L, double wx, double wy, double wz, float W, float t, float dt, float al) {
+        float ta = t - s.animAt;
+        float grow = 1 - (float) Math.pow(1 - Math.min(1, ta / 1.6f), 3);
+        float beat = 0.85f + 0.15f * (float) Math.sin(t * 22) * Math.min(1, ta);
+        Vector3f[] uv = perp(d);
+        float hl = L * grow, hw = W * 2.6f * grow * beat;
+        float hx = c.x + d.x * hl * 0.6f, hy = c.y + d.y * hl * 0.6f, hz = c.z + d.z * hl * 0.6f;
+        float bx = hx - d.x * hl, by = hy - d.y * hl, bz = hz - d.z * hl;
+        if (hl > 0.02f) {
+            // Punta de flecha: núcleo rojo vivo en vaina oscura (la sangre comprimida).
+            seg(B, bx, by, bz, hx, hy, hz, hw, hw, 0, 1, al, al, 0x3a0006, 0xff2a2a, ARROW, s.seed, 0, 0);
+            seg(A, bx, by, bz, hx, hy, hz, hw * 1.25f, hw * 1.25f, 0, 1, al * beat, al * beat, 0xff1020, 0xffd0d0, ARROW, s.seed, 1, 0);
+            // Asta corta hacia atrás, entre las manos.
+            float tx = bx - d.x * hl * 0.8f, ty = by - d.y * hl * 0.8f, tz = bz - d.z * hl * 0.8f;
+            seg(B, tx, ty, tz, bx, by, bz, W * 0.5f * grow, W * 0.75f * grow, 0, 1, al * 0.9f, al, 0x2a0004, 0x6a000c, BEAM, s.seed, 0.25f, 10);
+            seg(A, tx, ty, tz, bx, by, bz, W * 0.18f * grow, W * 0.24f * grow, 0, 1, al * 0.6f, al, 0xff6060, 0xffffff, BEAM, s.seed + 3, 0.05f, 16);
+        }
+        // Tres hilos de sangre en espiral que se enroscan hacia la punta.
+        for (int k = 0; k < 3; k++) {
+            float px = 0, py = 0, pz = 0;
+            for (int i = 0; i <= 20; i++) {
+                float f = i / 20f;
+                float ang = k * 2.094f + t * 9f + f * 5f;
+                float r = W * (5.5f - 4.5f * f) * (1.2f - 0.5f * grow);
+                float along = -hl * 0.4f + hl * f;
+                float ox = (uv[0].x * (float) Math.cos(ang) + uv[1].x * (float) Math.sin(ang)) * r;
+                float oy = (uv[0].y * (float) Math.cos(ang) + uv[1].y * (float) Math.sin(ang)) * r;
+                float oz = (uv[0].z * (float) Math.cos(ang) + uv[1].z * (float) Math.sin(ang)) * r;
+                float x = c.x + d.x * along + ox, y = c.y + d.y * along + oy, zz = c.z + d.z * along + oz;
+                if (i > 0) {
+                    float wv = W * 0.16f * (0.4f + f);
+                    seg(B, px, py, pz, x, y, zz, wv, wv, 0, 1, al * f, al * f, 0x5a0008, 0x1a0002, BEAM, 0, 0, 0);
+                    seg(A, px, py, pz, x, y, zz, wv * 0.5f, wv * 0.5f, 0, 1, al * f * 0.7f, al * f * 0.7f, 0xff2030, 0xff9090, BEAM, 0, 0, 0);
+                }
+                px = x; py = y; pz = zz;
+            }
+        }
+        // Gotas que llegan desde fuera y se funden en la punta.
+        s.emit += dt * 90 * al;
+        while (s.emit >= 1) {
+            s.emit -= 1;
+            double th = s.rnd.nextDouble() * Math.PI * 2, cz = s.rnd.nextDouble() * 2 - 1, sq = Math.sqrt(1 - cz * cz);
+            float rr = W * (8 + s.rnd.nextFloat() * 6);
+            float ox = (float) (Math.cos(th) * sq) * rr, oy = (float) cz * rr, oz = (float) (Math.sin(th) * sq) * rr;
+            float life = 0.35f + s.rnd.nextFloat() * 0.2f;
+            P p = spawn(s, wx + ox, wy + oy, wz + oz, -ox / life, -oy / life, -oz / life, life, 0.02f + s.rnd.nextFloat() * 0.03f, s.rnd.nextBoolean() ? 0x30000a : 0xe0101c, 0xff7070);
+            p.drag = 0;
+            p.ink = p.rgb == 0x30000a;
+        }
+    }
+
+    /**
+     * Destellos rojos bajo los ojos (Choso): dos trazos que arden bajo cada ojo con un destello en estrella. Va anclado
+     * al hueso «ojos» y usa el giro del display (eje Z = hacia donde mira la cara). Una unidad del display = 1 píxel
+     * del personaje. «destello»: fogonazo fuerte que se apaga en ~0,7 s; si no, late suave.
+     */
+    private static void ojos(St s, Vector3f c, Matrix4f m, float t, float al, int rgb) {
+        Vector3f X = m.transformDirection(new Vector3f(1, 0, 0)), Y = m.transformDirection(new Vector3f(0, 1, 0)), Z = m.transformDirection(new Vector3f(0, 0, 1));
+        float R = X.length();
+        float ta = t - s.animAt;
+        float k;
+        if ("destello".equals(s.anim)) k = ta < 0.08f ? ta / 0.08f * 2.3f : 1f + 1.3f * (float) Math.exp(-(ta - 0.08f) * 4.5f);
+        else k = Math.min(1, t / 0.4f) * (0.75f + 0.25f * (float) Math.sin(t * 7));
+        float a = al * Math.min(1, k);
+        for (int side = -1; side <= 1; side += 2) {
+            // bajo el ojo: 2 px al lado, 1,1 px por debajo de la línea de los ojos, por delante de la piel
+            float px = c.x + X.x * side * 2f - Y.x * 1.1f + Z.x * 0.75f;
+            float py = c.y + X.y * side * 2f - Y.y * 1.1f + Z.y * 0.75f;
+            float pz = c.z + X.z * side * 2f - Y.z * 1.1f + Z.z * 0.75f;
+            // trazo: de junto a la nariz hacia la mejilla, un poco caído
+            float ax = px - X.x * side * 1.4f, ay = py - X.y * side * 1.4f, az = pz - X.z * side * 1.4f;
+            float bx = px + X.x * side * 1.6f - Y.x * 0.35f, by = py + X.y * side * 1.6f - Y.y * 0.35f, bz = pz + X.z * side * 1.6f - Y.z * 0.35f;
+            seg(A, ax, ay, az, bx, by, bz, R * 1.6f * k, R * 1.2f * k, 0, 1, a * 0.35f, a * 0.25f, rgb, rgb, BEAM, s.seed, 0.3f, 2);
+            seg(A, ax, ay, az, bx, by, bz, R * 0.42f, R * 0.32f, 0, 1, a, a * 0.9f, rgb, 0xffd8d8, BEAM, s.seed, 0.05f, 4);
+            // lágrima de sangre que cae desde el trazo
+            float dl = 1.2f + 0.6f * k;
+            seg(A, px, py, pz, px - Y.x * dl, py - Y.y * dl, pz - Y.z * dl, R * 0.3f, R * 0.08f, 0, 1, a * 0.8f, 0, rgb, 0xff8080, BEAM, 0, 0, 0);
+            // destello en estrella (horizontal largo, vertical corto) + núcleo
+            float star = R * (1.2f + 1.8f * Math.max(0, k - 1)) * (0.9f + 0.1f * (float) Math.sin(t * 31 + side));
+            bill(A, px, py, pz, star * 2.6f, star * 0.16f, 1, 0, a, rgb, 0xffffff, GLOW, 0, 0, 0);
+            bill(A, px, py, pz, star * 0.22f, star * 1.6f, 1, 0, a * 0.8f, rgb, 0xffffff, GLOW, 0, 0, 0);
+            bill(A, px, py, pz, star * 0.55f, star * 0.55f, 1, 0, a * 0.8f, 0xff4050, 0xffffff, GLOW, 0, 1.2f, 0);
+        }
+    }
+
     /** Láser orbital: columna de energía de la boca del cañón al suelo. «fino» → «ancho» → «fin». */
     private static void laser(St s, Vector3f c, Vector3f z, double wx, double wy, double wz, float W, float t, float dt, float al, int rgb) {
         float L = z.length();
@@ -776,7 +870,14 @@ public final class CineVfx {
         Vector3f d = new Vector3f(z).div(L);
         float ta = t - s.animAt;
         float width, a = al;
-        switch (s.anim == null ? "" : s.anim) {
+        String an = s.anim == null ? "" : s.anim;
+        if (an.startsWith("tierra")) {
+            // Rayo disparado desde la órbita: acaba donde toca la Tierra del fondo del espacio.
+            float hitT = earthDistance(c, d);
+            if (hitT > 0) L = Math.min(L, hitT);
+            an = an.substring(6).replace("_", "");
+        }
+        switch (an) {
             case "ancho" -> width = W * (0.08f + 0.92f * (1 - (float) Math.pow(1 - Math.min(1, ta / 0.45f), 3)));
             case "fin" -> {
                 width = W * Math.max(0.02f, 1 - ta / 1.2f);
@@ -801,12 +902,12 @@ public final class CineVfx {
         bill(A, ex, ey + 0.3f, ez, width * 7 + 2, width * 7 + 2, 1, 0, a, rgb, 0xffffff, GLOW, 0, 1.4f, 0);
         bill(A, ex, ey + 0.3f, ez, width * 2.5f + 0.6f, width * 2.5f + 0.6f, 1, 0, a, 0xffffff, 0xffffff, GLOW, 0, 0, 0);
         flat(A, ex, ey + 0.1f, ez, width * 4 + 1, a * 0.9f, rgb, 0xffffff, RING, s.seed, 0.12f, 0.8f);
-        s.emit2 += dt * ("ancho".equals(s.anim) ? 6 : 2.5f);
+        s.emit2 += dt * ("ancho".equals(an) ? 6 : 2.5f);
         if (s.emit2 >= 1) {
             s.emit2 -= 1;
             wave(s, gx, gy + 0.2, gz, t, 0.7f, width, width * 6 + 6, 0.05f, rgb, 0xffffff, true);
         }
-        s.emit += dt * ("ancho".equals(s.anim) ? 260 : 40) * a;
+        s.emit += dt * ("ancho".equals(an) ? 260 : 40) * a;
         while (s.emit >= 1) {
             s.emit -= 1;
             double th = s.rnd.nextDouble() * Math.PI * 2;
@@ -841,6 +942,9 @@ public final class CineVfx {
     /** La Tierra inclinada: desde la órbita (encima) se ve el ecuador y los continentes, no el polo. */
     private static final org.joml.Quaternionf EARTH_TILT = new org.joml.Quaternionf().rotationX((float) Math.toRadians(-72)).rotateY((float) Math.toRadians(20));
 
+    /** La Tierra del espacio: centro EARTH_DROP bloques bajo la cámara, radio EARTH_R (su borde queda dentro del cielo, r=175). */
+    static final float EARTH_DROP = 280f, EARTH_R = 220f;
+
     private static final Vector3f SUN = new Vector3f(-0.55f, 0.42f, 0.72f).normalize();
 
     /**
@@ -849,17 +953,29 @@ public final class CineVfx {
      */
     private static void espacio(St s, Vector3f c, float R, float t, float al, SubmitNodeCollector collector) {
         int a8 = Math.max(0, Math.min(255, (int) (al * 255))) << 24;
-        float ex = c.x, ey = c.y - 120f * R, ez = c.z, er = 92f * R;
-        float mx = c.x + 70 * R, my = c.y + 38 * R, mz = c.z - 110 * R;
+        // Todo va fijado a la cámara (como un cielo): la Tierra ocupa la mitad de abajo estés donde estés, y la esfera
+        // de la Vía Láctea (radio 175, con profundidad) tapa el terreno real que queda muy por debajo de la escena.
+        float ey = -EARTH_DROP, er = EARTH_R;
+        float mx = 70, my = 40, mz = -120;
         PoseStack id = new PoseStack();
         collector.submitCustomGeometry(id, sphereType("via_lactea", "via_lactea"), (pose, vc) -> sphere(vc, pose, 0, 0, 0, 175, 48, 24, 1, 0.3f, true, a8 | 0xffffff, null));
-        collector.submitCustomGeometry(id, sphereType("tierra", "tierra_noche"), (pose, vc) -> sphere(vc, pose, ex, ey, ez, er, 96, 48, 0, 0.62f + t * 0.002f, false, a8 | 0xffffff, EARTH_TILT));
-        collector.submitCustomGeometry(id, sphereType("luna", "luna"), (pose, vc) -> sphere(vc, pose, mx, my, mz, 6.5f * R, 32, 16, 2, 0, false, a8 | 0xffffff, null));
-        // Atmósfera (halo azul alrededor del disco) y el sol con destello en cruz.
-        bill(A, ex, ey, ez, er * 1.16f, er * 1.16f, 1.16f, 0, al * 0.9f, 0x4a9aff, 0xd0f0ff, PLANET, s.seed + 1, 1, 0);
+        collector.submitCustomGeometry(id, sphereType("tierra", "tierra_noche"), (pose, vc) -> sphere(vc, pose, 0, ey, 0, er, 128, 64, 0, 0.62f + t * 0.002f, false, a8 | 0xffffff, EARTH_TILT));
+        collector.submitCustomGeometry(id, sphereType("luna", "luna"), (pose, vc) -> sphere(vc, pose, mx, my, mz, 7f, 32, 16, 2, 0, false, a8 | 0xffffff, null));
+        // Atmósfera: halo azul en el borde del disco (el billboard va acercado a la cámara con el mismo tamaño aparente).
+        float k = 0.5f;
+        bill(A, 0, ey * k, 0, er * 1.12f * k, er * 1.12f * k, 1.12f, 0, al * 0.9f, 0x4a9aff, 0xd0f0ff, PLANET, s.seed + 1, 1, 0);
         float sx = SUN.x * 160, sy = SUN.y * 160, sz = SUN.z * 160;
         bill(A, sx, sy, sz, 26, 26, 1, 0, al, 0xfff2d8, 0xffffff, GLOW, 0, 1.5f, 0);
         bill(A, sx, sy, sz, 8, 8, 1, 0, al, 0xffffff, 0xffffff, GLOW, 0, 0, 0);
+    }
+
+    /** Distancia desde p (relativo a la cámara) siguiendo d hasta la superficie de la Tierra del fondo; -1 si no la corta. */
+    static float earthDistance(Vector3f p, Vector3f d) {
+        float mx = p.x, my = p.y + EARTH_DROP, mz = p.z;
+        float b = d.x * mx + d.y * my + d.z * mz, cc = mx * mx + my * my + mz * mz - EARTH_R * EARTH_R, disc = b * b - cc;
+        if (disc < 0) return -1;
+        float t = -b - (float) Math.sqrt(disc);
+        return t > 0 ? t : -1;
     }
 
     /** Cúpula roja de la explosión del láser: crece con la escala del display y se apaga con «fin». */

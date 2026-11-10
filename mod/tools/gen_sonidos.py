@@ -325,8 +325,29 @@ def rugido_esfera():
     save('rugido_esfera', reverb(x, 1.2, 0.25))
 
 
+def destello():
+    """Destello rojo en los ojos: «shing» metálico brillante con un soplo grave por debajo (0,9 s)."""
+    d = 0.9
+    t = t_(d)
+    bell = sum(np.sin(2 * np.pi * f * t + i) * a for i, (f, a) in enumerate([(2637, 0.5), (3951, 0.35), (5274, 0.25), (7040, 0.12)]))
+    bell = bell * np.exp(-t * 5.5) * (1 + 0.25 * np.sin(2 * np.pi * 14 * t))
+    shimmer = sweep_filter(noise(d), 9000, 3000, 6) * np.exp(-t * 7) * 0.5
+    air = spectral(noise(d), 60, 600, -0.3) * env(d, 0.005, 0.5, 2.5) * 0.6
+    save('destello', reverb(mix(bell, shimmer, air), 1.1, 0.3))
+
+
+def rayo_espacio():
+    """El rayo cruzando el vacío hasta el planeta: zumbido eléctrico que cae de tono (2,4 s)."""
+    d = 2.4
+    t = t_(d)
+    zap = chirp(d, 1400, 160, 'saw', 0.7) * env(d, 0.004, 2.2, 2.2) * 0.35
+    buzz = (np.sin(2 * np.pi * 110 * t) * np.sign(np.sin(2 * np.pi * 220 * t))) * 0.25 * env(d, 0.05, 2.3, 1.5)
+    hiss = sweep_filter(noise(d), 6000, 400, 3, 50) * env(d, 0.01, 2.0, 1.8)
+    save('rayo_espacio', reverb(mix(spectral(zap + buzz, 40, 9000), hiss), 2.2, 0.35))
+
+
 if __name__ == '__main__':
     print('Sonidos ->', os.path.normpath(OUT))
     for f in (carga_canon, laser_disparo, explosion_grave, objetivo_fijado, pitido, whoosh,
-              silbido_perforante, sangre_burbujas, golpe_impacto, tajo, onda_choque, aura, desvanecer, energia_carga, viento_energia, genkidama_lanzar, rugido_esfera):
+              silbido_perforante, sangre_burbujas, golpe_impacto, tajo, onda_choque, aura, desvanecer, energia_carga, viento_energia, genkidama_lanzar, rugido_esfera, destello, rayo_espacio):
         f()
