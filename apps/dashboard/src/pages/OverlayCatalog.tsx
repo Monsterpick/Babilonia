@@ -197,7 +197,7 @@ const SECTIONS: { title: string; hint: string; items: Def[] }[] = [
         ),
       },
       { id: 'tarjetas', name: 'Tarjetas de plugins', desc: 'Todas tus acciones; la que se activa se anima. Se configura más abajo.', w: 1080, h: 400 },
-      { id: 'ticker', name: 'Banda de últimos eventos', desc: 'Feed de regalos, seguidores y compartir. Perfecto como barra inferior (?dir=v para vertical).', w: 1280, h: 90 },
+      { id: 'ticker', name: 'Banda de últimos eventos', desc: 'Feed de regalos, seguidores y compartir. Perfecto como barra inferior (?dir=v para vertical).', w: 1280, h: 100 },
     ],
   },
   {
@@ -222,7 +222,7 @@ const SECTIONS: { title: string; hint: string; items: Def[] }[] = [
         name: 'Cronómetro',
         desc: 'Hacia arriba o cuenta atrás, con sonido al llegar a 0.',
         w: 480,
-        h: 170,
+        h: 190,
         tools: TimerTools,
         settings: (c, set) => (
           <>
@@ -403,13 +403,13 @@ const SECTIONS: { title: string; hint: string; items: Def[] }[] = [
           </>
         ),
       },
-      { id: 'meta-likes', name: 'Meta de likes', desc: 'Barra con los likes de la sala (la meta se cambia en Ajustes).', w: 640, h: 90 },
+      { id: 'meta-likes', name: 'Meta de likes', desc: 'Barra con los likes de la sala (la meta se cambia en Ajustes).', w: 640, h: 100 },
       {
         id: 'meta-seguidores',
         name: 'Meta de seguidores',
         desc: 'Barra de progreso de los seguidores que consigues en el live.',
         w: 640,
-        h: 90,
+        h: 100,
         tools: resetBtn('session', 'Poner a cero'),
         settings: (c, set) => (
           <>
@@ -423,7 +423,7 @@ const SECTIONS: { title: string; hint: string; items: Def[] }[] = [
         name: 'Meta combinada',
         desc: 'Monedas + likes juntos en una sola barra.',
         w: 640,
-        h: 90,
+        h: 100,
         settings: (c, set) => (
           <>
             <Num label="Meta" min={1} value={c.goals?.combined?.target} onChange={(v) => set({ goals: { combined: { target: v } } })} />

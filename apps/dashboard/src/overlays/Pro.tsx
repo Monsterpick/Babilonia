@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import type { ActionMessage, LiveEvent, VoiceEffect } from '@livearena/shared'
 import { playAudio, utterance } from '../lib/speech'
 import { findGift, useGifts } from '../lib/catalog'
@@ -132,7 +132,7 @@ export function TimerV2() {
   useEffect(() => {
     const measure = () => {
       const w = box.current?.offsetWidth ?? 0
-      if (w > 0) setFit(Math.min(1, (window.innerWidth - 8) / w))
+      if (w > 0) setFit(Math.min(1, (window.innerWidth - 30) / w))
     }
     measure()
     window.addEventListener('resize', measure)
@@ -284,7 +284,7 @@ export function NoticesOverlay() {
   }, [sound])
   if (!cur) return <Styles />
   return (
-    <div style={{ ...base, width: 600, height: 360, display: 'grid', placeItems: 'center' }}>
+    <div style={{ ...base, width: '100%', maxWidth: 600, height: 'calc(100vh - 28px)', maxHeight: 360, display: 'grid', placeItems: 'center' }}>
       <Styles />
       {cur.kind === 'follow' && (
         <div key={cur.key} className="la-slide" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 22px 12px 12px', background: '#212121', border: '4px solid #555', outline: '3px solid #000', boxShadow: 'inset -4px -4px 0 #111, inset 4px 4px 0 #3a3a3a, 0 12px 30px #000a', imageRendering: 'pixelated' }}>
@@ -564,13 +564,34 @@ export function TopV2({ kind }: { kind: 'donors' | 'likers' }) {
   const right = params.get('align') === 'right'
   const title = params.get('title') ?? (kind === 'donors' ? 'TOP REGALOS' : 'TOP LIKES')
   const S = TOP_STYLES[style] ?? TOP_STYLES.oro
+  // Nunca se corta una fila a medias: si no caben todas en el alto de la fuente, se muestran las que entren.
+  const box = useRef<HTMLDivElement>(null)
+  const [fitN, setFitN] = useState(99)
+  useLayoutEffect(() => {
+    const el = box.current
+    if (!el) return
+    const measure = () => {
+      const limit = window.innerHeight - 6
+      const kids = Array.from(el.children).filter((c) => (c as HTMLElement).dataset.row) as HTMLElement[]
+      let ok = kids.length
+      // offsetTop/offsetHeight no dependen de la animación de entrada (transform), así se mide el tamaño real.
+      const top0 = el.getBoundingClientRect().top - el.offsetTop
+      for (let i = 0; i < kids.length; i++) if (top0 + kids[i]!.offsetTop + kids[i]!.offsetHeight > limit) { ok = i; break }
+      if (ok < kids.length) setFitN((v) => Math.min(v, Math.max(1, ok)))
+    }
+    measure()
+    const onResize = () => setFitN(99)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  })
+  const shown = rows.slice(0, fitN)
   return (
-    <div style={{ ...base, width: 420, display: 'flex', flexDirection: 'column', gap: S.gap, alignItems: right ? 'flex-end' : 'flex-start' }}>
+    <div ref={box} style={{ ...base, width: 420, maxWidth: '100%', display: 'flex', flexDirection: 'column', gap: S.gap, alignItems: right ? 'flex-end' : 'flex-start' }}>
       <div style={{ ...S.title, alignSelf: right ? 'flex-end' : 'flex-start' }}>{title}</div>
-      {rows.map((r: any, i: number) => {
+      {shown.map((r: any, i: number) => {
         const value = kind === 'donors' ? r.diamonds : r.likes
         return (
-          <div key={r.userId} className="la-pop" style={{ ...S.row(i), flexDirection: right ? 'row-reverse' : 'row', textAlign: right ? 'right' : 'left', animationDelay: `${i * 40}ms` }}>
+          <div key={r.userId} data-row="1" className="la-pop" style={{ ...S.row(i), flexDirection: right ? 'row-reverse' : 'row', textAlign: right ? 'right' : 'left', animationDelay: `${i * 40}ms` }}>
             {S.rank && <span style={{ ...S.rank(i) }}>{i + 1}</span>}
             <div style={{ position: 'relative' }}>
               {i === 0 && <span style={{ position: 'absolute', top: -14, left: 8, fontSize: 20 }}>👑</span>}
@@ -707,7 +728,7 @@ export function GoalBar({ metric }: { metric: 'coins' | 'likes' | 'combined' | '
   const w = Number(params.get('w') ?? 640)
   return (
     // Nunca más ancha que la fuente de navegador: si esta mide menos, la barra se ajusta en vez de salir cortada.
-    <div style={{ ...base, width: w, maxWidth: 'calc(100vw - 8px)' }}>
+    <div style={{ ...base, width: w, maxWidth: '100%' }}>
       <Styles />
       <div
         key={pct}
@@ -732,6 +753,19 @@ export function GoalBar({ metric }: { metric: 'coins' | 'likes' | 'combined' | '
 
 /* --------------------------------- Tótems --------------------------------- */
 
+/** Icono del tótem: la textura del juego del usuario si está importada; si no, un dibujo pixelado propio. */
+function TotemIcon() {
+  const [ok, setOk] = useState(true)
+  if (ok) return <img src="/textures/totem_of_undying.png" alt="" onError={() => setOk(false)} style={{ width: 52, height: 52, imageRendering: 'pixelated' }} />
+  const px = ['..gggg..', '.gyyyyg.', '.gykkyg.', 'ggyyyygg', 'g.gyyg.g', '..gyyg..', '..gGGg..', '...gg...']
+  const col: Record<string, string> = { g: '#c99a1c', y: '#ffd84a', k: '#2e7d32', G: '#7fe08a' }
+  return (
+    <svg width={52} height={52} viewBox="0 0 8 8" shapeRendering="crispEdges">
+      {px.flatMap((row, y) => [...row].map((c, x) => (col[c] ? <rect key={`${x}-${y}`} x={x} y={y} width={1} height={1} fill={col[c]} /> : null)))}
+    </svg>
+  )
+}
+
 export function TotemsOverlay() {
   const mc = useLiveState<any>('minecraft')
   const n = DEMO ? 12 : mc?.totems
@@ -744,7 +778,7 @@ export function TotemsOverlay() {
   return (
     <div style={{ ...base, display: 'inline-flex', alignItems: 'center', gap: 12, padding: '8px 22px 8px 10px', borderRadius: 999, background: 'linear-gradient(100deg,#3b2a00,#0b0b14ee 70%)', border: '3px solid #ffcc33', boxShadow: '0 0 26px #ffcc3355' }}>
       <Styles />
-      <img src="/textures/totem_of_undying.png" alt="" onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')} style={{ width: 52, height: 52, imageRendering: 'pixelated' }} />
+      <TotemIcon />
       <div>
         <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: 4, color: '#ffcc33' }}>TÓTEMS</div>
         <div key={k} className={k ? 'la-pop' : undefined} style={{ fontSize: 40, lineHeight: 1, fontWeight: 900, textShadow: shadow }}>
