@@ -94,7 +94,7 @@ public final class Effects {
         Settings s = plugin.settings;
         Game g = plugin.game;
         String msg = s.msg(r.type()).replace("{n}", String.valueOf(r.n())).replace("{s}", r.n() == 1 ? "" : "es");
-        plugin.hud.notify(p, msg, r.user(), helps(r.type()));
+        plugin.hud.notify(p, r.type(), msg, r.user(), helps(r.type()));
         Location l = p.getLocation();
         World w = p.getWorld();
         Theme th = g.theme();

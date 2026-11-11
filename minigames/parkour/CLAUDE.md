@@ -31,3 +31,13 @@ Plugin Paper 26.1.2 (Java 25, Gradle KTS). Jar: `build/libs/ParkourLive.jar`. Pa
 - Sin el streamer conectado el bucle no avanza (ni tiempo ni efectos). Igual en Base Defense (mobs sin IA).
 - Efectos a la altura de los ojos tapan la pantalla en primera persona: anillos por el suelo y partículas por encima.
 - Validación de torres: `scratch pkval.py` sobre la salida de `/pk info <n>` (distancias y techo libre).
+
+## v3 · HUD propio (como Base Defense)
+- `tools/gen_pkhud.py` reutiliza el motor de `base-defense/tools/gen_hud.py` (letra, iconos, fórmulas) y genera las
+  fuentes `parkour:*` + `src/main/resources/hud.json`. `hud/HudFont.java` compone las líneas.
+- Arriba (título de una BossBar; las barras nativas son transparentes): nivel grande, bioma, % de torre y tira con un
+  segmento por nivel teñido con su color (`Hud.topLine`); carteles (`banner`) para subir/bajar de nivel, cima y perder.
+- Abajo (barra de acción, en el sitio de la hotbar, que el pack oculta): progreso del nivel, caídas, tiempo, G-P y
+  estado (escudo / seguro / cola); aviso de cada espectador en una píldora encima (`Hud.notify(p, tipo, …)`).
+- Sin pack: versión clásica (BossBar, panel lateral, barra de XP). Con pack no se usa la XP ni el panel lateral.
+- El texto de la letra propia solo tiene mayúsculas y signos básicos: `Hud.fit` quita lo demás (emojis, flechas).

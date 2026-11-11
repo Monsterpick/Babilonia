@@ -358,6 +358,7 @@ public final class Game implements Listener {
         // celebración en la cima
         if (wonAt >= 0) {
             if (now % 10 == 0) plugin.fx.particle(p.getLocation().add(0, 1, 0), Particle.END_ROD, 6, 1.5, 0.05);
+            if (now % 5 == 0) plugin.hud.update(); // el cartel de la cima y el reloj siguen dibujándose
             if (plugin.settings.restartOnWin && now - wonAt > plugin.settings.celebrateSeconds * 20L) newRun(p, p.getWorld());
             return;
         }

@@ -204,7 +204,8 @@ def main():
     mkdir(OUT)
     json.dump({'pack': {'description': 'Parkour LIVE · interfaz y sonidos de la torre (LiveArena)', 'min_format': [84, 0], 'max_format': [200, 0]}},
               open(os.path.join(OUT, 'pack.mcmeta'), 'w'), indent=1)
-    bossbars()
+    import gen_pkhud
+    gen_pkhud.build()   # HUD propio (fuentes) y sprites nativos transparentes
     client = sys.argv[1] if len(sys.argv) > 1 else '/root/.gradle/caches/neoformruntime/artifacts/minecraft_26.1.2_client.jar'
     if os.path.isfile(client):
         hide_vitals(client)
