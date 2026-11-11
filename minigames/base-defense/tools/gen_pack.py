@@ -526,6 +526,8 @@ def main():
     gen_hud.build()
     import gen_zombie
     gen_zombie.build()
+    import gen_elite
+    gen_elite.build()
 
 
 if __name__ == '__main__':

@@ -17,12 +17,14 @@ import net.neoforged.neoforge.common.NeoForge;
  * Armas de Base Defense en primera persona, estilo táctico (idea de mods de armas como TacZ, todo propio):
  * <ul>
  *   <li>Cámara más cerrada mientras el pack del minijuego está puesto.</li>
- *   <li>Apuntar con la mira manteniendo Shift: el arma va al centro, la cámara se acerca y (en el servidor) baja la
- *       dispersión.</li>
+ *   <li>Controles de shooter: clic izquierdo dispara (mantenido en las automáticas), clic derecho apunta con la mira
+ *       (el arma va al centro, la cámara se acerca y en el servidor baja la dispersión) y R recarga. El estado del
+ *       ratón se manda al plugin por el canal «livearena:bd». Si el servidor no lo anuncia (plugin antiguo), se juega
+ *       como antes: clic derecho dispara y Shift apunta.</li>
  *   <li>Animaciones: retroceso al disparar, recarga (inclina el arma y la baja), desenfundar al cambiar de arma y un
  *       balanceo suave en reposo.</li>
  * </ul>
- * No hay paquetes propios: los disparos y recargas se detectan por los sonidos del pack (basedefense:arma.*) que suenan
+ * Los disparos y recargas se detectan por los sonidos del pack (basedefense:arma.*) que suenan
  * junto al jugador, así funciona con el plugin tal cual.
  */
 public final class BdGuns {
@@ -35,12 +37,17 @@ public final class BdGuns {
     private static String lastGun = "";
     private static float ads, adsPrev;
     private static long ticks;
+    private static int sentFlags = -1;
+    private static long sentAt;
+    private static boolean reloadPressed;
 
     public static void init() {
         NeoForge.EVENT_BUS.addListener(BdGuns::tick);
         NeoForge.EVENT_BUS.addListener(BdGuns::sound);
         NeoForge.EVENT_BUS.addListener(BdGuns::hand);
         NeoForge.EVENT_BUS.addListener(BdGuns::fov);
+        NeoForge.EVENT_BUS.addListener(BdGuns::click);
+        NeoForge.EVENT_BUS.addListener(BdGuns::key);
     }
 
     /** Nombre del arma del pack que lleva en la mano ("" si no es una). */
@@ -78,11 +85,45 @@ public final class BdGuns {
             lastGun = g;
         }
         adsPrev = ads;
-        boolean aiming = !g.isEmpty() && mc.options.keyShift.isDown() && reloadStart < 0 && mc.screen == null;
+        boolean shooter = shooterControls(mc);
+        boolean free = !g.isEmpty() && mc.screen == null && CineClient.minigameActive();
+        boolean aimKey = shooter ? mc.options.keyUse.isDown() : mc.options.keyShift.isDown();
+        boolean aiming = !g.isEmpty() && aimKey && reloadStart < 0 && mc.screen == null;
+        if (shooter) {
+            int flags = free ? (mc.options.keyAttack.isDown() ? 1 : 0) | (mc.options.keyUse.isDown() ? 2 : 0) | (reloadPressed ? 4 : 0) : 0;
+            // se manda al cambiar y, mientras haya algo pulsado, cada 5 ticks (por si se pierde un paquete)
+            if (flags != sentFlags || (flags != 0 && ticks - sentAt >= 5)) {
+                net.neoforged.neoforge.client.network.ClientPacketDistributor.sendToServer(new dev.livearena.cine.BdInputPayload((byte) flags));
+                sentFlags = flags;
+                sentAt = ticks;
+            }
+        } else sentFlags = -1;
+        reloadPressed = false;
         ads += ((aiming ? 1 : 0) - ads) * 0.35f;
         recoil *= 0.55f;
         recoilRoll *= 0.6f;
         if (reloadStart >= 0 && ticks - reloadStart > reloadDur + 6) reloadStart = -1;
+    }
+
+    /** ¿El servidor entiende los controles de shooter? (el plugin anuncia el canal «livearena:bd») */
+    static boolean shooterControls(Minecraft mc) {
+        var c = mc.getConnection();
+        return c != null && c.hasChannel(dev.livearena.cine.BdInputPayload.TYPE);
+    }
+
+    /** Con un arma en la mano los clics no son de Minecraft (ni golpear ni usar): los lleva el canal propio. */
+    private static void click(net.neoforged.neoforge.client.event.InputEvent.InteractionKeyMappingTriggered e) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || e.isPickBlock() || !CineClient.minigameActive() || !shooterControls(mc)) return;
+        if (gun(mc.player.getMainHandItem()).isEmpty()) return;
+        e.setSwingHand(false);
+        e.setCanceled(true);
+    }
+
+    private static void key(net.neoforged.neoforge.client.event.InputEvent.Key e) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.screen != null) return;
+        if (e.getKey() == org.lwjgl.glfw.GLFW.GLFW_KEY_R && e.getAction() == org.lwjgl.glfw.GLFW.GLFW_PRESS && !gun(mc.player.getMainHandItem()).isEmpty()) reloadPressed = true;
     }
 
     private static void sound(PlaySoundEvent e) {

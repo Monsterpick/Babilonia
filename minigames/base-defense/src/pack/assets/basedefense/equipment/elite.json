@@ -1,0 +1,14 @@
+{
+ "layers": {
+  "humanoid": [
+   {
+    "texture": "basedefense:elite"
+   }
+  ],
+  "humanoid_leggings": [
+   {
+    "texture": "basedefense:elite"
+   }
+  ]
+ }
+}

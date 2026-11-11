@@ -111,6 +111,15 @@ public final class BaseDefense extends JavaPlugin {
                 getLogger().info("config.yml actualizada a la v4 (dificultad nueva; la anterior queda en config-v3.yml)");
             }
         }
+        // v5 (dificultad nivelada: menos vida de mobs y jefes, armas más fuertes, más munición): igual que antes, se guarda la anterior
+        if (getConfig().getInt("dificultad.version", 5) < 5) {
+            File cfg = new File(getDataFolder(), "config.yml");
+            if (cfg.renameTo(new File(getDataFolder(), "config-v4.yml"))) {
+                saveDefaultConfig();
+                reloadConfig();
+                getLogger().info("config.yml actualizada a la v5 (dificultad nivelada; la anterior queda en config-v4.yml)");
+            }
+        }
         // añade al config.yml del servidor las claves nuevas de esta versión (conserva lo que el usuario cambió)
         getConfig().options().copyDefaults(true);
         saveConfig();
@@ -137,6 +146,7 @@ public final class BaseDefense extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new Protection(this), this);
         getServer().getPluginManager().registerEvents(mobs, this);
         getServer().getPluginManager().registerEvents(weapons, this);
+        getServer().getMessenger().registerIncomingPluginChannel(this, dev.livearena.basedefense.weapon.Weapons.INPUT_CHANNEL, weapons);
         getServer().getPluginManager().registerEvents(bosses, this);
         getServer().getPluginManager().registerEvents(game, this);
         getServer().getPluginManager().registerEvents(pack, this);

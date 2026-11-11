@@ -80,6 +80,58 @@ public final class Bosses implements Listener {
         int ramPhase;            // 0 = retrocede, 1 = embiste
         long ramUntil;
         long nextSummon;
+        // movimiento suave (aceleración, giro progresivo, retroceso al disparar)
+        double vx, vz, kick, lift;
+        float yaw = Float.NaN;
+        long frozenUntil;        // quieto (animación de llegada, carga de un ataque, rugido)
+        // wither: ráfaga de calaveras tras la carga
+        int burstLeft, burstIdx;
+        long nextBurst;
+        int spawnAnim;           // wither: animación de aparición (cuenta atrás de «invulnerable»)
+        int rams;                // warden: embestidas dadas (ruge cada tres)
+    }
+
+    private static float wrap(float a) {
+        a %= 360f;
+        return a > 180 ? a - 360 : a < -180 ? a + 360 : a;
+    }
+
+    /**
+     * Paso de movimiento de un jefe (wither y warden): acelera y frena en vez de ir a velocidad fija, gira poco a poco,
+     * retrocede al disparar y se queda quieto mientras carga un ataque. Devuelve la nueva posición.
+     */
+    Location step(GameMob gm, Location l, Vector target, double sp, double y) {
+        Combat cb = combat.get(gm.entity.getUniqueId());
+        Location to = l.clone();
+        if (cb == null) return to;
+        long now = plugin.tick();
+        boolean flying = gm.boss.flying();
+        boolean frozen = now < cb.frozenUntil;
+        double dx = target.getX() - l.getX(), dz = target.getZ() - l.getZ();
+        double len = Math.hypot(dx, dz);
+        // frena al acercarse a su puesto (los que embisten no frenan)
+        boolean ramming = cb.atBase && cb.ramPhase == 1;
+        double want = frozen || len < 0.05 ? 0 : ramming ? sp : Math.min(sp, len * (flying ? 0.10 : 0.25) + 0.02);
+        double k = flying ? 0.07 : ramming ? 0.35 : 0.22;
+        cb.vx += ((len > 0 ? dx / len * want : 0) - cb.vx) * k;
+        cb.vz += ((len > 0 ? dz / len * want : 0) - cb.vz) * k;
+        Vector out = toSpawn();
+        to.add(cb.vx + out.getX() * cb.kick, 0, cb.vz + out.getZ() * cb.kick);
+        cb.kick *= 0.78;
+        if (flying) {
+            cb.lift += ((cb.chargeAt > 0 || cb.burstLeft > 0 ? 1.8 : 0) - cb.lift) * 0.1;
+            y += Math.sin((now + gm.entity.getEntityId() * 7) * 0.06) * 0.8 + cb.lift;
+        }
+        to.setY(to.getY() + (y - to.getY()) * (flying ? 0.1 : 0.3));
+        // mira hacia donde va; parado o cargando, hacia la base
+        double speed = Math.hypot(cb.vx, cb.vz);
+        Vector look = speed > 0.06 && !frozen && cb.chargeAt < 0 && cb.burstLeft == 0 ? new Vector(cb.vx, 0, cb.vz) : plugin.arena.baseCenter().clone().subtract(l.toVector());
+        float goal = (float) Math.toDegrees(Math.atan2(-look.getX(), look.getZ()));
+        if (Float.isNaN(cb.yaw)) cb.yaw = goal;
+        cb.yaw += wrap(goal - cb.yaw) * (flying ? 0.12f : 0.25f);
+        to.setYaw(cb.yaw);
+        to.setPitch(0);
+        return to;
     }
 
     private final Map<UUID, Combat> combat = new LinkedHashMap<>();
@@ -122,8 +174,59 @@ public final class Bosses implements Listener {
         plugin.fx.portal(l.clone().add(0, 0.3, 0), pc, Color.fromRGB(20, 0, 30), Math.max(3, gm.entity.getWidth() * 1.6), 60);
         l.getWorld().strikeLightningEffect(l);
         if (gm.entity.getType() == EntityType.ENDER_DRAGON) dragonArrival(l);
+        if (gm.entity instanceof org.bukkit.entity.Wither) {
+            // aparición: se forma envuelto en energía (la animación de «invulnerable» del wither) y estalla al terminar
+            cb.spawnAnim = 120;
+            cb.frozenUntil = plugin.tick() + 45;
+            cb.nextAttack = plugin.tick() + 70;
+            plugin.fx.sound(l, Sound.ENTITY_WITHER_AMBIENT, 4f, 0.5f, true);
+        }
+        if (gm.entity instanceof org.bukkit.entity.Warden wd) {
+            // sale de la tierra como en las ciudades antiguas
+            wd.setPose(org.bukkit.entity.Pose.EMERGING, true);
+            cb.frozenUntil = plugin.tick() + 105;
+            cb.nextAttack = plugin.tick() + 130;
+            plugin.fx.sound(l, Sound.ENTITY_WARDEN_EMERGE, 5f, 1f, true);
+            poseLater(gm, org.bukkit.entity.Pose.STANDING, 105);
+            for (int i = 0; i < 5; i++) {
+                int d = i * 18;
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    if (gm.dead || !gm.entity.isValid()) return;
+                    Location g = gm.entity.getLocation();
+                    plugin.fx.particle(g, Particle.BLOCK, 50, 1.2, 0.3, 1.2, 0.2, org.bukkit.Material.SCULK.createBlockData(), true);
+                    plugin.fx.particle(g.clone().add(0, 0.5, 0), Particle.SCULK_SOUL, 12, 1, 0.3, 1, 0.04, null, true);
+                    plugin.fx.sound(g, Sound.BLOCK_SCULK_BREAK, 3f, 0.6f, true);
+                }, d);
+            }
+        }
         plugin.fx.particle(l, Particle.SONIC_BOOM, 1, 0, 0, true);
         plugin.fx.particle(l.clone().add(0, 1, 0), Particle.SOUL_FIRE_FLAME, 60, 1.5, 1.5, 1.5, 0.05, null, true);
+    }
+
+    /** Cambia la pose del jefe dentro de unos ticks (si sigue vivo). */
+    private void poseLater(GameMob gm, org.bukkit.entity.Pose pose, int ticks) {
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (!gm.dead && gm.entity.isValid()) gm.entity.setPose(pose, true);
+        }, ticks);
+    }
+
+    /** El warden ruge: se para, animación de rugido, ondas y temblor. */
+    private void roar(GameMob gm, Combat cb, int ticks) {
+        Location l = gm.entity.getLocation();
+        gm.entity.setPose(org.bukkit.entity.Pose.ROARING, true);
+        poseLater(gm, org.bukkit.entity.Pose.STANDING, ticks);
+        cb.frozenUntil = Math.max(cb.frozenUntil, plugin.tick() + ticks);
+        plugin.fx.sound(l, Sound.ENTITY_WARDEN_ROAR, 5f, 1f, true);
+        for (int i = 0; i < 3; i++) {
+            int d = 12 + i * 7;
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (gm.dead || !gm.entity.isValid()) return;
+                Location c = gm.entity.getLocation().add(0, 0.3, 0);
+                plugin.fx.ring(c, 9, Color.fromRGB(40, 210, 225), 12);
+                plugin.fx.particle(c.clone().add(0, 2, 0), Particle.SONIC_BOOM, 1, 0, 0, true);
+                plugin.game.shake();
+            }, d);
+        }
     }
 
     private static BossBar.Color color(Settings.BossDef def) {
@@ -163,6 +266,15 @@ public final class Bosses implements Listener {
             gm.bar.name(barTitle(gm));
             plugin.game.banner(plugin.settings.msg("furiaTitulo"), plugin.settings.msg("furiaSubtitulo"), Sound.ENTITY_RAVAGER_ROAR, 0.8f, "jefe", gm.boss.name(), "usuario", gm.donor);
             Location l = gm.entity.getLocation().add(0, gm.entity.getHeight() / 2, 0);
+            Combat fc = combat.get(gm.entity.getUniqueId());
+            if (fc != null && gm.entity.getType() == EntityType.WARDEN) roar(gm, fc, 44);
+            if (fc != null && gm.entity.getType() == EntityType.WITHER) {
+                // estallido de furia: onda oscura, se eleva y descarga una ráfaga larga
+                plugin.fx.ring(l.clone().add(0, -gm.entity.getHeight() / 2 + 0.3, 0), 12, Color.fromRGB(90, 20, 140), 16);
+                plugin.fx.particle(l, Particle.SOUL, 60, 2, 2, 2, 0.1, null, true);
+                plugin.fx.sound(l, Sound.ENTITY_WITHER_BREAK_BLOCK, 3f, 0.6f, true);
+                fc.chargeAt = plugin.tick() + 20;
+            }
             plugin.fx.particle(l, Particle.ANGRY_VILLAGER, 20, gm.entity.getWidth(), 0, true);
             plugin.fx.particle(l, Particle.FLAME, 80, gm.entity.getWidth() * 0.6, 0.08, true);
         }
@@ -172,6 +284,15 @@ public final class Bosses implements Listener {
         forget(gm);
         Location l = gm.entity.getLocation().add(0, gm.entity.getHeight() / 2, 0);
         massive(l, gm.entity.getWidth() + 1);
+        // explosiones encadenadas alrededor mientras cae
+        for (int i = 1; i <= 6; i++) {
+            Location at = l.clone().add(plugin.fx.rnd().nextGaussian() * 2.2, plugin.fx.rnd().nextGaussian() * 1.4, plugin.fx.rnd().nextGaussian() * 2.2);
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                plugin.fx.explosion(at, 2.2, false);
+                plugin.fx.particle(at, Particle.SOUL_FIRE_FLAME, 25, 0.6, 0.6, 0.6, 0.1, null, true);
+            }, i * 3L);
+        }
+        Bukkit.getScheduler().runTaskLater(plugin, () -> plugin.fx.ring(l.clone().add(0, -l.getY() + plugin.arena.groundY + 1.3, 0), 16, Color.fromRGB(255, 200, 90), 18), 6L);
         plugin.game.banner(plugin.settings.msg("jefeDerrotado"), "&7de &e{usuario}", Sound.UI_TOAST_CHALLENGE_COMPLETE, 1f, "jefe", gm.boss.name(), "usuario", gm.donor);
         plugin.loot.bossDrop(l);
     }
@@ -226,6 +347,12 @@ public final class Bosses implements Listener {
             return front;
         }
         Vector hold = base.clone().add(out.clone().multiply(dist));
+        if (gm.entity.getType() == EntityType.WITHER && near(gm, hold, 12)) {
+            // en su puesto no se queda clavado: se desliza de lado a lado frente a la base (más rápido si está furioso)
+            double a = (plugin.tick() + gm.entity.getEntityId() * 17) * (gm.furious ? 0.045 : 0.028);
+            Vector side = new Vector(-out.getZ(), 0, out.getX());
+            return hold.clone().add(side.multiply(Math.sin(a) * 6.5)).add(out.clone().multiply(Math.sin(a * 2.3) * 2.5));
+        }
         if (gm.entity.getType() == EntityType.ENDER_DRAGON && near(gm, hold, 6)) {
             // da vueltas sobre el carril frente a la base
             double a = (plugin.tick() + gm.entity.getEntityId() * 31) * 0.035;
@@ -259,7 +386,8 @@ public final class Bosses implements Listener {
         if (cb == null || cb.atBase) return;
         cb.atBase = true;
         cb.ramPhase = 0;
-        cb.ramUntil = plugin.tick() + 25;
+        cb.ramUntil = plugin.tick() + 50;
+        roar(gm, cb, 44);
     }
 
     // ───────────────────────────── TICK ─────────────────────────────
@@ -306,14 +434,7 @@ public final class Bosses implements Listener {
                 summon(gm, l);
             }
             switch (gm.entity.getType()) {
-                case WITHER -> {
-                    if (distToBase(gm) <= gm.boss.attackDistance() + 6 && now >= cb.nextAttack) {
-                        cb.nextAttack = now + (long) every;
-                        int n = gm.furious ? 4 : 2;
-                        for (int i = 0; i < n; i++) shoot(gm, Kind.CALAVERA, i);
-                        warn("ataqueWither");
-                    }
-                }
+                case WITHER -> wither(gm, cb, l, now, every);
                 case ENDER_DRAGON -> {
                     int orbs = gm.furious ? 3 : 2;
                     if (cb.chargeAt > 0) {
@@ -345,8 +466,106 @@ public final class Bosses implements Listener {
         tickBalls(now);
     }
 
+    /** Punto de cada cabeza del wither (0 centro, 1 y 2 laterales). */
+    private Location witherHead(GameMob gm, int i) {
+        Location l = gm.entity.getLocation();
+        double sc = gm.entity.getAttribute(Attribute.SCALE) != null ? gm.entity.getAttribute(Attribute.SCALE).getValue() : 1;
+        double yaw = Math.toRadians(l.getYaw());
+        Vector side = new Vector(Math.cos(yaw), 0, Math.sin(yaw));
+        l.add(0, (i == 0 ? 3.0 : 2.2) * sc, 0);
+        if (i > 0) l.add(side.multiply((i == 1 ? 1.3 : -1.3) * sc));
+        return l;
+    }
+
+    /**
+     * WITHER: aparece formándose, sus cabezas siguen al streamer, y ataca con coreografía: se eleva cargando energía en
+     * las tres cabezas (aviso), y descarga las calaveras una a una alternando cabezas, con retroceso en cada disparo.
+     */
+    private void wither(GameMob gm, Combat cb, Location l, long now, double every) {
+        org.bukkit.entity.Wither w = (org.bukkit.entity.Wither) gm.entity;
+        if (cb.spawnAnim > 0) {
+            cb.spawnAnim = Math.max(0, cb.spawnAnim - 3);
+            w.setInvulnerableTicks(cb.spawnAnim);
+            if (now % 3 == 0) plugin.fx.particle(l.clone().add(0, 2, 0), Particle.SOUL, 8, 1.2, 1.5, 1.2, 0.05, null, true);
+            if (cb.spawnAnim == 0) {
+                Location c = l.clone().add(0, 2, 0);
+                plugin.fx.explosion(c, 5, true);
+                plugin.fx.ring(c.clone().add(0, -l.getY() + plugin.arena.groundY - 0.7, 0), 14, Color.fromRGB(120, 60, 200), 16);
+                plugin.fx.sound(c, Sound.ENTITY_WITHER_SPAWN, 3f, 1f, true);
+                plugin.game.shake();
+            }
+            return;
+        }
+        Player sp = plugin.game.streamer();
+        if (sp != null && now % 20 == 0) {
+            w.setTarget(org.bukkit.entity.Wither.Head.LEFT, sp);
+            w.setTarget(org.bukkit.entity.Wither.Head.RIGHT, sp);
+        }
+        // humo oscuro que deja al moverse
+        if (now % 2 == 0) plugin.fx.particle(l.clone().add(0, 1.5, 0), Particle.SMOKE, 3, 0.6, 0.8, 0.6, 0.01, null, false);
+        if (cb.burstLeft > 0) {
+            if (now >= cb.nextBurst) {
+                int head = cb.burstIdx++ % 3;
+                cb.burstLeft--;
+                cb.nextBurst = now + (gm.furious ? 3 : 5);
+                cb.kick = 0.22;
+                Location h = witherHead(gm, head);
+                plugin.fx.particle(h, Particle.FLASH, 1, 0, 0, 0, 0, Color.fromRGB(150, 110, 255), true);
+                plugin.fx.particle(h, Particle.SOUL_FIRE_FLAME, 14, 0.25, 0.25, 0.25, 0.08, null, true);
+                plugin.fx.particle(h, Particle.LARGE_SMOKE, 6, 0.3, 0.3, 0.3, 0.03, null, true);
+                shoot(gm, Kind.CALAVERA, head);
+            }
+            return;
+        }
+        if (cb.chargeAt > 0) {
+            // carga: la energía converge en las tres cabezas (cada vez más deprisa)
+            double k = 1 - Math.max(0, cb.chargeAt - now) / 18.0;
+            for (int i = 0; i < 3; i++) {
+                Location h = witherHead(gm, i);
+                for (int j = 0; j < 2 + (int) (k * 3); j++) {
+                    Vector o = new Vector(plugin.fx.rnd().nextGaussian(), plugin.fx.rnd().nextGaussian(), plugin.fx.rnd().nextGaussian()).normalize().multiply(2.6);
+                    Vector v = o.clone().multiply(-1).normalize();
+                    // count 0 = partícula dirigida: viaja hacia la cabeza
+                    plugin.fx.particle(h.clone().add(o), Particle.SOUL_FIRE_FLAME, 0, v.getX(), v.getY(), v.getZ(), 0.22, null, true);
+                }
+                if (now % 2 == 0) plugin.fx.particle(h, Particle.DUST, 2, 0.15, 0.15, 0.15, 0, new Particle.DustOptions(Color.fromRGB(170, 120, 255), (float) (1 + k * 2.2)), true);
+            }
+            if (now % 4 == 0) plugin.fx.sound(l, Sound.BLOCK_BEACON_AMBIENT, 3f, (float) (0.8 + k * 1.1), true);
+            if (now >= cb.chargeAt) {
+                cb.chargeAt = -1;
+                cb.burstLeft = gm.furious ? 7 : 3;
+                cb.nextBurst = now;
+                plugin.fx.sound(l, Sound.ENTITY_WITHER_AMBIENT, 4f, 1.3f, true);
+            }
+            return;
+        }
+        if (distToBase(gm) <= gm.boss.attackDistance() + 9 && now >= cb.nextAttack) {
+            cb.nextAttack = now + (long) every + 18;
+            cb.chargeAt = now + 18;
+            plugin.fx.sound(l, Sound.BLOCK_RESPAWN_ANCHOR_CHARGE, 4f, 0.6f, true);
+            warn("ataqueWither");
+        }
+    }
+
     private void warden(GameMob gm, Combat cb, Location l, long now, double every) {
         Vector base = plugin.arena.baseCenter();
+        // latido y antenas mientras camina
+        if (now % 28 == 0 && now >= cb.frozenUntil) {
+            gm.entity.playEffect(org.bukkit.EntityEffect.WARDEN_TENDRIL_SHAKE);
+            plugin.fx.sound(l, Sound.ENTITY_WARDEN_HEARTBEAT, 3f, gm.furious ? 1.3f : 1f, false);
+            plugin.fx.particle(l.clone().add(0, 0.1, 0), Particle.SCULK_CHARGE_POP, 6, 0.8, 0.05, 0.8, 0.02, null, false);
+        }
+        // cargando el cañón: la energía converge en el pecho
+        if (cb.chargeAt > 0 && now < cb.chargeAt) {
+            Location chest = l.clone().add(0, gm.entity.getHeight() * 0.6, 0);
+            double k = 1 - (cb.chargeAt - now) / 34.0;
+            for (int j = 0; j < 3; j++) {
+                Vector o = new Vector(plugin.fx.rnd().nextGaussian(), plugin.fx.rnd().nextGaussian(), plugin.fx.rnd().nextGaussian()).normalize().multiply(3);
+                Vector v = o.clone().multiply(-1).normalize();
+                plugin.fx.particle(chest.clone().add(o), Particle.SCULK_SOUL, 0, v.getX(), v.getY(), v.getZ(), 0.25, null, true);
+            }
+            if (now % 2 == 0) plugin.fx.particle(chest, Particle.DUST, 3, 0.25, 0.25, 0.25, 0, new Particle.DustOptions(Color.fromRGB(60, 225, 235), (float) (1 + k * 2.5)), true);
+        }
         // cañón sónico: carga (sonido de vanilla), y a los 1,5 s rayo hasta la base
         if (cb.chargeAt > 0 && now >= cb.chargeAt) {
             cb.chargeAt = -1;
@@ -376,8 +595,11 @@ public final class Bosses implements Listener {
             plugin.game.damageBase(gm.boss.attackDamage(), gm);
         }
         if (!cb.atBase && cb.chargeAt < 0 && distToBase(gm) <= gm.boss.attackDistance() && now >= cb.nextAttack) {
-            cb.nextAttack = now + (long) every;
-            cb.chargeAt = now + 30;
+            cb.nextAttack = now + (long) every + 34;
+            // animación propia del warden (se echa hacia atrás y abre el pecho); el disparo sale a los 34 ticks, como en vanilla
+            cb.chargeAt = now + 34;
+            cb.frozenUntil = Math.max(cb.frozenUntil, now + 42);
+            gm.entity.playEffect(org.bukkit.EntityEffect.WARDEN_SONIC_ATTACK);
             plugin.fx.sound(l, Sound.ENTITY_WARDEN_SONIC_CHARGE, 4f, 1f, true);
             plugin.fx.particle(l.clone().add(0, gm.entity.getHeight() * 0.6, 0), Particle.SCULK_SOUL, 30, 1, 1, 1, 0.05, null, true);
             warn("ataqueWarden");
@@ -386,11 +608,19 @@ public final class Bosses implements Listener {
             if (cb.ramPhase == 0 && now >= cb.ramUntil) {
                 cb.ramPhase = 1;
                 cb.ramUntil = now + (long) (gm.boss.ramEvery() * 20);
-                plugin.fx.sound(l, Sound.ENTITY_WARDEN_ROAR, 4f, 1f, true);
+                gm.entity.playEffect(org.bukkit.EntityEffect.WARDEN_TENDRIL_SHAKE);
+                plugin.fx.sound(l, Sound.ENTITY_WARDEN_ANGRY, 4f, 1f, true);
             } else if (cb.ramPhase == 1 && (near(gm, base.clone().add(toSpawn().multiply(2)), 2.2) || now >= cb.ramUntil)) {
                 // ¡embestida!
                 cb.ramPhase = 0;
                 cb.ramUntil = now + 20;
+                cb.vx = cb.vz = 0;
+                gm.entity.playEffect(org.bukkit.EntityEffect.ENTITY_ATTACK);
+                // cada tres embestidas se para a rugir (respiro para dispararle)
+                if (++cb.rams % 3 == 0) {
+                    roar(gm, cb, 44);
+                    cb.ramUntil = now + 50;
+                }
                 Location hit = base.toLocation(l.getWorld()).add(toSpawn().multiply(1.5)).add(0, 1, 0);
                 plugin.fx.blast(hit, 4, Color.fromRGB(40, 200, 210), true);
                 plugin.fx.particle(hit, Particle.BLOCK, 60, 2, 1, 0.5, 0.3, org.bukkit.Material.SPRUCE_PLANKS.createBlockData(), true);
@@ -553,7 +783,7 @@ public final class Bosses implements Listener {
 
     private void shoot(GameMob gm, Kind kind, int i) {
         Location from = gm.entity.getLocation().add(0, gm.entity.getHeight() * 0.7, 0);
-        if (gm.entity.getType() == EntityType.WITHER && i > 0) from.add(new Vector(-toSpawn().getZ(), 0, toSpawn().getX()).multiply(i == 1 ? 1.4 : -1.4));
+        if (gm.entity.getType() == EntityType.WITHER) from = witherHead(gm, i % 3);
         Vector to = plugin.arena.baseCenter().clone().add(new Vector((Math.random() - 0.5) * 6, 0, 0));
         Vector dir = to.clone().subtract(from.toVector()).normalize();
         from.add(dir.clone().multiply(gm.entity.getWidth() * 0.6 + 1));

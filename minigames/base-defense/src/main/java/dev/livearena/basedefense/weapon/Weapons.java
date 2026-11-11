@@ -47,15 +47,54 @@ import org.bukkit.util.Vector;
 /**
  * Armas del streamer: pistola, subfusil, ametralladora, lanzagranadas, lanzacohetes y minigun.
  *
- * <p>Clic derecho dispara; el servidor solo recibe el clic cada ~4 ticks al mantenerlo, así que el fuego automático
- * lo sostiene la tarea central mientras el último clic sea reciente. Clic izquierdo o F recargan. Munición: cargador
+ * <p>Controles de shooter (con el mod LiveArena, que manda el estado del ratón por el canal «livearena:bd»): clic
+ * izquierdo dispara, clic derecho apunta con la mira (menos dispersión) y R o F recargan.
+ * <p>Sin el mod (cliente vanilla, que no puede avisar de un clic izquierdo mantenido): clic derecho dispara; el
+ * servidor solo recibe el clic cada ~4 ticks al mantenerlo, así que el fuego automático lo sostiene la tarea central
+ * mientras el último clic sea reciente. Clic izquierdo o F recargan y Shift apunta. Munición: cargador
  * (barrita de durabilidad en la hotbar) + reserva (cajas de los mobs y suministros). La minigun gira antes de disparar.
  */
-public final class Weapons implements Listener {
+public final class Weapons implements Listener, org.bukkit.plugin.messaging.PluginMessageListener {
+    /** Canal del mod: un byte con el estado del ratón (bit 0 disparar, bit 1 apuntar, bit 2 recargar). */
+    public static final String INPUT_CHANNEL = "livearena:bd";
     private static final int HOLD_TICKS = 6;
     private final BaseDefense plugin;
     private final Map<UUID, Map<String, State>> states = new HashMap<>();
     private final Map<UUID, Long> lastClick = new HashMap<>();
+    /** Estado del ratón que manda el mod: {flags, tick en que llegó, ¿ya disparó este clic?}. Solo jugadores con mod. */
+    private final Map<UUID, long[]> modInput = new HashMap<>();
+
+    @Override
+    public void onPluginMessageReceived(String channel, Player p, byte[] message) {
+        if (!INPUT_CHANNEL.equals(channel) || message.length < 1) return;
+        long[] in = modInput.computeIfAbsent(p.getUniqueId(), k -> new long[3]);
+        int flags = message[0] & 7;
+        if ((flags & 1) == 0) in[2] = 0; // soltó el gatillo: el siguiente clic vuelve a disparar (armas semiautomáticas)
+        in[0] = flags;
+        in[1] = plugin.tick();
+        if ((flags & 4) != 0 && plugin.game.running() && plugin.inGameWorld(p)) {
+            WeaponDef w = weaponOf(p.getInventory().getItemInMainHand());
+            if (w != null && !locked(w)) reload(p, w);
+        }
+    }
+
+    /** ¿Juega con el mod (controles de shooter)? */
+    public boolean shooter(Player p) {
+        return modInput.containsKey(p.getUniqueId());
+    }
+
+    /** ¿Está apuntando con la mira? (clic derecho con el mod; Shift sin él) */
+    public boolean aiming(Player p) {
+        long[] in = modInput.get(p.getUniqueId());
+        if (in == null) return p.isSneaking();
+        return (in[0] & 2) != 0 && plugin.tick() - in[1] <= 12;
+    }
+
+    @EventHandler
+    public void onQuitInput(org.bukkit.event.player.PlayerQuitEvent e) {
+        modInput.remove(e.getPlayer().getUniqueId());
+        lastClick.remove(e.getPlayer().getUniqueId());
+    }
     private final Map<UUID, Proj> projectiles = new HashMap<>();
     private long lastHitSound;
     /** Fase hasta la que están desbloqueadas las armas (las de `desbloqueo` mayor salen con candado). */
@@ -165,7 +204,8 @@ public final class Weapons implements Listener {
         lore.add(Txt.fmt("&7Daño &f" + fmt(w.damage()) + (w.kind() != WeaponKind.HITSCAN ? " &7en área &f" + fmt(w.radius()) + "m" : "")).decoration(TextDecoration.ITALIC, false));
         lore.add(Txt.fmt("&7Cadencia &f" + fmt(w.rate() * w.shotsPerTick()) + "/s &8· &7Cargador &f" + w.magazine()).decoration(TextDecoration.ITALIC, false));
         if (w.warmup() > 0) lore.add(Txt.fmt("&dMantén pulsado: gira y luego dispara").decoration(TextDecoration.ITALIC, false));
-        lore.add(Txt.fmt("&8Clic derecho: disparar · Clic izq. o F: recargar").decoration(TextDecoration.ITALIC, false));
+        lore.add(Txt.fmt("&8Clic izq.: disparar · Clic der.: apuntar · R: recargar").decoration(TextDecoration.ITALIC, false));
+        lore.add(Txt.fmt("&8(sin el mod: clic der. dispara, Shift apunta, F recarga)").decoration(TextDecoration.ITALIC, false));
         m.lore(lore);
         m.getPersistentDataContainer().set(plugin.weaponKey, PersistentDataType.STRING, w.id());
         // modelo 3D del pack (solo si el jugador lo tiene cargado; si no, se vería sin textura)
@@ -266,6 +306,7 @@ public final class Weapons implements Listener {
         if (w == null) return;
         e.setCancelled(true);
         if (!plugin.game.running() || !plugin.inGameWorld(p)) return;
+        if (shooter(p)) return; // con el mod, los clics llegan por su canal
         if (locked(w)) {
             if (e.getAction() == Action.RIGHT_CLICK_AIR || e.getAction() == Action.RIGHT_CLICK_BLOCK) {
                 plugin.hud.notify("warn", Txt.plain(plugin.settings.msg("armaBloqueada"), "fase", w.unlockPhase()), net.kyori.adventure.text.format.TextColor.color(0xA8A8B0));
@@ -343,6 +384,15 @@ public final class Weapons implements Listener {
         if (w == null || locked(w)) return;
         Long lc = lastClick.get(p.getUniqueId());
         boolean holding = lc != null && now - lc <= HOLD_TICKS;
+        long[] in = modInput.get(p.getUniqueId());
+        if (in != null) {
+            // controles de shooter: el gatillo es el clic izquierdo (el mod lo reenvía cada 5 ticks mientras se mantiene)
+            holding = (in[0] & 1) != 0 && now - in[1] <= 12;
+            if (holding && !w.automatic() && in[2] == 0) {
+                in[2] = 1;
+                tryFire(p, w);
+            }
+        }
         State s = state(p, w);
         if (w.warmup() > 0) {
             if (holding && s.ammo > 0 && s.reloadUntil <= now) {
@@ -404,8 +454,8 @@ public final class Weapons implements Listener {
     /** Un único ray trace por disparo, filtrado a los mobs del juego. */
     private void hitscan(Player p, WeaponDef w, boolean sound) {
         Location eye = p.getEyeLocation();
-        // apuntando con la mira (Shift) la dispersión baja mucho
-        Vector dir = spread(eye.getDirection(), w.spread() * (p.isSneaking() ? 0.3 : 1));
+        // apuntando con la mira la dispersión baja mucho
+        Vector dir = spread(eye.getDirection(), w.spread() * (aiming(p) ? 0.3 : 1));
         Location from = eye.clone().add(dir.clone().multiply(3.2)).add(0, -0.25, 0);
         RayTraceResult hit = p.getWorld().rayTrace(eye, dir, w.range(), FluidCollisionMode.NEVER, true, 0.18,
             e -> plugin.mobs.get(e) != null, Weapons::solid);

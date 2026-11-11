@@ -161,3 +161,22 @@ Decisiones:
   `DragonFireball` (se cancela su nube con `EnderDragonFireballHitEvent`), estela `Fx.trail("dragon")` e impacto violeta.
 - Pack: `post_effect basedefense:vacio` (gradación violeta). El mod lo pone mientras haya un EnderDragon a <200 bloques
   (`CineClient.minigamePost`) y da un «tirón» de FOV al aparecer (`dragonPunch`). Sin mod: solo los efectos del plugin.
+
+## v13 (controles de shooter, dificultad nivelada, jefes y bombardeo)
+
+- **Controles de shooter**: con el mod LiveArena (≥ 0.8.0) clic izquierdo dispara (mantenido en automáticas), clic derecho
+  apunta y R/F recargan. El mod manda un byte con el estado del ratón por el canal de plugin `livearena:bd`
+  (`Weapons.onPluginMessageReceived`) y cancela los clics de vanilla con un arma en la mano. Sin el mod no hay forma de
+  saber que el clic izquierdo sigue pulsado, así que se conservan los controles clásicos (clic derecho dispara, Shift apunta).
+- **Dificultad v5** (`dificultad.version: 5`; la config anterior queda en `config-v4.yml`): ~35 % menos vida en mobs y
+  ~45 % menos en jefes, menos blindaje, armas más fuertes, más reserva y más cajas, élites y amenaza más suaves.
+- **Jefes** (`Bosses.step`): wither y warden se mueven con aceleración y giro progresivo. Wither: aparece formándose
+  (cuenta atrás de `invulnerableTicks` a mano, porque sin IA no baja sola), cabezas laterales siguen al streamer, se
+  desliza de lado a lado, carga con partículas dirigidas (count 0) y descarga las calaveras de una en una con retroceso.
+  Warden: sale de la tierra (`Pose.EMERGING`), usa su animación de cañón (`EntityEffect.WARDEN_SONIC_ATTACK`, disparo a
+  los 34 ticks), ruge (`Pose.ROARING`) al llegar, al enfurecerse y cada tres embestidas, y golpea con `ENTITY_ATTACK`.
+- **Bombardeo**: puntos de impacto marcados antes, escuadrilla de 3 aviones con estelas y alabeo, bombas dirigidas a su
+  marca con estela, onda dorada, columna de fuego, secundarias y brasas; onda final por el carril.
+- **Élites**: armadura completa con `equippable.asset_id = basedefense:elite` (`tools/gen_elite.py`); los que no llevan
+  armadura (arañas, devastador) van con contorno rojo (equipo `bd_elite`). Sueltan brasas.
+- Arreglo: `MobManager.tick` recorre una copia (un golpe de asedio que tumbaba la base vaciaba la colección a mitad).

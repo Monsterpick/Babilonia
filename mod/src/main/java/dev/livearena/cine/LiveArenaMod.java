@@ -23,6 +23,8 @@ public final class LiveArenaMod {
     private static void payloads(RegisterPayloadHandlersEvent event) {
         PayloadRegistrar r = event.registrar("1").optional();
         r.playToClient(CinePayload.TYPE, CinePayload.CODEC, (payload, ctx) -> ctx.enqueueWork(() -> ClientBridge.handle(payload.data())));
+        // cliente → plugin Base Defense (en un servidor Paper lo recibe el plugin; aquí no hay nada que hacer)
+        r.playToServer(BdInputPayload.TYPE, BdInputPayload.CODEC, (payload, ctx) -> {});
     }
 
     /** Evita cargar clases de cliente en un servidor dedicado. */

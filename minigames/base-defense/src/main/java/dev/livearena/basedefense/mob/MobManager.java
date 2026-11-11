@@ -133,7 +133,9 @@ public final class MobManager implements Listener {
         int g = plugin.arena.groundY;
         long now = plugin.tick();
         List<GameMob> reached = null, lost = null;
-        for (GameMob gm : mobs.values()) {
+        // copia: un golpe de asedio puede tumbar la base y vaciar la colección en mitad del recorrido
+        for (GameMob gm : new ArrayList<>(mobs.values())) {
+            if (gm.dead) continue;
             Mob m = gm.entity;
             if (!m.isValid()) {
                 if (lost == null) lost = new ArrayList<>();
@@ -141,6 +143,8 @@ public final class MobManager implements Listener {
                 continue;
             }
             Location l = m.getLocation();
+            // élites: sueltan brasas, se les ve venir
+            if (gm.elite && (now + m.getEntityId()) % 5 == 0) plugin.fx.particle(l.clone().add(0, m.getHeight() * 0.6, 0), org.bukkit.Particle.FLAME, 1, 0.25, 0.4, 0.25, 0.01, null, false);
             if (gm.sieging) {
                 if (active) siege(gm, now);
                 continue;
@@ -243,9 +247,22 @@ public final class MobManager implements Listener {
         if (elite) {
             EntityEquipment eq = m.getEquipment();
             if (eq != null) {
-                eq.setHelmet(new ItemStack(Material.NETHERITE_HELMET));
-                eq.setChestplate(new ItemStack(Material.NETHERITE_CHESTPLATE));
+                // armadura completa con textura propia del pack (obsidiana con vetas de magma); sin pack se ve de netherita
+                eq.setHelmet(eliteArmor(Material.NETHERITE_HELMET));
+                eq.setChestplate(eliteArmor(Material.NETHERITE_CHESTPLATE));
+                eq.setLeggings(eliteArmor(Material.NETHERITE_LEGGINGS));
+                eq.setBoots(eliteArmor(Material.NETHERITE_BOOTS));
+                eq.setHelmetDropChance(0);
+                eq.setChestplateDropChance(0);
+                eq.setLeggingsDropChance(0);
+                eq.setBootsDropChance(0);
             }
+            // los que no llevan armadura (arañas, devastadores…) se marcan con contorno rojo
+            if (!(m instanceof Zombie || m instanceof AbstractSkeleton || m instanceof org.bukkit.entity.PiglinAbstract || m instanceof org.bukkit.entity.Illager)) {
+                m.setGlowing(true);
+                eliteTeam().addEntity(m);
+            }
+
         }
         mobs.put(m.getUniqueId(), gm);
         spawned++;
@@ -256,7 +273,29 @@ public final class MobManager implements Listener {
         return gm;
     }
 
-    /** Usado por los jefes. */
+    private static final NamespacedKey ELITE_MODEL = NamespacedKey.fromString("basedefense:elite");
+
+    private static ItemStack eliteArmor(Material mat) {
+        ItemStack it = new ItemStack(mat);
+        var meta = it.getItemMeta();
+        var eq = meta.getEquippable();
+        eq.setModel(ELITE_MODEL);
+        meta.setEquippable(eq);
+        it.setItemMeta(meta);
+        return it;
+    }
+
+    /** Equipo del marcador solo para dar color (rojo) al contorno de los élites sin armadura. */
+    private org.bukkit.scoreboard.Team eliteTeam() {
+        var sb = Bukkit.getScoreboardManager().getMainScoreboard();
+        var t = sb.getTeam("bd_elite");
+        if (t == null) {
+            t = sb.registerNewTeam("bd_elite");
+            t.color(net.kyori.adventure.text.format.NamedTextColor.RED);
+        }
+        return t;
+    }
+
     /** Usado por los jefes. done recibe el jefe ya creado (el dragón llega un tick después). */
     boolean spawnBoss(World w, Settings.BossDef def, String donor, java.util.function.Consumer<GameMob> done) {
         Location at = spawnPoint(w);
@@ -574,6 +613,15 @@ public final class MobManager implements Listener {
             sp = gm.speed * (gm.furious ? plugin.settings.furySpeed : 1.0);
         }
         double y = plugin.arena.groundY + 1 + (gm.isBoss() && gm.boss.flying() ? gm.boss.height() : 0);
+        if (gm.isBoss() && gm.entity.getType() != EntityType.ENDER_DRAGON) {
+            // wither y warden: movimiento con aceleración, giro progresivo y pausas de ataque (Bosses.step)
+            Location next = plugin.bosses.step(gm, l, t, sp, y);
+            if (!gm.entity.teleport(next) && !gm.warned) {
+                gm.warned = true;
+                plugin.getLogger().warning("No se pudo mover " + gm.entity.getType() + " (teleport rechazado)");
+            }
+            return;
+        }
         Vector d = new Vector(t.getX() - l.getX(), 0, t.getZ() - l.getZ());
         double len = d.length();
         Location to = l.clone();

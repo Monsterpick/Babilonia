@@ -241,99 +241,183 @@ public final class Allies {
 
     // ───────────────────────────── bombardeo (avión) ─────────────────────────────
 
+    /**
+     * Bombardeo en alfombra: suena la alarma y se marcan en rojo los puntos de impacto; entra una escuadrilla de tres
+     * aviones en cuña (el líder suelta las bombas, los escoltas dejan estelas), cada bomba cae silbando con su estela y
+     * revienta con fogonazo, onda dorada a ras de suelo, columna de fuego, escombros y explosiones secundarias. Al final,
+     * una onda recorre todo el carril.
+     */
     private void airstrike(World w) {
-        // Sale por detrás del streamer, pasa por encima (algo a un lado) y se aleja hacia el portal soltando bombas:
-        // así se ve entero, de espaldas, cruzando el carril.
         Location a = lane(w, 1), b = lane(w, 0);
         Vector dir = b.toVector().subtract(a.toVector()).setY(0);
         if (dir.lengthSquared() < 1e-4) dir = new Vector(0, 0, 1);
         dir.normalize();
-        Vector lateral = dir.clone().crossProduct(new Vector(0, 1, 0)).normalize().multiply(5);
+        Vector lateral = dir.clone().crossProduct(new Vector(0, 1, 0)).normalize();
         double alt = plugin.arena.groundY + 1 + cfg("bombardeo.altura", 20);
-        Location from = a.clone().subtract(dir.clone().multiply(45)).add(lateral);
-        from.setY(alt - 4);
-        Location to = b.clone().add(dir.clone().multiply(45)).add(lateral);
-        to.setY(alt + 8);
         int dur = (int) cfg("bombardeo.duracionVuelo", 90);
-        int bombs = (int) cfg("bombardeo.bombas", 10);
-        ItemDisplay plane = prop(from, model("basedefense:avion", Material.ELYTRA), (float) cfg("bombardeo.tamanoAvion", 7));
+        int bombs = (int) cfg("bombardeo.bombas", 14);
         float ps = (float) cfg("bombardeo.tamanoAvion", 7);
-        aim(plane, to.toVector().subtract(from.toVector()), ps, 0);
-        sound(Sound.ITEM_ELYTRA_FLYING, 1.2f, 0.5f);
-        sound(Sound.EVENT_RAID_HORN, 0.6f, 1.6f);
-        Vector step = to.toVector().subtract(from.toVector()).multiply(1.0 / dur);
-        // las bombas caen mientras el avión está sobre el carril (del portal a la base)
-        double fa = 45 / from.distance(to), fb = 1 - 45 / from.distance(to);
-        Bukkit.getScheduler().runTaskTimer(plugin, new java.util.function.Consumer<BukkitTask>() {
-            int t, dropped;
+        double r = cfg("bombardeo.radio", 5);
+        // puntos de impacto repartidos por el carril (zigzag), marcados antes de que lleguen los aviones
+        List<Location> targets = new ArrayList<>();
+        for (int i = 0; i < bombs; i++) {
+            Location t = lane(w, 0.92 - 0.86 * (i + 0.5) / bombs);
+            t.add(lateral.clone().multiply(((i % 3) - 1) * 3.2 + plugin.fx.rnd().nextGaussian() * 0.6));
+            targets.add(t);
+            marker(t, r * 0.8, 34 + (int) (dur * 0.75));
+        }
+        sound(Sound.EVENT_RAID_HORN, 0.9f, 1.4f);
+        sound(Sound.BLOCK_BELL_RESONATE, 0.8f, 0.6f);
+        plugin.alerts.siren(2);
+        int delay = 34;
+        // escuadrilla: líder + dos escoltas más atrás y a los lados
+        double[][] wing = {{0, 0, 0}, {-9, -7, 2.5}, {9, -7, 2.5}};
+        for (int pi = 0; pi < wing.length; pi++) {
+            final boolean lead = pi == 0;
+            Vector off = lateral.clone().multiply(wing[pi][0]).add(dir.clone().multiply(wing[pi][1])).add(new Vector(0, wing[pi][2], 0));
+            Location from = a.clone().subtract(dir.clone().multiply(50)).add(off);
+            from.setY(alt - 3 + wing[pi][2]);
+            Location to = b.clone().add(dir.clone().multiply(55)).add(off);
+            to.setY(alt + 9 + wing[pi][2]);
+            Vector step = to.toVector().subtract(from.toVector()).multiply(1.0 / dur);
+            final float size = lead ? ps : ps * 0.8f;
+            final int index = pi;
+            Bukkit.getScheduler().runTaskTimer(plugin, new java.util.function.Consumer<BukkitTask>() {
+                int t = -delay, dropped;
+                ItemDisplay plane;
 
-            @Override
-            public void accept(BukkitTask task) {
-                t++;
-                double f = t / (double) dur;
-                Location l = from.clone().add(step.clone().multiply(t));
-                float roll = (float) (Math.sin(t * 0.08) * 0.08);
-                if (plane.isValid()) {
-                    plane.teleport(l);
-                    aim(plane, step, ps, roll);
+                @Override
+                public void accept(BukkitTask task) {
+                    t++;
+                    if (t < 0) return;
+                    if (!plugin.game.running()) {
+                        if (plane != null && plane.isValid()) plane.remove();
+                        props.remove(plane);
+                        task.cancel();
+                        return;
+                    }
+                    if (plane == null) {
+                        plane = prop(from, model("basedefense:avion", Material.ELYTRA), size);
+                        aim(plane, step, size, 0);
+                        if (lead) sound(Sound.ITEM_ELYTRA_FLYING, 1.4f, 0.5f);
+                    }
+                    Location l = from.clone().add(step.clone().multiply(t));
+                    // alabeo: entra inclinado, se nivela para soltar y vuelve a inclinarse al salir
+                    double f = t / (double) dur;
+                    float roll = (float) ((f < 0.2 ? (0.2 - f) * 2.5 : f > 0.8 ? -(f - 0.8) * 3.2 : 0) * (index == 1 ? -1 : 1) + Math.sin(t * 0.09 + index) * 0.05);
+                    if (plane.isValid()) {
+                        plane.teleport(l);
+                        aim(plane, step, size, roll);
+                    }
+                    Vector fw = step.clone().normalize();
+                    Vector side = fw.clone().crossProduct(new Vector(0, 1, 0)).normalize().multiply(size * 0.72);
+                    Location tail = l.clone().subtract(fw.clone().multiply(size * 0.4));
+                    // estelas blancas largas en las puntas de las alas + llama de los motores
+                    for (int sgn = -1; sgn <= 1; sgn += 2) {
+                        Location tip = l.clone().add(side.clone().multiply(sgn * 1.25));
+                        plugin.fx.particle(tip, Particle.CLOUD, 2, 0.05, 0.05, 0.05, 0.0, null, true);
+                        plugin.fx.particle(tip, Particle.END_ROD, 1, 0.02, 0.02, 0.02, 0.0, null, false);
+                        plugin.fx.particle(tail.clone().add(side.clone().multiply(sgn * 0.5)), Particle.FLAME, 3, 0.1, 0.1, 0.1, 0.02, null, true);
+                        plugin.fx.particle(tail.clone().add(side.clone().multiply(sgn * 0.5)), Particle.CAMPFIRE_COSY_SMOKE, 1, 0.05, 0.05, 0.05, 0.01, null, false);
+                    }
+                    boolean blink = t % 10 < 5;
+                    plugin.fx.particle(l.clone().add(side.clone().multiply(1.3)), Particle.DUST, 2, 0, 0, 0, 0, new Particle.DustOptions(blink ? Color.RED : Color.fromRGB(120, 0, 0), 2.4f), true);
+                    plugin.fx.particle(l.clone().subtract(side.clone().multiply(1.3)), Particle.DUST, 2, 0, 0, 0, 0, new Particle.DustOptions(blink ? Color.LIME : Color.fromRGB(0, 100, 0), 2.4f), true);
+                    if (lead && t % 12 == 0) for (Player p : plugin.game.viewers()) p.playSound(l, Sound.ITEM_ELYTRA_FLYING, 3.5f, 0.45f);
+                    if (lead) {
+                        // suelta cada bomba cuando pasa sobre su punto (un poco antes: la bomba sigue avanzando al caer)
+                        while (dropped < targets.size()) {
+                            Location tg = targets.get(dropped);
+                            double ahead = tg.toVector().subtract(l.toVector()).setY(0).dot(fw);
+                            if (ahead > 7) break;
+                            dropBomb(w, l.clone().add(0, -1.5, 0), tg, dropped);
+                            dropped++;
+                        }
+                    }
+                    if (t >= dur) {
+                        task.cancel();
+                        if (plane.isValid()) plane.remove();
+                        props.remove(plane);
+                        if (lead) {
+                            // onda final que recorre el carril de la base al portal
+                            for (int k = 0; k < 6; k++) {
+                                Location c = lane(w, 0.9 - k * 0.16).add(0, 0.3, 0);
+                                Bukkit.getScheduler().runTaskLater(plugin, () -> plugin.fx.ring(c, 9, Color.fromRGB(255, 205, 90), 12), k * 3L);
+                            }
+                            sound(Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 0.8f, 0.6f);
+                        }
+                    }
                 }
-                // estela de los motores
-                Vector side = step.clone().normalize().crossProduct(new Vector(0, 1, 0)).normalize().multiply(ps * 0.72);
-                Location tail = l.clone().subtract(step.clone().normalize().multiply(ps * 0.4));
-                plugin.fx.particle(tail.clone().add(side), Particle.CAMPFIRE_COSY_SMOKE, 1, 0.05, 0.05, 0.05, 0.01, null, false);
-                plugin.fx.particle(tail.clone().subtract(side), Particle.CAMPFIRE_COSY_SMOKE, 1, 0.05, 0.05, 0.05, 0.01, null, false);
-                // llamas de los motores y luces de navegación (roja a babor, verde a estribor) para que se vea de lejos
-                plugin.fx.particle(tail.clone().add(side), Particle.FLAME, 3, 0.1, 0.1, 0.1, 0.02, null, true);
-                plugin.fx.particle(tail.clone().subtract(side), Particle.FLAME, 3, 0.1, 0.1, 0.1, 0.02, null, true);
-                Location wingL = l.clone().add(side.clone().multiply(2.6)), wingR = l.clone().subtract(side.clone().multiply(2.6));
-                boolean blink = t % 10 < 5;
-                plugin.fx.particle(wingL, Particle.DUST, 2, 0, 0, 0, 0, new Particle.DustOptions(blink ? Color.RED : Color.fromRGB(120, 0, 0), 2.4f), true);
-                plugin.fx.particle(wingR, Particle.DUST, 2, 0, 0, 0, 0, new Particle.DustOptions(blink ? Color.LIME : Color.fromRGB(0, 100, 0), 2.4f), true);
-                if (t % 14 == 0) for (Player p : plugin.game.viewers()) p.playSound(l, Sound.ITEM_ELYTRA_FLYING, 3f, 0.45f);
-                if (f >= fa && f <= fb && dropped < bombs && t % Math.max(2, (int) ((fb - fa) * dur / bombs)) == 0) {
-                    dropped++;
-                    dropBomb(w, l.clone().add(0, -1.5, 0), step.clone());
-                }
-                if (t >= dur || !plugin.game.running()) {
-                    task.cancel();
-                    if (plane.isValid()) plane.remove();
-                    props.remove(plane);
-                }
-            }
-        }, 0L, 1L);
+            }, 0L, 1L);
+        }
     }
 
-    private void dropBomb(World w, Location start, Vector vel0) {
-        ItemDisplay b = prop(start, model("basedefense:bomba", Material.TNT), 1.6f);
+    /** Bomba que cae hacia su punto marcado: estela, silbido y explosión con efectos encadenados. */
+    private void dropBomb(World w, Location start, Location target, int n) {
+        ItemDisplay b = prop(start, model("basedefense:bomba", Material.TNT), 1.8f);
         w.playSound(start, Sound.ENTITY_ARROW_SHOOT, 3f, 0.5f);
         double ground = plugin.arena.groundY + 1;
+        int fall = 24;
         Bukkit.getScheduler().runTaskTimer(plugin, new java.util.function.Consumer<BukkitTask>() {
             final Location pos = start.clone();
-            final Vector v = vel0.clone().multiply(0.6);
             int t;
 
             @Override
             public void accept(BukkitTask task) {
                 t++;
-                v.add(new Vector(0, -0.08, 0));
-                pos.add(v);
+                double k = Math.min(1, t / (double) fall);
+                // avanza hacia el punto en horizontal y acelera al caer
+                Location prev = pos.clone();
+                pos.setX(start.getX() + (target.getX() - start.getX()) * k);
+                pos.setZ(start.getZ() + (target.getZ() - start.getZ()) * k);
+                pos.setY(start.getY() + (ground - start.getY()) * k * k);
+                Vector v = pos.toVector().subtract(prev.toVector());
                 if (b.isValid()) {
                     b.teleport(pos);
-                    aim(b, v, 1.6f, 0);
+                    aim(b, v, 1.8f, t * 0.35f);
                 }
-                if (t % 3 == 0) plugin.fx.particle(pos, Particle.SMOKE, 1, 0.03, 0.03, 0.03, 0.0, null, false);
-                if (t == 4) w.playSound(pos, Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 2f, 0.4f); // silbido
-                if (pos.getY() <= ground || t > 80 || !plugin.game.running()) {
+                // estela vertical: humo blanco y chispas
+                plugin.fx.particle(pos, Particle.CLOUD, 2, 0.05, 0.2, 0.05, 0.0, null, true);
+                plugin.fx.particle(pos, Particle.FIREWORK, 1, 0.05, 0.05, 0.05, 0.02, null, false);
+                if (t == 3) w.playSound(pos, Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 2.5f, 0.4f); // silbido
+                if (t >= fall || !plugin.game.running()) {
                     task.cancel();
                     if (b.isValid()) b.remove();
                     props.remove(b);
                     if (!plugin.game.running()) return;
-                    Location hit = pos.clone();
+                    Location hit = target.clone();
                     hit.setY(ground);
-                    double r = cfg("bombardeo.radio", 4);
+                    double r = cfg("bombardeo.radio", 5);
                     plugin.fx.blast(hit, r, Color.fromRGB(255, 140, 40), false);
-                    hurt(hit, r, cfg("bombardeo.danio", 45));
+                    // onda dorada a ras de suelo y columna de fuego
+                    plugin.fx.ring(hit.clone().add(0, 0.2, 0), r * 2.2, Color.fromRGB(255, 205, 90), 10);
+                    for (int h = 0; h < 6; h++) plugin.fx.particle(hit.clone().add(0, 0.6 + h * 0.9, 0), Particle.FLAME, 10, 0.5 - h * 0.05, 0.3, 0.5 - h * 0.05, 0.03, null, true);
+                    plugin.fx.particle(hit.clone().add(0, 1, 0), Particle.LAVA, 14, 0.8, 0.4, 0.8, 0, null, true);
+                    plugin.fx.particle(hit.clone().add(0, 4, 0), Particle.CAMPFIRE_SIGNAL_SMOKE, 8, 0.6, 1.5, 0.6, 0.03, null, true);
+                    hurt(hit, r, cfg("bombardeo.danio", 90));
                     plugin.game.shake();
+                    // explosiones secundarias alrededor
+                    for (int i = 0; i < 2; i++) {
+                        double ang = plugin.fx.rnd().nextDouble() * Math.PI * 2, d = r * (0.5 + plugin.fx.rnd().nextDouble() * 0.5);
+                        Location s2 = hit.clone().add(Math.cos(ang) * d, 0.3, Math.sin(ang) * d);
+                        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                            if (plugin.game.running()) plugin.fx.explosion(s2, 2.2, false);
+                        }, 4L + i * 4L);
+                    }
+                    // brasas que quedan ardiendo unos segundos
+                    Bukkit.getScheduler().runTaskTimer(plugin, new java.util.function.Consumer<BukkitTask>() {
+                        int e;
+
+                        @Override
+                        public void accept(BukkitTask et) {
+                            if (e++ > 12 || !plugin.game.running()) {
+                                et.cancel();
+                                return;
+                            }
+                            plugin.fx.particle(hit.clone().add(0, 0.3, 0), Particle.FLAME, 5, r * 0.35, 0.1, r * 0.35, 0.01, null, false);
+                            plugin.fx.particle(hit.clone().add(0, 0.6, 0), Particle.LARGE_SMOKE, 3, r * 0.3, 0.3, r * 0.3, 0.02, null, false);
+                        }
+                    }, 5L, 5L);
                 }
             }
         }, 0L, 1L);
