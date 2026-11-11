@@ -29,6 +29,7 @@ import { useApp } from "../App";
 import { PageHeader } from "../components/ui";
 import { toast } from "../components/Toast";
 import { ParkourPanel } from "./ParkourPanel";
+import { LastHousePanel } from "./LastHousePanel";
 
 interface Game {
   running: boolean;
@@ -340,14 +341,15 @@ export function MinigamesPage() {
   const [draft, setDraft] = useState<Settings>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [showGuide, setShowGuide] = useState(false);
-  const [tab, setTab] = useState<"bd" | "parkour">(() => {
+  const [tab, setTab] = useState<"bd" | "parkour" | "lasthouse">(() => {
     try {
-      return localStorage.getItem("minijuego") === "parkour" ? "parkour" : "bd";
+      const t = localStorage.getItem("minijuego");
+      return t === "parkour" || t === "lasthouse" ? t : "bd";
     } catch {
       return "bd";
     }
   });
-  const pickTab = (t: "bd" | "parkour") => {
+  const pickTab = (t: "bd" | "parkour" | "lasthouse") => {
     setTab(t);
     try {
       localStorage.setItem("minijuego", t);
@@ -536,6 +538,7 @@ export function MinigamesPage() {
           [
             ["bd", "Base Defense", <Shield key="i" size={15} />],
             ["parkour", "Parkour LIVE", <Gamepad2 key="i" size={15} />],
+            ["lasthouse", "LAST HOUSE", <Crown key="i" size={15} />],
           ] as const
         ).map(([id, label, icon]) => (
           <button
@@ -546,13 +549,15 @@ export function MinigamesPage() {
             {icon} {label}
             {(id === "bd"
               ? g?.running
-              : (live as any)?.parkour?.game?.running) && (
+              : id === "parkour" && (live as any)?.parkour?.game?.running) && (
               <span className="ml-1 h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
             )}
           </button>
         ))}
       </div>
-      {tab === "parkour" ? (
+      {tab === "lasthouse" ? (
+        <LastHousePanel />
+      ) : tab === "parkour" ? (
         <ParkourPanel />
       ) : (
         <div className="space-y-5 px-8">

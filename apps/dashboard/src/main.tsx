@@ -6,11 +6,18 @@ import './index.css'
 import { initLive } from './lib/live'
 
 const isOverlay = location.pathname.startsWith('/overlay/')
-document.body.classList.add(isOverlay ? 'overlay' : 'dashboard')
+/** Juegos propios que corren en el navegador (fuera de Minecraft): /juego/<nombre> */
+const isGame = location.pathname.startsWith('/juego/')
+document.body.classList.add(isGame ? 'game' : isOverlay ? 'overlay' : 'dashboard')
 
 async function boot() {
   const root = createRoot(document.getElementById('root')!)
-  if (isOverlay) {
+  if (isGame) {
+    // recibe los eventos del directo igual que un overlay
+    initLive('overlay')
+    const { LastHouse } = await import('./game/lasthouse/LastHouse')
+    root.render(<LastHouse />)
+  } else if (isOverlay) {
     initLive('overlay')
     const { OverlayRouter } = await import('./overlays/OverlayRouter')
     root.render(<OverlayRouter name={location.pathname.replace('/overlay/', '').replace(/\/$/, '')} />)
