@@ -31,6 +31,12 @@ public final class GameMob {
     /** Asediando la base: quieto en la puerta golpeándola hasta que lo matan. */
     public boolean sieging;
     public long nextHit;
+    /** Variante de zombi: "" normal, "CORREDOR" o "BRUTO". */
+    public String variant = "";
+    public double damageMult = 1;
+    /** Cómo fue el último golpe (para el desmembramiento). */
+    public boolean lastHead, lastBlast;
+    public org.bukkit.util.Vector lastPush;
 
     GameMob(Mob entity, String donor, Settings.MobDef def, Settings.BossDef boss, double maxHp, double offset) {
         this.entity = entity;
@@ -47,7 +53,7 @@ public final class GameMob {
     }
 
     public int baseDamage() {
-        return boss != null ? boss.damage() : (int) Math.round(def.damage() * (elite ? 1.6 : 1));
+        return boss != null ? boss.damage() : (int) Math.round(def.damage() * (elite ? 1.6 : 1) * damageMult);
     }
 
     public String typeName() {

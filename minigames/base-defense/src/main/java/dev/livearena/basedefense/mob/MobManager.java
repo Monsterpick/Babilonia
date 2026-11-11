@@ -206,11 +206,40 @@ public final class MobManager implements Listener {
         boolean elite = def.entity() != EntityType.CREEPER && plugin.fx.rnd().nextDouble() < eliteChance;
         double hp = def.health() * hpMult() * (elite ? plugin.settings.eliteHp : 1);
         double speed = def.speed() * speedMult() * (elite ? plugin.settings.eliteSpeed : 1);
-        Mob m = spawnEntity(w, at, def.entity(), hp, speed, elite ? 1.15 : 1.0, plugin.fx.rnd().nextInt(6) != 0);
+        double scale = elite ? 1.15 : 1.0;
+        // zombis variados: corredores rápidos y frágiles, brutos enormes y lentos, y el resto de tamaños distintos
+        String variant = "";
+        double dmgMult = 1;
+        if (isZombie(def.entity())) {
+            double r = plugin.fx.rnd().nextDouble();
+            if (!elite && plugin.waves.phase() >= plugin.settings.varBrutePhase && r < plugin.settings.varBrute) {
+                variant = "BRUTO";
+                hp *= plugin.settings.varBruteHp;
+                speed *= 0.8;
+                scale = plugin.settings.varBruteScale;
+                dmgMult = 2.2;
+            } else if (r < plugin.settings.varBrute + plugin.settings.varRunner) {
+                variant = "CORREDOR";
+                hp *= 0.7;
+                speed *= plugin.settings.varRunnerSpeed;
+                scale *= 0.94;
+            } else scale *= 0.9 + plugin.fx.rnd().nextDouble() * 0.2;
+        }
+        Mob m = spawnEntity(w, at, def.entity(), hp, speed, scale, plugin.fx.rnd().nextInt(6) != 0);
         if (m == null) return null;
         double off = (plugin.fx.rnd().nextDouble() * 2 - 1) * Math.max(1, plugin.arena.laneHalfWidth - 1.5);
         GameMob gm = new GameMob(m, donor, def, null, hp, off);
         gm.elite = elite;
+        gm.variant = variant;
+        gm.damageMult = dmgMult;
+        if (variant.equals("BRUTO")) {
+            set(m, Attribute.KNOCKBACK_RESISTANCE, 1.0);
+            set(m, Attribute.ATTACK_DAMAGE, 9);
+            m.setSilent(false);
+        } else if (variant.equals("CORREDOR") && m instanceof Zombie z) {
+            // los corredores gruñen más agudo y van con los brazos por delante
+            z.setSilent(false);
+        }
         if (elite) {
             EntityEquipment eq = m.getEquipment();
             if (eq != null) {
@@ -411,7 +440,8 @@ public final class MobManager implements Listener {
     }
 
     private net.kyori.adventure.text.Component labelText(GameMob gm) {
-        return Txt.fmt(plugin.settings.label, "usuario", gm.donor, "tipo", gm.typeName()).append(net.kyori.adventure.text.Component.newline()).append(healthBar(gm));
+        String tipo = gm.variant.isEmpty() ? gm.typeName() : gm.typeName() + (gm.variant.equals("BRUTO") ? " bruto" : " corredor");
+        return Txt.fmt(plugin.settings.label, "usuario", gm.donor, "tipo", tipo).append(net.kyori.adventure.text.Component.newline()).append(healthBar(gm));
     }
 
     /** Barra de vida: con el pack, barra dibujada (verde → amarillo → rojo; morada en jefes); sin él, 10 tramos de texto. */
@@ -420,8 +450,10 @@ public final class MobManager implements Listener {
         if (plugin.hud.fonts().ok() && plugin.pack.loaded(plugin.game.streamer())) {
             var hf = plugin.hud.fonts();
             String g = gm.isBoss() ? hf.step("world_boss", f) : hf.step("world", f > 0.6 ? "g" : f > 0.3 ? "y" : "r", f);
-            var bar = net.kyori.adventure.text.Component.text(g).font(net.kyori.adventure.key.Key.key("basedefense:w_bar"))
+            net.kyori.adventure.text.Component bar = net.kyori.adventure.text.Component.text(g).font(net.kyori.adventure.key.Key.key("basedefense:w_bar"))
                 .color(net.kyori.adventure.text.format.NamedTextColor.WHITE).shadowColor(net.kyori.adventure.text.format.ShadowColor.none());
+            if (gm.variant.equals("BRUTO")) bar = net.kyori.adventure.text.Component.text("BRUTO ", net.kyori.adventure.text.format.TextColor.color(0xFF9A2E)).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD).append(bar);
+            else if (gm.variant.equals("CORREDOR")) bar = net.kyori.adventure.text.Component.text("» ", net.kyori.adventure.text.format.TextColor.color(0x7CF0FF)).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD).append(bar);
             return gm.elite ? net.kyori.adventure.text.Component.text("ÉLITE ", net.kyori.adventure.text.format.TextColor.color(0xFF4030)).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD).append(bar) : bar;
         }
         int n = (int) Math.ceil(f * 10);
@@ -570,8 +602,58 @@ public final class MobManager implements Listener {
 
     /** Daño del jugador (armas). Sin invulnerabilidad entre golpes. */
     /** Devuelve true si el golpe lo mató. */
+    /** Prueba: tres zombis (normal, corredor y bruto) delante del jugador que revientan de tres formas distintas. */
+    public void demoGore(Player p) {
+        Settings.MobDef def = plugin.settings.mobs.get("zombie");
+        if (def == null || p == null) return;
+        Location eye = p.getLocation();
+        Vector f = eye.getDirection().setY(0).normalize(), side = new Vector(-f.getZ(), 0, f.getX());
+        String[] vs = {"", "CORREDOR", "BRUTO"};
+        List<GameMob> made = new ArrayList<>();
+        for (int i = 0; i < 3; i++) {
+            Location at = eye.clone().add(f.clone().multiply(6)).add(side.clone().multiply((i - 1) * 2.6));
+            at.setY(eye.getY());
+            GameMob gm = spawnAt(p.getWorld(), at, def, "Prueba", false);
+            if (gm == null) continue;
+            gm.variant = vs[i];
+            if (i == 2) set(gm.entity, Attribute.SCALE, plugin.settings.varBruteScale);
+            gm.entity.setAI(false);
+            gm.entity.setRotation(eye.getYaw() + 180, 0);
+            updateBar(gm);
+            made.add(gm);
+        }
+        for (int i = 0; i < made.size(); i++) {
+            GameMob gm = made.get(i);
+            int k = i;
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (gm.dead) return;
+                if (k == 0) damage(gm, gm.hp + 1, p, true, false, p.getLocation());
+                else if (k == 1) damage(gm, gm.hp + 1, p, false, false, p.getLocation());
+                else {
+                    plugin.fx.blast(gm.entity.getLocation(), 2.5, Color.fromRGB(255, 140, 40), false);
+                    damage(gm, gm.hp + 1, p, false, true, p.getLocation());
+                }
+            }, 50L + k * 25L);
+        }
+    }
+
+    public static boolean isZombie(EntityType t) {
+        return t == EntityType.ZOMBIE || t == EntityType.HUSK || t == EntityType.ZOMBIE_VILLAGER || t == EntityType.DROWNED;
+    }
+
     public boolean damage(GameMob gm, double amount, Player by) {
+        return damage(gm, amount, by, false, false, null);
+    }
+
+    /** head = tiro a la cabeza; blast = explosión; from = de dónde vino (para lanzar las piezas hacia el otro lado). */
+    public boolean damage(GameMob gm, double amount, Player by, boolean head, boolean blast, Location from) {
         if (gm.dead || amount <= 0) return false;
+        gm.lastHead = head;
+        gm.lastBlast = blast;
+        if (from != null) {
+            Vector v = gm.entity.getLocation().toVector().subtract(from.toVector()).setY(0);
+            gm.lastPush = v.lengthSquared() > 1e-4 ? v.normalize().multiply(blast ? 0.45 : 0.2) : new Vector();
+        }
         gm.hp -= amount;
         Mob m = gm.entity;
         if (gm.hp <= 0) {
@@ -600,7 +682,18 @@ public final class MobManager implements Listener {
             plugin.loot.onKill(gm, l);
         }
         plugin.game.onKill(gm);
-        gm.entity.setHealth(0);
+        boolean gone = false;
+        if (!gm.isBoss()) {
+            Vector push = gm.lastPush != null ? gm.lastPush : new Vector();
+            EntityType t = gm.entity.getType();
+            double sc = gm.entity.getAttribute(Attribute.SCALE) != null ? gm.entity.getAttribute(Attribute.SCALE).getValue() : 1;
+            // los brutos revientan siempre; el resto, con explosivos
+            boolean full = gm.lastBlast || gm.variant.equals("BRUTO");
+            if (t == EntityType.ZOMBIE) gone = plugin.gore.zombie(l, sc, push, full, gm.lastHead);
+            else if (t != EntityType.CREEPER) plugin.gore.chunks(l, gm.entity.getHeight(), push, gm.entity instanceof AbstractSkeleton, full);
+        }
+        if (gone) gm.entity.remove();
+        else gm.entity.setHealth(0);
     }
 
     private void reachBase(GameMob gm) {
@@ -673,6 +766,7 @@ public final class MobManager implements Listener {
             discard(gm, false);
         }
         labels = 0;
+        plugin.gore.clear();
     }
 
     /** Al arrancar: quita restos de una sesión anterior (marcados con PDC). */

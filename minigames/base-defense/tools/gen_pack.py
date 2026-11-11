@@ -524,6 +524,8 @@ def main():
     gun_sounds()
     import gen_hud
     gen_hud.build()
+    import gen_zombie
+    gen_zombie.build()
 
 
 if __name__ == '__main__':

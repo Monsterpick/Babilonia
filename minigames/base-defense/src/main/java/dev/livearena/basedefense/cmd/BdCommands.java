@@ -479,7 +479,7 @@ public final class BdCommands {
     // ───────────────────────────── test ─────────────────────────────
 
     private LiteralArgumentBuilder<CommandSourceStack> test() {
-        List<String> events = List.of("horda", "jefe", "suministro", "municion", "curar", "ganar", "perder", "likes", "caer", "victoria", "lleno", "ronda", "meta", "aviso", "misil", "bombardeo", "rayo", "armas", "amenaza");
+        List<String> events = List.of("horda", "jefe", "suministro", "municion", "curar", "ganar", "perder", "likes", "caer", "victoria", "lleno", "ronda", "meta", "aviso", "misil", "bombardeo", "rayo", "armas", "amenaza", "despiece");
         return Commands.literal("test")
             .executes(ctx -> err(ctx, "uso: /bd test <" + String.join("|", events) + "> [tipo/cantidad]"))
             .then(word("evento").suggests(suggest(() -> {
@@ -525,6 +525,7 @@ public final class BdCommands {
             case "ronda" -> plugin.game.forceWin();
             case "armas" -> plugin.weapons.unlockPhase(99);
             case "amenaza" -> plugin.threat.add(plugin.settings.threatPerLevel);
+            case "despiece" -> plugin.mobs.demoGore(plugin.game.streamer());
             case "misil", "bombardeo", "rayo" -> Bukkit.dispatchCommand(console, "ttaliado " + e + " " + user);
             case "meta" -> {
                 int left = plugin.loot.goalTarget() - plugin.loot.goalKills();

@@ -442,7 +442,7 @@ public final class Weapons implements Listener {
             double dmg = w.damage() * (head ? 1.6 : 1.0) * mult(p) * (gm.isBoss() ? gm.boss.armor() : 1);
             plugin.fx.particle(end, Particle.BLOCK, head ? 8 : 4, 0.08, 0.08, 0.08, 0, Material.REDSTONE_BLOCK.createBlockData(), false);
             if (head) plugin.fx.particle(end, Particle.CRIT, 6, 0.1, 0.25, false);
-            boolean killed = plugin.mobs.damage(gm, dmg, p);
+            boolean killed = plugin.mobs.damage(gm, dmg, p, head, false, p.getLocation());
             plugin.hud.hit(p, head, killed);
             long now = plugin.tick();
             if (now - lastHitSound >= 2) {
@@ -605,7 +605,7 @@ public final class Weapons implements Listener {
                 Vector push = gm.entity.getLocation().toVector().subtract(l.toVector()).setY(0);
                 if (push.lengthSquared() > 1e-4) gm.entity.setVelocity(push.normalize().multiply(0.35).setY(0.32));
             }
-            if (plugin.mobs.damage(gm, dmg, pr.owner) && pr.owner != null) plugin.hud.hit(pr.owner, false, true);
+            if (plugin.mobs.damage(gm, dmg, pr.owner, false, true, l) && pr.owner != null) plugin.hud.hit(pr.owner, false, true);
         }
         for (Bosses.Ball b : new ArrayList<>(plugin.bosses.balls()))
             if (!b.returned() && b.entity().isValid() && b.entity().getLocation().distanceSquared(l) < (r + 1.5) * (r + 1.5) && pr.owner != null) plugin.bosses.hitBall(b, pr.owner);

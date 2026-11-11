@@ -86,6 +86,17 @@ oleadas:
   velocidadPorFase: 0.06
 
 # ── Dificultad ───────────────────────────────────────────────────────
+# Zombis (zombi, momia, aldeano zombi): variantes y desmembramiento.
+zombis:
+  # Corredores: más rápidos y algo más frágiles.
+  corredor: { probabilidad: 0.24, velocidad: 1.7 }
+  # Brutos: enormes, lentos, con mucha vida y golpe fuerte (aparecen desde la fase indicada).
+  bruto: { probabilidad: 0.12, vida: 2.8, tamano: 1.55, desdeFase: 2 }
+  # Al matarlos salen miembros volando (con explosivos, el cuerpo entero). Necesita el pack de texturas.
+  desmembrar: true
+  maxPiezas: 70
+  segundosPiezas: 4
+
 dificultad:
   version: 4
   # Asedio: los mobs que llegan a la base se quedan golpeándola (cada X s) hasta que los matas.

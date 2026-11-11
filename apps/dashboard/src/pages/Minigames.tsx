@@ -496,6 +496,9 @@ export function MinigamesPage() {
                   <button className="btn" disabled={!g?.running || !!busy} onClick={() => void cmd('bd test rayo', 'Rayo orbital aliado')}>
                     <Zap size={14} /> Rayo orbital
                   </button>
+                  <button className="btn" disabled={!g?.running || !!busy} onClick={() => void cmd('bd test despiece', 'Zombis normal, corredor y bruto que revientan')}>
+                    <Zap size={14} /> Despiece zombis
+                  </button>
                   <button className="btn" disabled={!g?.running || !!busy} onClick={() => void cmd('bd test meta', 'Meta de bajas cumplida: cofre dorado')}>
                     <Trophy size={14} /> Cofre dorado
                   </button>

@@ -145,3 +145,12 @@ Decisiones:
   humo), agujeros de bala con chispas y casquillos.
 - **Jefes**: estelas de calaveras/bolas de fuego, impactos grandes con onda; Warden con anillos sónicos, onda en la
   base y oscuridad breve; proyectiles más rápidos.
+
+## v6 · zombis variados y desmembramiento
+- `tools/gen_zombie.py`: piel propia del zombi (`assets/minecraft/textures/entity/zombie/zombie.png`, mapa UV estándar
+  64×64) y modelos `basedefense:parte_cabeza|brazo|pierna|torso`, `trozo_carne`, `trozo_hueso` (textura `zombi_partes`).
+- Variantes (solo familia zombi): CORREDOR (rápido, frágil, «»» en la barra) y BRUTO (enorme, lento, mucha vida, golpe ×2.2,
+  desde la fase 2). Config en `zombis:`.
+- `fx/Gore.java`: piezas ItemDisplay con física propia (gravedad, rebote, sangre, se encogen al final). Tiro a la
+  cabeza = sale la cabeza; explosión o bruto = cuerpo entero en piezas (la entidad se quita). Sin pack: solo sangre.
+- `MobManager.damage(gm, dmg, by, head, blast, from)` guarda cómo fue el golpe. Prueba: `/bd test despiece`.

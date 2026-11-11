@@ -103,7 +103,7 @@ public final class Allies {
             Location l = gm.entity.getLocation();
             double dx = l.getX() - c.getX(), dz = l.getZ() - c.getZ();
             if (dx * dx + dz * dz > radius * radius || Math.abs(l.getY() - c.getY()) > radius + 6) continue;
-            plugin.mobs.damage(gm, dmg * (gm.isBoss() ? 0.5 : 1), by);
+            plugin.mobs.damage(gm, dmg * (gm.isBoss() ? 0.5 : 1), by, false, true, c);
             n++;
         }
         return n;

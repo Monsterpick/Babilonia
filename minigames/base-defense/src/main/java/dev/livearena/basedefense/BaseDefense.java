@@ -46,6 +46,7 @@ public final class BaseDefense extends JavaPlugin {
     public Settings settings;
     public ArenaData arena;
     public Fx fx;
+    public dev.livearena.basedefense.fx.Gore gore;
     public Game game;
     public Hud hud;
     public MobManager mobs;
@@ -106,6 +107,7 @@ public final class BaseDefense extends JavaPlugin {
         arena = ArenaData.load(new File(getDataFolder(), "arena.yml"));
         placer = new BlockPlacer(this, arenaKey);
         fx = new Fx(this);
+        gore = new dev.livearena.basedefense.fx.Gore(this);
         hud = new Hud(this);
         mobs = new MobManager(this);
         bosses = new Bosses(this);

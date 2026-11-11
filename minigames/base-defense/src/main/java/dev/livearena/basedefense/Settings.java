@@ -85,6 +85,11 @@ public final class Settings {
     public final double siegeEvery, eliteBase, elitePerPhase, eliteHp, eliteSpeed, perRound;
     public final double threatPerMob, threatPerBoss, threatPerLevel, threatDecay, threatHp, threatSpeed, threatWave, threatElite;
     public final int threatLevels;
+    // zombis: variantes y desmembramiento
+    public final double varRunner, varRunnerSpeed, varBrute, varBruteHp, varBruteScale;
+    public final int varBrutePhase;
+    public final boolean gore;
+    public final int goreMax, goreSeconds;
     // pack
     public final boolean packEnabled, packRequired;
     public final int packPort;
@@ -164,6 +169,15 @@ public final class Settings {
         eliteHp = Math.max(1, c.getDouble("dificultad.eliteVida", 2.6));
         eliteSpeed = Math.max(1, c.getDouble("dificultad.eliteVelocidad", 1.2));
         perRound = Math.max(0, c.getDouble("dificultad.porRonda", 0.35));
+        varRunner = clampD(c.getDouble("zombis.corredor.probabilidad", 0.24), 0, 1);
+        varRunnerSpeed = Math.max(1, c.getDouble("zombis.corredor.velocidad", 1.7));
+        varBrute = clampD(c.getDouble("zombis.bruto.probabilidad", 0.12), 0, 1);
+        varBruteHp = Math.max(1, c.getDouble("zombis.bruto.vida", 2.8));
+        varBruteScale = Math.max(1, Math.min(3, c.getDouble("zombis.bruto.tamano", 1.55)));
+        varBrutePhase = clamp(c.getInt("zombis.bruto.desdeFase", 2), 1, 9);
+        gore = c.getBoolean("zombis.desmembrar", true);
+        goreMax = clamp(c.getInt("zombis.maxPiezas", 70), 0, 400);
+        goreSeconds = clamp(c.getInt("zombis.segundosPiezas", 4), 1, 30);
         threatPerMob = Math.max(0, c.getDouble("dificultad.amenaza.porMob", 1));
         threatPerBoss = Math.max(0, c.getDouble("dificultad.amenaza.porJefe", 30));
         threatPerLevel = Math.max(1, c.getDouble("dificultad.amenaza.porNivel", 35));
@@ -263,6 +277,10 @@ public final class Settings {
     }
 
     private static int clamp(int v, int lo, int hi) {
+        return Math.max(lo, Math.min(hi, v));
+    }
+
+    private static double clampD(double v, double lo, double hi) {
         return Math.max(lo, Math.min(hi, v));
     }
 }
