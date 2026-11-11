@@ -189,6 +189,14 @@ public final class Fx {
                 particle(l, Particle.DUST, 3, 0.25, 0.25, 0.25, 0, new Particle.DustOptions(Color.fromRGB(20, 20, 24), 2.2f), false);
                 particle(l, Particle.SOUL, 1, 0.2, 0.2, 0.2, 0.02, null, false);
             }
+            case "dragon" -> {
+                // descarga del dragón: núcleo blanco con halo violeta y cola de chispas
+                particle(l, Particle.DUST, 3, 0.12, 0.12, 0.12, 0, new Particle.DustOptions(Color.WHITE, 3.4f), true);
+                particle(l, Particle.DUST_COLOR_TRANSITION, 8, 0.45, 0.45, 0.45, 0, new Particle.DustTransition(Color.fromRGB(240, 200, 255), Color.fromRGB(150, 40, 230), 3.6f), true);
+                particle(l, Particle.DRAGON_BREATH, 6, 0.4, 0.4, 0.4, 0.02, 1f, false);
+                particle(l, Particle.END_ROD, 2, 0.3, 0.3, 0.3, 0.04, null, false);
+                particle(l, Particle.REVERSE_PORTAL, 4, 0.3, 0.3, 0.3, 0.05, null, false);
+            }
             default -> {
                 particle(l, Particle.FLAME, 8, 0.35, 0.35, 0.35, 0.03, null, false);
                 particle(l, Particle.DRAGON_BREATH, 4, 0.4, 0.4, 0.4, 0.01, 1f, false);

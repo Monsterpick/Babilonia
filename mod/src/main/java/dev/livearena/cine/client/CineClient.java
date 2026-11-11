@@ -223,7 +223,7 @@ public final class CineClient {
             if (ticks - f.start() > f.total()) it.remove();
         }
         if (mc.player == null) resetAll();
-        if (ticks % 10 == 0) minigamePost(mc);
+        if (ticks % 5 == 0) minigamePost(mc);
         CineModels.tick();
     }
 
@@ -364,6 +364,20 @@ public final class CineClient {
     /* ---------------------- shader de cámara de Base Defense ---------------------- */
 
     private static final Identifier BD_POST = Identifier.fromNamespaceAndPath("basedefense", "apocalipsis");
+    /** Mientras hay un Dragón del End en la partida: todo se tiñe de violeta. */
+    private static final Identifier BD_VOID = Identifier.fromNamespaceAndPath("basedefense", "vacio");
+    private static final Identifier BD_VOID_FILE = Identifier.fromNamespaceAndPath("basedefense", "post_effect/vacio.json");
+    private static long dragonSince = -1000;
+    private static boolean dragonHere;
+
+    /** «Tirón» de cámara cuando llega el dragón: el campo de visión se abre de golpe y vuelve (1,4 s). */
+    public static float dragonPunch(float partial) {
+        float t = (ticks + partial - dragonSince) / 28f;
+        if (t < 0 || t > 1) return 1f;
+        float k = t < 0.18f ? t / 0.18f : (float) Math.pow(1 - (t - 0.18f) / 0.82f, 2.2);
+        return 1f + 0.42f * k;
+    }
+
     private static final Identifier BD_POST_FILE = Identifier.fromNamespaceAndPath("basedefense", "post_effect/apocalipsis.json");
 
     /**
@@ -386,13 +400,24 @@ public final class CineClient {
         boolean packOn = !reloading && mc.player != null && mc.getResourceManager().getResource(BD_POST_FILE).isPresent();
         if (!packOn) packSeenAt = -1;
         else if (packSeenAt < 0) packSeenAt = ticks;
-        if (packOn && ticks - packSeenAt >= 40 && cur == null) {
+        // ¿hay un dragón cerca? (lo trae el jefe de Base Defense): se cambia al shader violeta mientras esté
+        boolean dragon = false;
+        if (packOn && mc.level != null && mc.getResourceManager().getResource(BD_VOID_FILE).isPresent())
+            for (var en : mc.level.entitiesForRendering())
+                if (en instanceof net.minecraft.world.entity.boss.enderdragon.EnderDragon && en.isAlive() && en.distanceToSqr(mc.player) < 200 * 200) {
+                    dragon = true;
+                    break;
+                }
+        if (dragon && !dragonHere) dragonSince = ticks;
+        dragonHere = dragon;
+        Identifier want = dragon ? BD_VOID : BD_POST;
+        if (packOn && ticks - packSeenAt >= 40 && (cur == null || ((BD_POST.equals(cur) || BD_VOID.equals(cur)) && !want.equals(cur)))) {
             try {
-                ((dev.livearena.cine.mixin.GameRendererInvoker) gr).livearena$setPostEffect(BD_POST);
+                ((dev.livearena.cine.mixin.GameRendererInvoker) gr).livearena$setPostEffect(want);
             } catch (RuntimeException ex) {
                 org.slf4j.LoggerFactory.getLogger("livearena").warn("No se pudo poner el shader de Base Defense: {}", ex.toString());
             }
-        } else if (!packOn && !reloading && BD_POST.equals(cur)) gr.clearPostEffect();
+        } else if (!packOn && !reloading && (BD_POST.equals(cur) || BD_VOID.equals(cur))) gr.clearPostEffect();
     }
 
     /* ---------------------- tótem pequeño (sustituye a la animación gigante) ---------------------- */

@@ -154,3 +154,10 @@ Decisiones:
 - `fx/Gore.java`: piezas ItemDisplay con física propia (gravedad, rebote, sangre, se encogen al final). Tiro a la
   cabeza = sale la cabeza; explosión o bruto = cuerpo entero en piezas (la entidad se quita). Sin pack: solo sangre.
 - `MobManager.damage(gm, dmg, by, head, blast, from)` guarda cómo fue el golpe. Prueba: `/bd test despiece`.
+
+## v7 · dragón del End
+- `Bosses`: llegada con grieta de luz (3 BlockDisplay de cristal que se abren/cierran, doble hélice, anillos), ataque
+  con carga de 26 ticks (orbes que crecen junto a la boca, `dragonOrb`), anillo-portal al soltar (`dragonRing`), bola
+  `DragonFireball` (se cancela su nube con `EnderDragonFireballHitEvent`), estela `Fx.trail("dragon")` e impacto violeta.
+- Pack: `post_effect basedefense:vacio` (gradación violeta). El mod lo pone mientras haya un EnderDragon a <200 bloques
+  (`CineClient.minigamePost`) y da un «tirón» de FOV al aparecer (`dragonPunch`). Sin mod: solo los efectos del plugin.

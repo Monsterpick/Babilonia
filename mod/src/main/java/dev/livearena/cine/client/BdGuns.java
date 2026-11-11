@@ -122,7 +122,7 @@ public final class BdGuns {
         float pt = (float) e.getPartialTick();
         float a = adsPrev + (ads - adsPrev) * pt;
         double zoom = "lanzacohetes".equals(lastGun) || "minigun".equals(lastGun) ? 0.8 : "pistola".equals(lastGun) ? 0.78 : 0.68;
-        e.setFOV((float) (e.getFOV() * 0.86 * (1 - a * (1 - zoom))));
+        e.setFOV((float) (e.getFOV() * 0.86 * (1 - a * (1 - zoom)) * CineClient.dragonPunch(pt)));
     }
 
     private static float ease(float x) {

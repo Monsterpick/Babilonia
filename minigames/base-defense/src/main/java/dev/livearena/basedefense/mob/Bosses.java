@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.UUID;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
+import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Particle;
@@ -120,6 +121,7 @@ public final class Bosses implements Listener {
         };
         plugin.fx.portal(l.clone().add(0, 0.3, 0), pc, Color.fromRGB(20, 0, 30), Math.max(3, gm.entity.getWidth() * 1.6), 60);
         l.getWorld().strikeLightningEffect(l);
+        if (gm.entity.getType() == EntityType.ENDER_DRAGON) dragonArrival(l);
         plugin.fx.particle(l, Particle.SONIC_BOOM, 1, 0, 0, true);
         plugin.fx.particle(l.clone().add(0, 1, 0), Particle.SOUL_FIRE_FLAME, 60, 1.5, 1.5, 1.5, 0.05, null, true);
     }
@@ -313,13 +315,26 @@ public final class Bosses implements Listener {
                     }
                 }
                 case ENDER_DRAGON -> {
-                    if (distToBase(gm) <= gm.boss.attackDistance() + 12 && now >= cb.nextAttack) {
+                    int orbs = gm.furious ? 3 : 2;
+                    if (cb.chargeAt > 0) {
+                        // carga: los orbes crecen junto a la boca mientras la energía converge
+                        double k = 1 - (cb.chargeAt - now) / 26.0;
+                        if (now % 2 == 0) for (int i = 0; i < orbs; i++) dragonOrb(dragonMouth(gm, i, orbs), k);
+                        if (now >= cb.chargeAt) {
+                            cb.chargeAt = -1;
+                            Location mouth = dragonMouth(gm, -1, orbs);
+                            Vector dir = plugin.arena.baseCenter().clone().subtract(mouth.toVector()).normalize();
+                            dragonRing(mouth, dir);
+                            for (int i = 0; i < orbs; i++) shoot(gm, Kind.FUEGO, i);
+                            plugin.fx.sound(l, Sound.ENTITY_ENDER_DRAGON_SHOOT, 4f, 0.8f, true);
+                            plugin.fx.sound(l, Sound.ENTITY_WARDEN_SONIC_BOOM, 2f, 1.5f, true);
+                        }
+                    } else if (distToBase(gm) <= gm.boss.attackDistance() + 12 && now >= cb.nextAttack) {
                         cb.nextAttack = now + (long) every;
-                        shoot(gm, Kind.FUEGO, 0);
-                        shoot(gm, Kind.FUEGO, 1);
-                        if (gm.furious) shoot(gm, Kind.FUEGO, 2);
+                        cb.chargeAt = now + 26;
                         warn("ataqueDragon");
-                        plugin.fx.sound(l, Sound.ENTITY_ENDER_DRAGON_SHOOT, 4f, 0.8f, true);
+                        plugin.fx.sound(l, Sound.ENTITY_ENDER_DRAGON_GROWL, 4f, 1.25f, true);
+                        plugin.fx.sound(l, Sound.BLOCK_BEACON_POWER_SELECT, 3f, 0.6f, true);
                     }
                 }
                 case WARDEN -> warden(gm, cb, l, now, every);
@@ -387,6 +402,148 @@ public final class Bosses implements Listener {
         }
     }
 
+    // ───────────────────────────── DRAGÓN: efectos ─────────────────────────────
+
+    private static final Color VIOLET = Color.fromRGB(190, 70, 255), LILAC = Color.fromRGB(240, 200, 255), DEEP = Color.fromRGB(70, 10, 120);
+
+    /** Grieta de luz: columna violeta que se abre, late y se cierra, con la energía subiendo en espiral. */
+    private void dragonArrival(Location ground) {
+        World w = ground.getWorld();
+        Location base = ground.clone();
+        base.setY(plugin.arena.mobSpawn.getY());
+        plugin.fx.sound(base, Sound.BLOCK_END_PORTAL_SPAWN, 1.2f, 0.7f, true);
+        plugin.fx.sound(base, Sound.ENTITY_ENDER_DRAGON_GROWL, 5f, 0.6f, true);
+        List<org.bukkit.entity.BlockDisplay> beams = new ArrayList<>();
+        Object[][] layers = {{"minecraft:purple_stained_glass", 3.4f}, {"minecraft:magenta_stained_glass", 2.0f}, {"minecraft:white_stained_glass", 0.9f}};
+        for (Object[] ly : layers) {
+            float wd = (float) ly[1];
+            beams.add(w.spawn(base, org.bukkit.entity.BlockDisplay.class, d -> {
+                d.setPersistent(false);
+                d.setBlock(Bukkit.createBlockData((String) ly[0]));
+                d.setBrightness(new org.bukkit.entity.Display.Brightness(15, 15));
+                d.setViewRange(4f);
+                d.setTransformation(new org.bukkit.util.Transformation(new org.joml.Vector3f(0, 0, 0), new org.joml.Quaternionf(), new org.joml.Vector3f(0.01f, 46, 0.01f), new org.joml.Quaternionf()));
+                d.getPersistentDataContainer().set(plugin.mobKey, PersistentDataType.BYTE, (byte) 2);
+                d.customName(net.kyori.adventure.text.Component.text(String.valueOf(wd)));
+            }));
+        }
+        Bukkit.getScheduler().runTaskTimer(plugin, new java.util.function.Consumer<org.bukkit.scheduler.BukkitTask>() {
+            int t;
+
+            @Override
+            public void accept(org.bukkit.scheduler.BukkitTask task) {
+                t++;
+                boolean closing = t > 62;
+                if (t > 80) {
+                    for (var b : beams) if (b.isValid()) b.remove();
+                    task.cancel();
+                    return;
+                }
+                if (t == 1 || t % 6 == 0 || t == 63) {
+                    double pulse = closing ? 0.0 : 1 + 0.18 * Math.sin(t * 0.9);
+                    for (var b : beams) {
+                        if (!b.isValid()) continue;
+                        float wd = (float) (Float.parseFloat(net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(b.customName())) * pulse);
+                        wd = Math.max(0.01f, wd);
+                        b.setInterpolationDelay(0);
+                        b.setInterpolationDuration(closing ? 16 : 6);
+                        b.setTransformation(new org.bukkit.util.Transformation(new org.joml.Vector3f(-wd / 2, 0, -wd / 2), new org.joml.Quaternionf(), new org.joml.Vector3f(wd, 46, wd), new org.joml.Quaternionf()));
+                    }
+                }
+                if (closing) return;
+                // energía que sube en doble hélice y niebla que se abre por el suelo
+                for (int i = 0; i < 2; i++) {
+                    double a = t * 0.35 + i * Math.PI, h = (t * 0.9) % 30;
+                    Location p = base.clone().add(Math.cos(a) * 3, h, Math.sin(a) * 3);
+                    plugin.fx.particle(p, Particle.DUST_COLOR_TRANSITION, 3, 0.15, 0.15, 0.15, 0, new Particle.DustTransition(LILAC, VIOLET, 3.2f), true);
+                    plugin.fx.particle(p, Particle.END_ROD, 1, 0.1, 0.1, 0.1, 0.01, null, true);
+                }
+                if (t % 3 == 0) {
+                    plugin.fx.particle(base.clone().add(0, 0.4, 0), Particle.DRAGON_BREATH, 14, 3.5, 0.2, 3.5, 0.02, 1f, true);
+                    plugin.fx.particle(base.clone().add(0, 6, 0), Particle.REVERSE_PORTAL, 30, 2.5, 6, 2.5, 0.05, null, true);
+                }
+                if (t == 8 || t == 22 || t == 40) {
+                    plugin.fx.ring(base.clone().add(0, 0.3, 0), 14, t == 22 ? LILAC : VIOLET, 22);
+                    plugin.fx.particle(base.clone().add(0, 2, 0), Particle.FLASH, 1, 0, 0, 0, 0, LILAC, true);
+                }
+            }
+        }, 0L, 1L);
+    }
+
+    /** Punto junto a la boca del dragón (i = -1: el centro). Los orbes se reparten a los lados. */
+    private Location dragonMouth(GameMob gm, int i, int n) {
+        Location l = gm.entity.getLocation().add(0, gm.entity.getHeight() * 0.55, 0);
+        Vector fwd = plugin.arena.baseCenter().clone().subtract(l.toVector()).setY(0).normalize();
+        Vector side = new Vector(-fwd.getZ(), 0, fwd.getX());
+        l.add(fwd.clone().multiply(gm.entity.getWidth() * 0.45 + 2.5));
+        if (i >= 0) l.add(side.multiply((i - (n - 1) / 2.0) * 3.4)).add(0, i % 2 == 0 ? 0.6 : -0.2, 0);
+        return l;
+    }
+
+    /** Orbe en carga (k = 0..1): núcleo blanco, halo lila que crece y chispas que convergen. */
+    private void dragonOrb(Location c, double k) {
+        float size = (float) (1.2 + 3.0 * k);
+        plugin.fx.particle(c, Particle.DUST_COLOR_TRANSITION, 4 + (int) (8 * k), 0.12 + 0.3 * k, 0.12 + 0.3 * k, 0.12 + 0.3 * k, 0, new Particle.DustTransition(Color.WHITE, VIOLET, size), true);
+        plugin.fx.particle(c, Particle.DUST, 2, 0.05, 0.05, 0.05, 0, new Particle.DustOptions(Color.WHITE, Math.min(4f, size)), true);
+        var r = plugin.fx.rnd();
+        for (int j = 0; j < 3; j++) {
+            Vector off = new Vector(r.nextGaussian(), r.nextGaussian(), r.nextGaussian()).normalize().multiply(2.2 + 1.5 * k);
+            Location from = c.clone().add(off);
+            Vector v = off.multiply(-1).normalize();
+            c.getWorld().spawnParticle(Particle.END_ROD, from, 0, v.getX(), v.getY(), v.getZ(), 0.28, null, true);
+        }
+        if (k > 0.6) plugin.fx.particle(c, Particle.ELECTRIC_SPARK, 3, 0.5, 0.5, 0.5, 0.05, null, true);
+    }
+
+    /** Anillo-portal que se abre delante de la boca al soltar la descarga (mirando a la base). */
+    private void dragonRing(Location c, Vector dir) {
+        Vector u = dir.clone().crossProduct(new Vector(0, 1, 0));
+        if (u.lengthSquared() < 1e-4) u = new Vector(1, 0, 0);
+        u.normalize();
+        Vector v = dir.clone().crossProduct(u).normalize();
+        plugin.fx.particle(c, Particle.FLASH, 1, 0, 0, 0, 0, LILAC, true);
+        for (int step = 0; step < 10; step++) {
+            int st = step;
+            Vector uu = u.clone(), vv = v.clone();
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                double rr = 0.8 + st * 0.55;
+                Location center = c.clone().add(dir.clone().multiply(st * 0.5));
+                int n = (int) (14 + rr * 8);
+                for (int i = 0; i < n; i++) {
+                    double a = i * Math.PI * 2 / n + st * 0.3;
+                    Location p = center.clone().add(uu.clone().multiply(Math.cos(a) * rr)).add(vv.clone().multiply(Math.sin(a) * rr));
+                    plugin.fx.particle(p, Particle.DUST_COLOR_TRANSITION, 1, 0, 0, 0, 0, new Particle.DustTransition(st % 2 == 0 ? LILAC : VIOLET, DEEP, (float) (2.8 - st * 0.15)), true);
+                }
+                // segundo anillo interior más fino
+                for (int i = 0; i < n / 2; i++) {
+                    double a = -i * Math.PI * 4 / n - st * 0.4;
+                    Location p = center.clone().add(uu.clone().multiply(Math.cos(a) * rr * 0.55)).add(vv.clone().multiply(Math.sin(a) * rr * 0.55));
+                    plugin.fx.particle(p, Particle.END_ROD, 1, 0, 0, 0, 0, null, true);
+                }
+            }, step);
+        }
+    }
+
+    /** Impacto de la descarga: implosión, columna violeta y charco de aliento que se abre. */
+    private void dragonImpact(Location l) {
+        plugin.fx.blast(l, 5, VIOLET, true);
+        plugin.fx.particle(l, Particle.FLASH, 1, 0, 0, 0, 0, LILAC, true);
+        plugin.fx.particle(l, Particle.REVERSE_PORTAL, 120, 2.5, 1.5, 2.5, 0.3, null, true);
+        plugin.fx.particle(l, Particle.DRAGON_BREATH, 90, 2.6, 0.5, 2.6, 0.04, 1f, true);
+        for (int k = 0; k < 12; k++)
+            plugin.fx.particle(l.clone().add(0, k * 0.9, 0), Particle.DUST_COLOR_TRANSITION, 8, 0.5 - k * 0.03, 0.3, 0.5 - k * 0.03, 0, new Particle.DustTransition(LILAC, VIOLET, (float) (3.6 - k * 0.2)), true);
+        plugin.fx.ring(l.clone().add(0, 0.2, 0), 8, VIOLET, 14);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> plugin.fx.ring(l.clone().add(0, 0.2, 0), 11, LILAC, 18), 4L);
+        plugin.fx.sound(l, Sound.ENTITY_DRAGON_FIREBALL_EXPLODE, 4f, 0.7f, true);
+        plugin.fx.sound(l, Sound.BLOCK_RESPAWN_ANCHOR_DEPLETE, 3f, 0.6f, true);
+    }
+
+    /** La bola del dragón no deja su nube de daño de vanilla: el impacto lo dibuja y lo cuenta el plugin. */
+    @org.bukkit.event.EventHandler
+    public void onDragonBall(com.destroystokyo.paper.event.entity.EnderDragonFireballHitEvent e) {
+        if (e.getEntity().getPersistentDataContainer().has(plugin.projKey)) e.setCancelled(true);
+    }
+
     private void warn(String key) {
         long now = plugin.tick();
         if (now - lastWarnTitle < 100) return;
@@ -400,7 +557,8 @@ public final class Bosses implements Listener {
         Vector to = plugin.arena.baseCenter().clone().add(new Vector((Math.random() - 0.5) * 6, 0, 0));
         Vector dir = to.clone().subtract(from.toVector()).normalize();
         from.add(dir.clone().multiply(gm.entity.getWidth() * 0.6 + 1));
-        Class<? extends Fireball> cls = kind == Kind.CALAVERA ? WitherSkull.class : LargeFireball.class;
+        // el dragón lanza su propia bola (violeta); el resto de jefes, bola de fuego
+        Class<? extends Fireball> cls = kind == Kind.CALAVERA ? WitherSkull.class : gm.entity.getType() == EntityType.ENDER_DRAGON ? org.bukkit.entity.DragonFireball.class : LargeFireball.class;
         Fireball f = from.getWorld().spawn(from, cls, e -> {
             e.setShooter(gm.entity);
             e.setYield(0);
@@ -450,9 +608,12 @@ public final class Bosses implements Listener {
                     plugin.fx.particle(l, Particle.SOUL, 20, 1.2, 0.6, 1.2, 0.05, null, true);
                     plugin.fx.sound(l, Sound.ENTITY_WITHER_BREAK_BLOCK, 3f, 0.7f, true);
                 } else {
-                    plugin.fx.blast(l, 4.5, Color.fromRGB(255, 110, 30), true);
-                    plugin.fx.particle(l, Particle.DRAGON_BREATH, 60, 2, 0.6, 2, 0.02, 1f, true);
-                    for (int k = 0; k < 8; k++) plugin.fx.particle(l.clone().add(0, k * 0.8, 0), Particle.FLAME, 10, 0.4, 0.2, 0.4, 0.02, null, true);
+                    if (b.owner.entity.getType() == EntityType.ENDER_DRAGON) dragonImpact(l);
+                    else {
+                        plugin.fx.blast(l, 4.5, Color.fromRGB(255, 110, 30), true);
+                        plugin.fx.particle(l, Particle.DRAGON_BREATH, 60, 2, 0.6, 2, 0.02, 1f, true);
+                        for (int k = 0; k < 8; k++) plugin.fx.particle(l.clone().add(0, k * 0.8, 0), Particle.FLAME, 10, 0.4, 0.2, 0.4, 0.02, null, true);
+                    }
                 }
                 if (b.returned) {
                     plugin.mobs.damage(b.owner, b.owner.boss.returnDamage(), null);
@@ -465,7 +626,7 @@ public final class Bosses implements Listener {
             b.e.setVelocity(v);
             b.e.setDirection(v);
             b.e.setAcceleration(new Vector());
-            plugin.fx.trail(l, b.kind == Kind.CALAVERA ? "calavera" : "fuego");
+            plugin.fx.trail(l, b.kind == Kind.CALAVERA ? "calavera" : b.owner.entity.getType() == EntityType.ENDER_DRAGON ? "dragon" : "fuego");
         }
     }
 
