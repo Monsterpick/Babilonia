@@ -180,6 +180,8 @@ export interface State {
   nextBolt: number
   /** Caídas del Rey en la partida (para logros). */
   downs: number
+  /** poder del Rey (1–2,2): sube cuando el chat aprieta mucho (lo ajusta el director) */
+  power: number
 }
 
 /** Generador determinista (mulberry32). */
@@ -233,6 +235,7 @@ export class Game implements Simulation {
       stormUntil: 0,
       nextBolt: 0,
       downs: 0,
+      power: 1,
     }
   }
 
@@ -335,7 +338,7 @@ export class Game implements Simulation {
     if (!ok) return null
     const g: Guardian = { id: s.nextId++, kind, x, z, hp: def.hp, maxHp: def.hp, owner, born: s.t, next: s.t + 0.6 + this.rand() * 0.6, fuse: -1, stunUntil: 0, hitAt: -9 }
     s.guardians.push(g)
-    this.score(owner).plants++
+    if (owner) this.score(owner).plants++
     s.fx.push({ type: 'plant', kind, x, z, owner })
     return g
   }
@@ -393,6 +396,7 @@ export class Game implements Simulation {
   private hurtKing(dmg: number): void {
     const k = this.s.king
     if (this.s.t < k.downUntil || this.s.t < k.feastUntil || this.s.t < k.dashUntil || this.s.t < k.safeUntil) return
+    dmg /= this.s.power
     k.hp -= dmg
     k.hurtAt = this.s.t
     this.s.fx.push({ type: 'kingHurt', dmg })
@@ -476,7 +480,7 @@ export class Game implements Simulation {
       // frenado por las Flores Glaciales cercanas
       k.slowed = s.guardians.some((g) => g.kind === 'glacial' && t >= g.stunUntil && Math.hypot(g.x - k.x, g.z - k.z) < 5.5)
       const dashing = t < k.dashUntil
-      const speed = dashing ? DASH_SPEED : KING_SPEED * (k.slowed ? 0.5 : 1)
+      const speed = dashing ? DASH_SPEED : KING_SPEED * (k.slowed ? 0.5 : 1) * (1 + (s.power - 1) * 0.12)
       let vx = mx
       let vz = mz
       const len = Math.hypot(vx, vz)
@@ -501,7 +505,7 @@ export class Game implements Simulation {
         const d = Math.hypot(dx, dz)
         if (d >= rr) continue
         if (dashing) {
-          this.damageGuardian(g, 120)
+          this.damageGuardian(g, 120 * s.power)
           s.fx.push({ type: 'hit', x: g.x, z: g.z, big: true })
           if (g.hp > 0) k.dashUntil = t // lo que aguanta la embestida la para en seco
         }
@@ -524,7 +528,7 @@ export class Game implements Simulation {
         s.fx.push({ type: 'swipe', x: ax, z: az })
         for (const g of [...s.guardians]) {
           if (Math.hypot(g.x - ax, g.z - az) < ATTACK_RANGE * 0.62 + GUARDIANS[g.kind].radius) {
-            this.damageGuardian(g, ATTACK_DMG)
+            this.damageGuardian(g, ATTACK_DMG * s.power)
             s.fx.push({ type: 'hit', x: g.x, z: g.z, big: false })
           }
         }

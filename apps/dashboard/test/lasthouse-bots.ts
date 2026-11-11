@@ -59,8 +59,6 @@ export function guardBot(g: DefenseGame, r: () => number): DefenseInput {
   }
 }
 
-const COINS = [1, 1, 1, 1, 1, 5, 5, 5, 10, 20, 30, 99, 199, 299, 499, 1000]
-
 /** Público de `n` espectadores: cada uno hace algo cada ~20 s de media. */
 export function crowd(n: number, seed: number) {
   const r = rng(seed)
@@ -75,13 +73,14 @@ export function crowd(n: number, seed: number) {
       let ev: LiveIn
       if (d.vote && r() < 0.3) ev = { type: 'chat', user, payload: { text: r() < 0.5 ? '1' : '2' } }
       else if (x < 0.5) ev = { type: 'like', user, payload: { count: 5 + Math.floor(r() * 15) } }
-      else if (x < 0.85) ev = { type: 'chat', user, payload: { text: ['hola', 'lanza', 'tronco', 'hielo', 'corre', 'tanque', 'jaja'][Math.floor(r() * 7)]! } }
-      else if (x < 0.9) ev = { type: 'follow', user }
-      else if (x < 0.93) ev = { type: 'share', user }
+      else if (x < 0.9) ev = { type: 'chat', user, payload: { text: ['hola', 'lanza', 'tronco', 'hielo', 'corre', 'tanque', 'jaja'][Math.floor(r() * 7)]! } }
+      else if (x < 0.95) ev = { type: 'follow', user }
+      else if (x < 0.98) ev = { type: 'share', user }
       else {
-        // los regalos grandes son raros: pesa más la parte baja de la tabla
-        const i = Math.floor(Math.pow(r(), 2.2) * COINS.length)
-        ev = { type: 'gift', user, payload: { name: 'Regalo', diamonds: COINS[i]!, count: 1 } }
+        // como en un directo real: casi todo son regalos de 1 moneda; los grandes son raros
+        const y = r()
+        const coins = y < 0.7 ? 1 : y < 0.85 ? 5 : y < 0.93 ? [10, 20, 30][Math.floor(r() * 3)]! : y < 0.98 ? [99, 199, 299][Math.floor(r() * 3)]! : r() < 0.6 ? 499 : 1000
+        ev = { type: 'gift', user, payload: { name: 'Regalo', diamonds: coins, count: 1 } }
       }
       d.handle(ev)
     }
@@ -89,10 +88,10 @@ export function crowd(n: number, seed: number) {
 }
 
 /** Juega una partida entera con bots y devuelve quién ganó. */
-export function playMatch(mode: 'invasion' | 'defensa', viewers: number, seed: number): { winner: string; t: number; sim: Game | DefenseGame; d: Director } {
+export function playMatch(mode: 'invasion' | 'defensa', viewers: number, seed: number, opts: Partial<import('../src/game/lasthouse/director').DirectorOptions> = {}): { winner: string; t: number; sim: Game | DefenseGame; d: Director } {
   const r = rng(seed * 7 + 3)
   const sim = mode === 'invasion' ? new Game({ seed }) : new DefenseGame({ seed })
-  const d = new Director(sim)
+  const d = new Director(sim, opts)
   const audience = crowd(viewers, seed + 11)
   const dt = 1 / 30
   for (let i = 0; i < 400 * 30 && sim.s.phase === 'playing'; i++) {

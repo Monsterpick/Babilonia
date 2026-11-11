@@ -140,7 +140,7 @@ export function LastHouseOverlay() {
 /** Qué hace cada cosa del directo (para enseñar en pantalla). */
 export const LEGEND: Record<'invasion' | 'defensa', [string, string][]> = {
   invasion: [
-    ['❤️ Likes', 'Brotes (entre todos)'],
+    ['❤️ Likes', 'Defensas del jardín (entre todos)'],
     ['💬 Comentario', 'Brote · «lanza», «hielo», «raíz», «tronco», «hongo»'],
     ['➕ Follow', 'Flor Glacial'],
     ['🔁 Compartir', 'Raíz Sanadora'],

@@ -105,6 +105,8 @@ export interface DefenseState {
   kills: number
   /** titanes derribados */
   titans: number
+  /** poder del Guardián (1–2,2): sube cuando el chat aprieta mucho (lo ajusta el director) */
+  power: number
   /** daño hecho a la casa por cada espectador y zombis enviados */
   scores: Map<string, { sent: number; damage: number }>
   fx: Fx[]
@@ -137,6 +139,7 @@ export class DefenseGame implements Simulation {
       nextWave: 6,
       kills: 0,
       titans: 0,
+      power: 1,
       scores: new Map(),
       fx: [],
       nextId: 1,
@@ -324,7 +327,7 @@ export class DefenseGame implements Simulation {
     }
 
     // ── Guardián ──
-    h.energy = Math.min(ENERGY_MAX, h.energy + ENERGY_REGEN * dt)
+    h.energy = Math.min(ENERGY_MAX, h.energy + ENERGY_REGEN * s.power * dt)
     if (h.downUntil > 0 && t >= h.downUntil) {
       h.downUntil = 0
       h.hp = h.maxHp
@@ -365,7 +368,7 @@ export class DefenseGame implements Simulation {
       if (input.attack && t >= h.shootAt) {
         h.shootAt = t + SHOOT_CD
         const d = Math.max(0.01, Math.hypot(ax, az))
-        s.shots.push({ id: s.nextId++, x: h.x, z: h.z - 0.6, y: 1.4, vx: (ax / d) * 30, vz: (az / d) * 30, dmg: SHOT_DMG, life: 1.6, kind: 'semilla', tx: 1, tz: 0, t: 0, dur: 0 })
+        s.shots.push({ id: s.nextId++, x: h.x, z: h.z - 0.6, y: 1.4, vx: (ax / d) * 30, vz: (az / d) * 30, dmg: SHOT_DMG * s.power, life: 1.6, kind: 'semilla', tx: 1, tz: 0, t: 0, dur: 0 })
         s.fx.push({ type: 'shoot', x: h.x, z: h.z })
       }
       if (input.dash && t >= h.dashAt && Math.abs(input.mx) > 0.1) {
@@ -375,7 +378,7 @@ export class DefenseGame implements Simulation {
         s.fx.push({ type: 'dash', x: h.x, z: h.z })
       }
       if (input.roar && t >= h.pulseAt) {
-        h.pulseAt = t + PULSE_CD
+        h.pulseAt = t + PULSE_CD / s.power
         s.fx.push({ type: 'pulse', x: h.x, z: h.z, r: PULSE_R })
         for (const z of [...s.zombies]) {
           if (z.underground) continue
@@ -383,7 +386,7 @@ export class DefenseGame implements Simulation {
           if (d < PULSE_R) {
             z.z = Math.max(-2, z.z - 4 * (1 - d / PULSE_R))
             z.stunUntil = t + 1.5
-            this.damageZombie(z, 45, 'Guardián')
+            this.damageZombie(z, 45 * s.power, 'Guardián')
           }
         }
       }
@@ -468,7 +471,7 @@ export class DefenseGame implements Simulation {
           if (tgt) {
             g.next = t + 0.9
             const d = Math.max(0.01, Math.hypot(tgt.x - g.x, tgt.z - g.z))
-            s.shots.push({ id: s.nextId++, x: g.x, z: g.z, y: 1.1, vx: ((tgt.x - g.x) / d) * 18, vz: ((tgt.z - g.z) / d) * 18, dmg: 12, life: 2.2, kind: 'semilla', tx: 1, tz: 0, t: 0, dur: 0 })
+            s.shots.push({ id: s.nextId++, x: g.x, z: g.z, y: 1.1, vx: ((tgt.x - g.x) / d) * 18, vz: ((tgt.z - g.z) / d) * 18, dmg: 12 * s.power, life: 2.2, kind: 'semilla', tx: 1, tz: 0, t: 0, dur: 0 })
           } else g.next = t + 0.2
           break
         }
