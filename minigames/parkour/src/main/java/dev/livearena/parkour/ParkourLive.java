@@ -88,6 +88,8 @@ public final class ParkourLive extends JavaPlugin {
     }
 
     private void tickAll() {
+        // sin el streamer conectado el reloj de la partida no corre (una desconexión no gasta el tiempo límite)
+        if (game.running() && game.player() == null) return;
         tick++;
         try {
             temp.tick();

@@ -62,6 +62,19 @@ public final class BaseDefense extends JavaPlugin {
     public BlockPlacer placer;
     private BukkitTask loop;
     private long tick;
+    private boolean away;
+
+    /** Congela o reanuda a los mobs del juego (sin IA no caminan ni atacan). */
+    private enum GameMobFreeze {
+        FREEZE, RESUME;
+
+        void apply(BaseDefense pl) {
+            for (var gm : pl.mobs.all()) {
+                if (gm.dead || !gm.entity.isValid() || gm.manual) continue;
+                gm.entity.setAware(this == RESUME);
+            }
+        }
+    }
     private YamlConfiguration data;
     private LikeGoal likes;
 
@@ -144,6 +157,21 @@ public final class BaseDefense extends JavaPlugin {
     }
 
     private void tickAll() {
+        // Sin el streamer conectado la partida se congela (ni tiempo, ni oleadas, ni golpes a la base): así una
+        // desconexión no cuenta derrotas. Se reanuda sola cuando vuelve a entrar.
+        if (game.running() && game.streamer() == null) {
+            if (!away) {
+                away = true;
+                GameMobFreeze.FREEZE.apply(this);
+                getLogger().info("Streamer desconectado: partida en pausa");
+            }
+            return;
+        }
+        if (away) {
+            away = false;
+            GameMobFreeze.RESUME.apply(this);
+            getLogger().info("Streamer de vuelta: partida reanudada");
+        }
         tick++;
         fx.beginTick();
         try {
