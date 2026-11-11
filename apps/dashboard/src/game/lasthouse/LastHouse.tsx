@@ -69,6 +69,9 @@ interface Hud {
   vote: { a: string; b: string; ca: number; cb: number; left: number } | null
 }
 
+/** Iconos hechos para el juego (generados con ForgeGUI); los que faltan se dibujan con su inicial. */
+const ICON: Partial<Record<GuardianKind, string>> = { brote: '/lasthouse/brote.png', lanzabrotes: '/lasthouse/lanzabrotes.png', tronco: '/lasthouse/tronco.png' }
+
 const mmss = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`
 const FONT = "'Outfit Variable','Outfit','Segoe UI',sans-serif"
 const seed = () => (Date.now() % 100000) + 1
@@ -184,6 +187,8 @@ export function LastHouse() {
       return
     }
     view.current = v
+    // en la demo se dejan a mano los contadores de la vista (pruebas de resistencia)
+    if (DEMO) (window as unknown as { __lhView?: View }).__lhView = v
     const onResize = () => v.resize(window.innerWidth, window.innerHeight)
     onResize()
     window.addEventListener('resize', onResize)
@@ -343,7 +348,7 @@ export function LastHouse() {
       // final: guardar la partida (récords, logros) una vez
       if (r.phase === 'ended' && reported !== g && started.current) {
         reported = g
-        const scores = g instanceof Game ? [...g.s.scores.entries()].map(([name, sc]) => ({ name, score: sc.plants })) : [...g.s.scores.entries()].filter(([n]) => n !== 'Horda').map(([name, sc]) => ({ name, score: sc.sent }))
+        const scores = g instanceof Game ? [...g.s.scores.entries()].map(([name, sc]) => ({ name, score: sc.plants })) : [...g.s.scores.entries()].filter(([n]) => n !== 'Horda' && n !== '' && n !== 'El chat').map(([name, sc]) => ({ name, score: sc.sent }))
         const body = {
           mode: g.mode,
           winner: r.winner,
@@ -414,7 +419,7 @@ export function LastHouse() {
             down: hh.downUntil > 0,
             confused: false,
             slowed: false,
-            top: [...g.s.scores.entries()].filter(([n]) => n !== 'Horda').map(([name, sc]) => ({ name, score: sc.sent })).sort((a, b) => b.score - a.score).slice(0, 5),
+            top: [...g.s.scores.entries()].filter(([n]) => n !== 'Horda' && n !== '' && n !== 'El chat').map(([name, sc]) => ({ name, score: sc.sent })).sort((a, b) => b.score - a.score).slice(0, 5),
           }
         }
         setHud(h)
@@ -566,7 +571,7 @@ export function LastHouse() {
           )}
 
           {/* abajo: vida, barra secundaria y habilidades */}
-          <div className="lh-panel" style={{ position: 'absolute', left: V ? 10 : '50%', right: V ? 10 : undefined, bottom: V ? 10 : 16, transform: V ? undefined : 'translateX(-50%)', padding: V ? '10px 12px' : '12px 18px', width: V ? undefined : 'min(660px, calc(100vw - 40px))' }}>
+          <div className="lh-panel" style={{ position: 'absolute', left: V ? 10 : '50%', right: V ? 10 : undefined, bottom: V ? 10 : 16, transform: V ? undefined : 'translateX(-50%)', padding: V ? '10px 12px' : '10px 16px', width: V ? undefined : 'min(720px, calc(100vw - 40px))' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 20 }}>{inv ? '👑' : '🛡️'}</span>
               <div style={{ flex: 1 }}>
@@ -589,7 +594,8 @@ export function LastHouse() {
                   const sel = hud.pick === k
                   const can = hud.energy >= cost
                   return (
-                    <div key={k} style={{ padding: '4px 8px', borderRadius: 10, minWidth: V ? 52 : 74, textAlign: 'center', background: sel ? '#7cff9e26' : '#ffffff0d', border: `2px solid ${sel ? '#7cff9e' : '#ffffff18'}`, opacity: can ? 1 : 0.45, fontSize: V ? 10 : 12, fontWeight: 800 }}>
+                    <div key={k} style={{ padding: '3px 6px', borderRadius: 10, minWidth: V ? 52 : 70, textAlign: 'center', background: sel ? '#7cff9e26' : '#ffffff0d', border: `2px solid ${sel ? '#7cff9e' : '#ffffff18'}`, opacity: can ? 1 : 0.45, fontSize: V ? 10 : 12, fontWeight: 800 }}>
+                      {ICON[k] && <img src={ICON[k]} alt="" style={{ width: V ? 24 : 28, height: V ? 24 : 28, display: 'block', margin: '0 auto 2px', filter: can ? undefined : 'grayscale(1)' }} />}
                       <div>
                         <span style={{ color: '#ffe066' }}>{i + 1}</span> {GUARDIANS[k].name.split(' ')[0]}
                       </div>
@@ -600,7 +606,7 @@ export function LastHouse() {
               </div>
             )}
             {!V && (
-              <div style={{ display: 'flex', gap: 8, marginTop: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 6, marginTop: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
                 {inv ? (
                   <>
                     <Ability k="ESPACIO" name="Zarpazo" cd={0} />
@@ -634,6 +640,7 @@ export function LastHouse() {
       {intro && (
         <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', background: '#0b0d16cc', backdropFilter: 'blur(3px)', overflowY: 'auto', padding: 16 }}>
           <div className="lh-panel" style={{ padding: V ? '20px 18px' : '28px 34px', maxWidth: 760, textAlign: 'center' }}>
+            <img src="/lasthouse/icono.jpg" alt="" style={{ width: V ? 84 : 104, height: V ? 84 : 104, borderRadius: 22, border: '3px solid #ffffff33', boxShadow: '0 10px 30px #0009', margin: '0 auto 8px', display: 'block' }} />
             <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: 4, color: '#ffe066' }}>LAST HOUSE</div>
             <div style={{ fontSize: V ? 32 : 44, fontWeight: 900, lineHeight: 1.05, marginTop: 4 }}>Elige tu bando</div>
             <div style={{ display: 'grid', gridTemplateColumns: V ? '1fr' : '1fr 1fr', gap: 14, marginTop: 18, textAlign: 'left' }}>
@@ -736,7 +743,7 @@ export function LastHouse() {
 function Ability({ k, name, cd, dim }: { k: string; name: string; cd: number; dim?: boolean }) {
   const waiting = cd > 0.05
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 10, background: '#ffffff0d', border: '1px solid #ffffff18', opacity: waiting || dim ? 0.45 : 1, fontSize: 13, fontWeight: 800 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '3px 8px', borderRadius: 9, background: '#ffffff0d', border: '1px solid #ffffff18', opacity: waiting || dim ? 0.45 : 1, fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap' }}>
       <span className="lh-key">{k}</span>
       {name}
       {waiting && <span style={{ fontVariantNumeric: 'tabular-nums', color: '#ffd45a' }}>{cd.toFixed(1)}</span>}

@@ -20,11 +20,25 @@ function mesh(geo: THREE.BufferGeometry, m: THREE.Material, x = 0, y = 0, z = 0,
   return o
 }
 
+/**
+ * Geometrías compartidas: las piezas con las mismas medidas se crean una sola vez (cientos de zombis iguales no
+ * multiplican la memoria de la tarjeta gráfica). Se marcan como compartidas para no liberarlas al quitar un modelo.
+ */
+const geoCache = new Map<string, THREE.BufferGeometry>()
+function cached(key: string, make: () => THREE.BufferGeometry): THREE.BufferGeometry {
+  let g = geoCache.get(key)
+  if (!g) {
+    g = make()
+    g.userData.shared = true
+    geoCache.set(key, g)
+  }
+  return g
+}
 const G = {
-  box: (w: number, h: number, d: number) => new THREE.BoxGeometry(w, h, d),
-  sph: (r: number, s = 10) => new THREE.SphereGeometry(r, s, Math.max(6, s - 2)),
-  cyl: (a: number, b: number, h: number, s = 10) => new THREE.CylinderGeometry(a, b, h, s),
-  cone: (r: number, h: number, s = 8) => new THREE.ConeGeometry(r, h, s),
+  box: (w: number, h: number, d: number) => cached(`b${w},${h},${d}`, () => new THREE.BoxGeometry(w, h, d)),
+  sph: (r: number, s = 10) => cached(`s${r},${s}`, () => new THREE.SphereGeometry(r, s, Math.max(6, s - 2))),
+  cyl: (a: number, b: number, h: number, s = 10) => cached(`c${a},${b},${h},${s}`, () => new THREE.CylinderGeometry(a, b, h, s)),
+  cone: (r: number, h: number, s = 8) => cached(`o${r},${h},${s}`, () => new THREE.ConeGeometry(r, h, s)),
 }
 
 /** Libera geometrías y materiales de un modelo (no los compartidos, marcados con userData.shared). */
@@ -1038,7 +1052,6 @@ export class View {
       if (p.life <= 0) {
         this.scene.remove(p.m)
         if (p.kind !== 'p') (p.m.material as THREE.Material).dispose()
-        if (p.kind === 'beam') p.m.geometry.dispose()
         this.particles.splice(i, 1)
         continue
       }
@@ -1087,8 +1100,10 @@ export class View {
         look.set(h.x * 0.3, 0, h.z + 9)
       }
     } else if (this.cameraMode === 0) {
-      target.set(h.x * 0.55, 6.6, h.z + 8.5)
-      look.set(h.x * 0.75, 1.4, h.z - 12)
+      // un poco más alta que en Invasión: el Guardián queda en el tercio central y se ve la horda llegar
+      // por delante de la fachada (nunca dentro de la casa), alta para ver al Guardián y la horda que llega
+      target.set(h.x * 0.5, 12, Math.min(h.z + 9, LENGTH - 0.5))
+      look.set(h.x * 0.7, 0, h.z - 6)
     } else {
       target.set(0, 30, LENGTH + 10)
       look.set(0, 0, LENGTH - 34)

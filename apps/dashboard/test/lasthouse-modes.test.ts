@@ -91,12 +91,14 @@ describe('LAST HOUSE · director del directo', () => {
   it('lo gratis gasta un presupuesto común; los regalos siempre hacen algo', () => {
     const g = new Game({ seed: 1 })
     const d = new Director(g, { voteEvery: 0 })
-    // al empezar no hay reserva: los comentarios no plantan nada…
+    // se empieza con algo de reserva: los primeros comentarios plantan, pero 50 a la vez no plantan 50
     for (let i = 0; i < 50; i++) d.handle({ type: 'chat', user: user(`u${i}`), payload: { text: 'lanza' } })
-    expect(g.s.guardians.length).toBe(0)
-    // …pero un regalo sí
+    const first = g.s.guardians.length
+    expect(first).toBeGreaterThan(0)
+    expect(first).toBeLessThanOrEqual(Math.ceil((PRESSURE.invasion.cap * 0.75) / 1.5))
+    // …y un regalo siempre hace algo, aunque la reserva esté vacía
     d.handle({ type: 'gift', user: user('rico'), payload: { name: 'Rosa', diamonds: 5, count: 1 } })
-    expect(g.s.guardians.length).toBe(1)
+    expect(g.s.guardians.length).toBe(first + 1)
     expect(d.tokens).toBeLessThan(0)
     // con el tiempo la reserva se rellena y vuelve a haber acciones gratis
     for (let i = 0; i < 6 * 60; i++) {

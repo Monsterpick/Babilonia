@@ -117,6 +117,8 @@ export class Director {
   ) {
     this.opts = { ...DEFAULT_DIRECTOR, ...opts }
     this.nextVote = this.opts.voteEvery > 0 ? Math.min(40, this.opts.voteEvery) : Infinity
+    // se empieza con la reserva casi llena: lo primero que hagan los espectadores tiene efecto al momento
+    this.tokens = PRESSURE[game.mode].cap * 0.75
   }
 
   private get t(): number {
