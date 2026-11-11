@@ -10,9 +10,9 @@ mundo:
 
 torre:
   semilla: 2026
-  niveles: 50            # cada nivel tiene su propio bioma (50 distintos; si pones más, se repiten)
+  niveles: 50            # 2–58. Cada nivel tiene su propio bioma (50 distintos; si pones más, se repiten)
   alturaBase: 8          # altura de la primera plataforma
-  subidaPorNivel: 6      # bloques que sube cada nivel (50 × 6 = 300: cabe en el mundo)
+  subidaPorNivel: 6      # bloques que sube cada nivel (se reduce solo si la torre no cabe en el mundo)
   radio: 9               # radio del camino alrededor de la columna central
   dificultad: 1.0        # 0.5 = más fácil, 1.5 = más difícil (distancias y piezas)
 

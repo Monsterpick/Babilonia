@@ -39,6 +39,8 @@ public final class Tower {
     /** Bloque → paso del camino (para el progreso dentro del nivel). */
     public final Map<Long, Step> stepAt = new HashMap<>();
     public int minY, maxY;
+    /** Saltos que el generador tuvo que resolver con la pieza de último recurso (debería ser 0 o muy pocos). */
+    public int fallbacks;
 
     Tower(long seed, int levels) {
         this.seed = seed;

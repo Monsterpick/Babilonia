@@ -176,6 +176,7 @@ public final class Game implements Listener {
     private void newRun(Player p, World w) {
         checkpoint = 1;
         furthest = -1;
+        lastSafe = null;
         falls = 0;
         fallStreak = 0;
         wonAt = -1;
@@ -209,6 +210,9 @@ public final class Game implements Listener {
             else p.teleport(Bukkit.getWorlds().getFirst().getSpawnLocation());
         }
         streamer = null;
+        // si cambiaron la torre en los ajustes durante la partida, se construye ahora
+        if (plugin.isEnabled() && !plugin.builder.building() && !plugin.settings.towerSignature().equals(plugin.data().getString("torre.firma", "")))
+            Bukkit.getScheduler().runTask(plugin, () -> plugin.builder.rebuild(null));
     }
 
     private void heal(Player p) {
@@ -230,6 +234,7 @@ public final class Game implements Listener {
         checkpoint = lv;
         furthest = -1;
         fallStreak = 0;
+        lastSafe = null; // el escudo nunca debe devolverte a un nivel del que te han bajado
         if (p == null) return;
         World w = p.getWorld();
         if (teleport) {
@@ -294,7 +299,7 @@ public final class Game implements Listener {
         plugin.hud.update();
     }
 
-    private void lose(Player p, String why) {
+    public void lose(Player p, String why) {
         addLosses(1);
         plugin.hud.lose(p, why);
         plugin.fx.sound(p, "parkour:perder", Sound.ENTITY_WITHER_DEATH, 0.6f, 1.2f);
@@ -374,6 +379,11 @@ public final class Game implements Listener {
             }
             if (lvOf != null && lvOf < checkpoint) {
                 fall(p);
+                return;
+            }
+            if (lvOf != null && lvOf > checkpoint) {
+                // llegó al camino del nivel siguiente sin pisar la plataforma (salto largo, supersalto…): cuenta igual
+                levelUp(p, lvOf);
                 return;
             }
             if (lvOf == null && l.getY() < cur.y() - 2.5) {
@@ -517,6 +527,18 @@ public final class Game implements Listener {
     @EventHandler
     public void onJoin(PlayerJoinEvent e) {
         Player p = e.getPlayer();
+        // la partida terminó mientras estaba desconectado: se le devuelve el inventario y sale de la torre
+        if (!(running && p.getUniqueId().equals(streamer)) && invFile(p.getUniqueId()).isFile()) {
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (!p.isOnline() || (running && p.getUniqueId().equals(streamer))) return;
+                restoreInventory(p);
+                if (plugin.inWorld(p)) {
+                    p.teleport(Bukkit.getWorlds().getFirst().getSpawnLocation());
+                    p.setGameMode(Bukkit.getDefaultGameMode());
+                }
+            }, 10L);
+            return;
+        }
         if (running && p.getUniqueId().equals(streamer)) {
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 World w = plugin.world(true);

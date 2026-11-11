@@ -228,8 +228,8 @@ public final class PkCommands {
         switch (type.toLowerCase(Locale.ROOT)) {
             case "ganar" -> g.setCheckpoint(plugin.tower.levels + 1, true);
             case "perder" -> {
-                g.addLosses(1);
-                g.setCheckpoint(1, true);
+                Player p = g.player();
+                if (p != null) g.lose(p, "PARTIDA PERDIDA");
             }
             case "caer" -> {
                 Player p = g.player();

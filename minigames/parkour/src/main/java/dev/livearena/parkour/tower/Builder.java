@@ -103,7 +103,7 @@ public final class Builder {
         plugin.data().set("torre.firma", plugin.settings.towerSignature());
         plugin.saveData();
         plugin.applyRules(world);
-        plugin.getLogger().info("Torre construida.");
+        plugin.getLogger().info("Torre construida." + (plugin.tower.fallbacks > 0 ? " (" + plugin.tower.fallbacks + " saltos resueltos con pieza sencilla)" : ""));
         Runnable d = done;
         done = null;
         if (d != null) d.run();

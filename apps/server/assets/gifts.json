@@ -10562,10 +10562,13 @@
 "image": "holiday-universe-60999-coins.webp"
 },
 {
-"name": "Nube de coraz n",
+"name": "Nube de corazón",
 "diamonds": 0,
 "image": "es-nubedecorazn-0005.webp",
-"es": true
+"es": true,
+"aliases": [
+"Nube de coraz n"
+]
 },
 {
 "name": "iHeart Jingle Ball",
@@ -10628,10 +10631,13 @@
 "es": true
 },
 {
-"name": "Est s en busca y captura",
+"name": "Estás en busca y captura",
 "diamonds": 0,
 "image": "es-estsenbuscaycaptura-0019.webp",
-"es": true
+"es": true,
+"aliases": [
+"Est s en busca y captura"
+]
 },
 {
 "name": "Rock espeluznante",
@@ -10682,10 +10688,13 @@
 "es": true
 },
 {
-"name": "Caballero m gico",
+"name": "Caballero mágico",
 "diamonds": 0,
 "image": "es-caballeromgico-0031.webp",
-"es": true
+"es": true,
+"aliases": [
+"Caballero m gico"
+]
 },
 {
 "name": "Espada de la doncella",
@@ -10700,10 +10709,13 @@
 "es": true
 },
 {
-"name": "Delf n",
+"name": "Delfín",
 "diamonds": 0,
 "image": "es-delfn-0052.webp",
-"es": true
+"es": true,
+"aliases": [
+"Delf n"
+]
 },
 {
 "name": "Hola Oso",
@@ -10724,10 +10736,13 @@
 "es": true
 },
 {
-"name": "Kan n de Palacio",
+"name": "Kanón de Palacio",
 "diamonds": 0,
 "image": "es-kanndepalacio-0066.webp",
-"es": true
+"es": true,
+"aliases": [
+"Kan n de Palacio"
+]
 },
 {
 "name": "Pad Master",
@@ -10742,16 +10757,22 @@
 "es": true
 },
 {
-"name": "Explosi n de tomate",
+"name": "Explosión de tomate",
 "diamonds": 0,
 "image": "es-explosindetomate-0089.webp",
-"es": true
+"es": true,
+"aliases": [
+"Explosi n de tomate"
+]
 },
 {
-"name": "Coraz n con las manos",
+"name": "Corazón con las manos",
 "diamonds": 0,
 "image": "es-coraznconlasmanos-0091.webp",
-"es": true
+"es": true,
+"aliases": [
+"Coraz n con las manos"
+]
 },
 {
 "name": "Confeti",
@@ -10766,10 +10787,13 @@
 "es": true
 },
 {
-"name": "Ney m stico",
+"name": "Ney místico",
 "diamonds": 0,
 "image": "es-neymstico-0094.webp",
-"es": true
+"es": true,
+"aliases": [
+"Ney m stico"
+]
 },
 {
 "name": "Caos con oruga",
@@ -10784,16 +10808,22 @@
 "es": true
 },
 {
-"name": "Patata en Par s",
+"name": "Patata en París",
 "diamonds": 0,
 "image": "es-patataenpars-0131.webp",
-"es": true
+"es": true,
+"aliases": [
+"Patata en Par s"
+]
 },
 {
-"name": "Caf m gico",
+"name": "Café mágico",
 "diamonds": 0,
 "image": "es-cafmgico-0133.webp",
-"es": true
+"es": true,
+"aliases": [
+"Caf m gico"
+]
 },
 {
 "name": "Te quiero",
@@ -10820,10 +10850,13 @@
 "es": true
 },
 {
-"name": "Ping ino dormil n",
+"name": "Pingüino dormilón",
 "diamonds": 0,
 "image": "es-pinginodormiln-0168.webp",
-"es": true
+"es": true,
+"aliases": [
+"Ping ino dormil n"
+]
 },
 {
 "name": "Lazo de piano",
@@ -10832,10 +10865,13 @@
 "es": true
 },
 {
-"name": "La d floral",
+"name": "Laúd floral",
 "diamonds": 0,
 "image": "es-ladfloral-0170.webp",
-"es": true
+"es": true,
+"aliases": [
+"La d floral"
+]
 },
 {
 "name": "Helado con cereza",
@@ -10856,10 +10892,13 @@
 "es": true
 },
 {
-"name": "Bailar n inflable",
+"name": "Bailarín inflable",
 "diamonds": 0,
 "image": "es-bailarninflable-0206.webp",
-"es": true
+"es": true,
+"aliases": [
+"Bailar n inflable"
+]
 },
 {
 "name": "Corona de rosas",
@@ -10868,10 +10907,13 @@
 "es": true
 },
 {
-"name": "Monstruo comil n",
+"name": "Monstruo comilón",
 "diamonds": 0,
 "image": "es-monstruocomiln-0209.webp",
-"es": true
+"es": true,
+"aliases": [
+"Monstruo comil n"
+]
 },
 {
 "name": "Instrumentista con ukelele",
@@ -10916,22 +10958,31 @@
 "es": true
 },
 {
-"name": "Amigo alien gena",
+"name": "Amigo alienígena",
 "diamonds": 0,
 "image": "es-amigoaliengena-0256.webp",
-"es": true
+"es": true,
+"aliases": [
+"Amigo alien gena"
+]
 },
 {
-"name": "Saxof n so ador",
+"name": "Saxofón soñador",
 "diamonds": 0,
 "image": "es-saxofnsoador-0268.webp",
-"es": true
+"es": true,
+"aliases": [
+"Saxof n so ador"
+]
 },
 {
-"name": "Atuendo rel mpago",
+"name": "Atuendo relámpago",
 "diamonds": 0,
 "image": "es-atuendorelmpago-0287.webp",
-"es": true
+"es": true,
+"aliases": [
+"Atuendo rel mpago"
+]
 },
 {
 "name": "El tesoro de un pirata",
@@ -10940,16 +10991,22 @@
 "es": true
 },
 {
-"name": "C ntico de brillo",
+"name": "Cántico de brillo",
 "diamonds": 0,
 "image": "es-cnticodebrillo-0301.webp",
-"es": true
+"es": true,
+"aliases": [
+"C ntico de brillo"
+]
 },
 {
-"name": "Ukelele isle o",
+"name": "Ukelele isleño",
 "diamonds": 0,
 "image": "es-ukeleleisleo-0316.webp",
-"es": true
+"es": true,
+"aliases": [
+"Ukelele isle o"
+]
 },
 {
 "name": "Tambor de peluche",
@@ -10958,10 +11015,13 @@
 "es": true
 },
 {
-"name": "DJ c smico",
+"name": "DJ cósmico",
 "diamonds": 0,
 "image": "es-djcsmico-0322.webp",
-"es": true
+"es": true,
+"aliases": [
+"DJ c smico"
+]
 },
 {
 "name": "Mam canguro",
@@ -10976,10 +11036,13 @@
 "es": true
 },
 {
-"name": "Molas un mont n",
+"name": "Molas un montón",
 "diamonds": 0,
 "image": "es-molasunmontn-0343.webp",
-"es": true
+"es": true,
+"aliases": [
+"Molas un mont n"
+]
 },
 {
 "name": "Tono miaut stico",
@@ -11048,10 +11111,13 @@
 "es": true
 },
 {
-"name": "Autob s de fiesta",
+"name": "Autobús de fiesta",
 "diamonds": 0,
 "image": "es-autobsdefiesta-0410.webp",
-"es": true
+"es": true,
+"aliases": [
+"Autob s de fiesta"
+]
 },
 {
 "name": "dolo de Halloween",
@@ -11060,10 +11126,13 @@
 "es": true
 },
 {
-"name": "Unicornio de fantas a",
+"name": "Unicornio de fantasía",
 "diamonds": 0,
 "image": "es-unicorniodefantasa-0423.webp",
-"es": true
+"es": true,
+"aliases": [
+"Unicornio de fantas a"
+]
 },
 {
 "name": "Gol destacado",
@@ -11078,16 +11147,22 @@
 "es": true
 },
 {
-"name": "F nix",
+"name": "Fénix",
 "diamonds": 0,
 "image": "es-fnix-0451.webp",
-"es": true
+"es": true,
+"aliases": [
+"F nix"
+]
 },
 {
-"name": "Llama de drag n",
+"name": "Llama de dragón",
 "diamonds": 0,
 "image": "es-llamadedragn-0452.webp",
-"es": true
+"es": true,
+"aliases": [
+"Llama de drag n"
+]
 },
 {
 "name": "TikTok Stars",
@@ -11150,10 +11225,13 @@
 "es": true
 },
 {
-"name": "Concha con energ a",
+"name": "Concha con energía",
 "diamonds": 0,
 "image": "es-conchaconenerga-0481.webp",
-"es": true
+"es": true,
+"aliases": [
+"Concha con energ a"
+]
 },
 {
 "name": "Coraza de guerrero",
@@ -11162,10 +11240,13 @@
 "es": true
 },
 {
-"name": "Halc n",
+"name": "Halcón",
 "diamonds": 0,
 "image": "es-halcn-0483.webp",
-"es": true
+"es": true,
+"aliases": [
+"Halc n"
+]
 },
 {
 "name": "Un placer tenerte",
@@ -11174,10 +11255,13 @@
 "es": true
 },
 {
-"name": "H mster rellenito",
+"name": "Hámster rellenito",
 "diamonds": 0,
 "image": "es-hmsterrellenito-0488.webp",
-"es": true
+"es": true,
+"aliases": [
+"H mster rellenito"
+]
 },
 {
 "name": "Rosie en el escenario",
@@ -11186,16 +11270,22 @@
 "es": true
 },
 {
-"name": "Beb de monta a",
+"name": "Bebé de montaña",
 "diamonds": 0,
 "image": "es-bebdemontaa-0490.webp",
-"es": true
+"es": true,
+"aliases": [
+"Beb de monta a"
+]
 },
 {
-"name": "M scara misteriosa",
+"name": "Máscara misteriosa",
 "diamonds": 0,
 "image": "es-mscaramisteriosa-0491.webp",
-"es": true
+"es": true,
+"aliases": [
+"M scara misteriosa"
+]
 },
 {
 "name": "Ciclomotor",
@@ -11210,10 +11300,13 @@
 "es": true
 },
 {
-"name": "Coraz n de la comunidad",
+"name": "Corazón de la comunidad",
 "diamonds": 0,
 "image": "es-corazndelacomunidad-0495.webp",
-"es": true
+"es": true,
+"aliases": [
+"Coraz n de la comunidad"
+]
 },
 {
 "name": "Moto chopper",
@@ -11240,16 +11333,22 @@
 "es": true
 },
 {
-"name": "Veh culo el ctrico compacto",
+"name": "Vehículo eléctrico compacto",
 "diamonds": 0,
 "image": "es-vehculoelctricocompacto-0503.webp",
-"es": true
+"es": true,
+"aliases": [
+"Veh culo el ctrico compacto"
+]
 },
 {
-"name": "Corgi s Happy Chuseok",
+"name": "Corgi's Happy Chuseok",
 "diamonds": 0,
 "image": "es-corgishappychuseok-0504.webp",
-"es": true
+"es": true,
+"aliases": [
+"Corgi s Happy Chuseok"
+]
 },
 {
 "name": "Hay alguien en casa",
@@ -11276,10 +11375,13 @@
 "es": true
 },
 {
-"name": "Zarpa marr n",
+"name": "Zarpa marrón",
 "diamonds": 0,
 "image": "es-zarpamarrn-0517.webp",
-"es": true
+"es": true,
+"aliases": [
+"Zarpa marr n"
+]
 },
 {
 "name": "Ojo por ojo",
@@ -11300,10 +11402,13 @@
 "es": true
 },
 {
-"name": "Cami n monstruo",
+"name": "Camión monstruo",
 "diamonds": 0,
 "image": "es-caminmonstruo-0523.webp",
-"es": true
+"es": true,
+"aliases": [
+"Cami n monstruo"
+]
 },
 {
 "name": "Pez globo",
@@ -11318,10 +11423,13 @@
 "es": true
 },
 {
-"name": "Picnic oto al",
+"name": "Picnic otoñal",
 "diamonds": 0,
 "image": "es-picnicotoal-0537.webp",
-"es": true
+"es": true,
+"aliases": [
+"Picnic oto al"
+]
 },
 {
 "name": "Coche de rally",
@@ -11396,10 +11504,13 @@
 "es": true
 },
 {
-"name": "Coche a reacci n",
+"name": "Coche a reacción",
 "diamonds": 0,
 "image": "es-cocheareaccin-0562.webp",
-"es": true
+"es": true,
+"aliases": [
+"Coche a reacci n"
+]
 },
 {
 "name": "Pergamino de las leyendas",
@@ -11432,10 +11543,13 @@
 "es": true
 },
 {
-"name": "Veh culo antiguo",
+"name": "Vehículo antiguo",
 "diamonds": 0,
 "image": "es-vehculoantiguo-0574.webp",
-"es": true
+"es": true,
+"aliases": [
+"Veh culo antiguo"
+]
 },
 {
 "name": "Lobo del desierto",
@@ -11474,28 +11588,40 @@
 "es": true
 },
 {
-"name": "Guardi n de la Atl ntida",
+"name": "Guardián de la Atlántida",
 "diamonds": 0,
 "image": "es-guardindelaatlntida-0587.webp",
-"es": true
+"es": true,
+"aliases": [
+"Guardi n de la Atl ntida"
+]
 },
 {
-"name": "Determinaci n de hierro",
+"name": "Determinación de hierro",
 "diamonds": 0,
 "image": "es-determinacindehierro-0588.webp",
-"es": true
+"es": true,
+"aliases": [
+"Determinaci n de hierro"
+]
 },
 {
-"name": "Rel mpago rojo",
+"name": "Relámpago rojo",
 "diamonds": 0,
 "image": "es-relmpagorojo-0589.webp",
-"es": true
+"es": true,
+"aliases": [
+"Rel mpago rojo"
+]
 },
 {
-"name": "Planeador con verificaci n",
+"name": "Planeador con verificación",
 "diamonds": 0,
 "image": "es-planeadorconverificacin-0591.webp",
-"es": true
+"es": true,
+"aliases": [
+"Planeador con verificaci n"
+]
 },
 {
 "name": "Odisea heroica",
@@ -11618,34 +11744,49 @@
 "es": true
 },
 {
-"name": "P ldora de energ a",
+"name": "Píldora de energía",
 "diamonds": 0,
 "image": "es-pldoradeenerga-0677.webp",
-"es": true
+"es": true,
+"aliases": [
+"P ldora de energ a"
+]
 },
 {
-"name": "Gota de energ a",
+"name": "Gota de energía",
 "diamonds": 0,
 "image": "es-gotadeenerga-0678.webp",
-"es": true
+"es": true,
+"aliases": [
+"Gota de energ a"
+]
 },
 {
-"name": "Adi s al peligro",
+"name": "Adiós al peligro",
 "diamonds": 0,
 "image": "es-adisalpeligro-0679.webp",
-"es": true
+"es": true,
+"aliases": [
+"Adi s al peligro"
+]
 },
 {
-"name": "Cono de tr fico",
+"name": "Cono de tráfico",
 "diamonds": 0,
 "image": "es-conodetrfico-0680.webp",
-"es": true
+"es": true,
+"aliases": [
+"Cono de tr fico"
+]
 },
 {
-"name": "Champi n",
+"name": "Champiñón",
 "diamonds": 0,
 "image": "es-champin-0681.webp",
-"es": true
+"es": true,
+"aliases": [
+"Champi n"
+]
 },
 {
 "name": "Sin comentarios",
@@ -11666,10 +11807,13 @@
 "es": true
 },
 {
-"name": "Pluma m gica",
+"name": "Pluma mágica",
 "diamonds": 0,
 "image": "es-plumamgica-0690.webp",
-"es": true
+"es": true,
+"aliases": [
+"Pluma m gica"
+]
 },
 {
 "name": "LOL",
@@ -11684,10 +11828,13 @@
 "es": true
 },
 {
-"name": "Guardi n de las estrellas",
+"name": "Guardián de las estrellas",
 "diamonds": 0,
 "image": "es-guardindelasestrellas-0703.webp",
-"es": true
+"es": true,
+"aliases": [
+"Guardi n de las estrellas"
+]
 },
 {
 "name": "Estanque a la luz de la luna",
@@ -11714,10 +11861,13 @@
 "es": true
 },
 {
-"name": "Fantas a de Amor en el aire",
+"name": "Fantasía de Amor en el aire",
 "diamonds": 0,
 "image": "es-fantasadeamorenelaire-0725.webp",
-"es": true
+"es": true,
+"aliases": [
+"Fantas a de Amor en el aire"
+]
 },
 {
 "name": "Amor en el aire",
@@ -11738,16 +11888,22 @@
 "es": true
 },
 {
-"name": "Globo Aerost tico Brillante",
+"name": "Globo Aerostático Brillante",
 "diamonds": 0,
 "image": "es-globoaerostticobrillante-0735.webp",
-"es": true
+"es": true,
+"aliases": [
+"Globo Aerost tico Brillante"
+]
 },
 {
-"name": "Halc n de trueno",
+"name": "Halcón de trueno",
 "diamonds": 0,
 "image": "es-halcndetrueno-0739.webp",
-"es": true
+"es": true,
+"aliases": [
+"Halc n de trueno"
+]
 },
 {
 "name": "dj Jeison Consola",
@@ -11762,10 +11918,13 @@
 "es": true
 },
 {
-"name": "Dub i",
+"name": "Dubái",
 "diamonds": 0,
 "image": "es-dubi-0747.webp",
-"es": true
+"es": true,
+"aliases": [
+"Dub i"
+]
 },
 {
 "name": "DANIELA DAMEL",
@@ -11786,10 +11945,13 @@
 "es": true
 },
 {
-"name": "Riven P rpura",
+"name": "Riven Púrpura",
 "diamonds": 0,
 "image": "es-rivenprpura-0758.webp",
-"es": true
+"es": true,
+"aliases": [
+"Riven P rpura"
+]
 },
 {
 "name": "Toni Celeste",
@@ -11870,34 +12032,49 @@
 "es": true
 },
 {
-"name": "Ad rame",
+"name": "Adórame",
 "diamonds": 0,
 "image": "es-adrame-0790.webp",
-"es": true
+"es": true,
+"aliases": [
+"Ad rame"
+]
 },
 {
-"name": "Embrujamiento m gico",
+"name": "Embrujamiento mágico",
 "diamonds": 0,
 "image": "es-embrujamientomgico-0791.webp",
-"es": true
+"es": true,
+"aliases": [
+"Embrujamiento m gico"
+]
 },
 {
-"name": "Calabizaci n m gica",
+"name": "Calabización mágica",
 "diamonds": 0,
 "image": "es-calabizacinmgica-0792.webp",
-"es": true
+"es": true,
+"aliases": [
+"Calabizaci n m gica"
+]
 },
 {
-"name": "Draculizaci n m gica",
+"name": "Draculización mágica",
 "diamonds": 0,
 "image": "es-draculizacinmgica-0793.webp",
-"es": true
+"es": true,
+"aliases": [
+"Draculizaci n m gica"
+]
 },
 {
-"name": "Vampirizaci n m gica",
+"name": "Vampirización mágica",
 "diamonds": 0,
 "image": "es-vampirizacinmgica-0794.webp",
-"es": true
+"es": true,
+"aliases": [
+"Vampirizaci n m gica"
+]
 },
 {
 "name": "Persiguiendo estrellas",
@@ -11924,10 +12101,13 @@
 "es": true
 },
 {
-"name": "Sue o rosa",
+"name": "Sueño rosa",
 "diamonds": 0,
 "image": "es-sueorosa-0799.webp",
-"es": true
+"es": true,
+"aliases": [
+"Sue o rosa"
+]
 },
 {
 "name": "Yasury",
@@ -11945,12 +12125,6 @@
 "name": "Viva El Llano",
 "diamonds": 0,
 "image": "es-vivaelllano-0802.webp",
-"es": true
-},
-{
-"name": "",
-"diamonds": 0,
-"image": "es--0803.webp",
 "es": true
 },
 {
@@ -12020,10 +12194,13 @@
 "es": true
 },
 {
-"name": "Coraz n de EAU",
+"name": "Corazón de EAU",
 "diamonds": 0,
 "image": "es-corazndeeau-0822.webp",
-"es": true
+"es": true,
+"aliases": [
+"Coraz n de EAU"
+]
 },
 {
 "name": "Brote milagroso",
@@ -12056,16 +12233,22 @@
 "es": true
 },
 {
-"name": "Patr n Tigre",
+"name": "Patrón Tigre",
 "diamonds": 0,
 "image": "es-patrntigre-0830.webp",
-"es": true
+"es": true,
+"aliases": [
+"Patr n Tigre"
+]
 },
 {
-"name": "Monstruo Ar ndano",
+"name": "Monstruo Arándano",
 "diamonds": 0,
 "image": "es-monstruoarndano-0831.webp",
-"es": true
+"es": true,
+"aliases": [
+"Monstruo Ar ndano"
+]
 },
 {
 "name": "Black Rabbit",
@@ -12086,16 +12269,22 @@
 "es": true
 },
 {
-"name": "Mi rcoles de victoria",
+"name": "Miércoles de victoria",
 "diamonds": 0,
 "image": "es-mircolesdevictoria-0840.webp",
-"es": true
+"es": true,
+"aliases": [
+"Mi rcoles de victoria"
+]
 },
 {
-"name": "Mi rcoles de victoria",
+"name": "Miércoles de victoria",
 "diamonds": 0,
 "image": "es-mircolesdevictoria-0841.webp",
-"es": true
+"es": true,
+"aliases": [
+"Mi rcoles de victoria"
+]
 },
 {
 "name": "Kath",
@@ -12236,28 +12425,40 @@
 "es": true
 },
 {
-"name": "Espect culo de luces",
+"name": "Espectáculo de luces",
 "diamonds": 0,
 "image": "es-espectculodeluces-0889.webp",
-"es": true
+"es": true,
+"aliases": [
+"Espect culo de luces"
+]
 },
 {
-"name": "Rompiendo r cords",
+"name": "Rompiendo récords",
 "diamonds": 0,
 "image": "es-rompiendorcords-0890.webp",
-"es": true
+"es": true,
+"aliases": [
+"Rompiendo r cords"
+]
 },
 {
-"name": "Gran s Favorites",
+"name": "Gran's Favorites",
 "diamonds": 0,
 "image": "es-gransfavorites-0891.webp",
-"es": true
+"es": true,
+"aliases": [
+"Gran s Favorites"
+]
 },
 {
-"name": "I m Yours",
+"name": "I'm Yours",
 "diamonds": 0,
 "image": "es-imyours-0892.webp",
-"es": true
+"es": true,
+"aliases": [
+"I m Yours"
+]
 },
 {
 "name": "The Remedy",
@@ -12362,10 +12563,13 @@
 "es": true
 },
 {
-"name": "Le n Invicto",
+"name": "León Invicto",
 "diamonds": 0,
 "image": "es-leninvicto-0917.webp",
-"es": true
+"es": true,
+"aliases": [
+"Le n Invicto"
+]
 },
 {
 "name": "Blanca V",
@@ -12434,16 +12638,22 @@
 "es": true
 },
 {
-"name": "Cetro de le n",
+"name": "Cetro de león",
 "diamonds": 0,
 "image": "es-cetrodelen-0930.webp",
-"es": true
+"es": true,
+"aliases": [
+"Cetro de le n"
+]
 },
 {
-"name": "Cetro de halc n",
+"name": "Cetro de halcón",
 "diamonds": 0,
 "image": "es-cetrodehalcn-0931.webp",
-"es": true
+"es": true,
+"aliases": [
+"Cetro de halc n"
+]
 },
 {
 "name": "Cone Rayito",
@@ -12608,10 +12818,13 @@
 "es": true
 },
 {
-"name": "B ho",
+"name": "Búho",
 "diamonds": 0,
 "image": "es-bho-0968.webp",
-"es": true
+"es": true,
+"aliases": [
+"B ho"
+]
 },
 {
 "name": "PF Fans",
@@ -12620,10 +12833,13 @@
 "es": true
 },
 {
-"name": "Melena del le n",
+"name": "Melena del león",
 "diamonds": 0,
 "image": "es-melenadellen-0971.webp",
-"es": true
+"es": true,
+"aliases": [
+"Melena del le n"
+]
 },
 {
 "name": "Carta de amor",
@@ -12692,10 +12908,13 @@
 "es": true
 },
 {
-"name": "Benny el peque o rinoceronte",
+"name": "Benny el pequeño rinoceronte",
 "diamonds": 0,
 "image": "es-bennyelpequeorinoceronte-1000.webp",
-"es": true
+"es": true,
+"aliases": [
+"Benny el peque o rinoceronte"
+]
 },
 {
 "name": "Fuerza del viento",
@@ -12740,10 +12959,13 @@
 "es": true
 },
 {
-"name": "Amigo ping ino",
+"name": "Amigo pingüino",
 "diamonds": 0,
 "image": "es-amigopingino-1027.webp",
-"es": true
+"es": true,
+"aliases": [
+"Amigo ping ino"
+]
 },
 {
 "name": "Pincelazo Pop",
@@ -12800,12 +13022,6 @@
 "es": true
 },
 {
-"name": "",
-"diamonds": 0,
-"image": "es--1037.webp",
-"es": true
-},
-{
 "name": "Furia Bestial",
 "diamonds": 0,
 "image": "es-furiabestial-1038.webp",
@@ -12818,16 +13034,22 @@
 "es": true
 },
 {
-"name": "Tirada M stica",
+"name": "Tirada Mística",
 "diamonds": 0,
 "image": "es-tiradamstica-1040.webp",
-"es": true
+"es": true,
+"aliases": [
+"Tirada M stica"
+]
 },
 {
-"name": "Anita B ho",
+"name": "Anita Búho",
 "diamonds": 0,
 "image": "es-anitabho-1043.webp",
-"es": true
+"es": true,
+"aliases": [
+"Anita B ho"
+]
 },
 {
 "name": "Freddy",
@@ -12836,10 +13058,13 @@
 "es": true
 },
 {
-"name": "Mancoraz n",
+"name": "Mancorazón",
 "diamonds": 0,
 "image": "es-mancorazn-1046.webp",
-"es": true
+"es": true,
+"aliases": [
+"Mancoraz n"
+]
 },
 {
 "name": "KimRecomienda",
@@ -12848,16 +13073,22 @@
 "es": true
 },
 {
-"name": "El Ping i D Samu",
+"name": "El Pingüi D Samu",
 "diamonds": 0,
 "image": "es-elpingidsamu-1048.webp",
-"es": true
+"es": true,
+"aliases": [
+"El Ping i D Samu"
+]
 },
 {
-"name": "Manco C smico",
+"name": "Manco Cósmico",
 "diamonds": 0,
 "image": "es-mancocsmico-1049.webp",
-"es": true
+"es": true,
+"aliases": [
+"Manco C smico"
+]
 },
 {
 "name": "DJ Guss",
@@ -12968,10 +13199,13 @@
 "es": true
 },
 {
-"name": "Le n TeamRoy",
+"name": "León TeamRoy",
 "diamonds": 0,
 "image": "es-lenteamroy-1068.webp",
-"es": true
+"es": true,
+"aliases": [
+"Le n TeamRoy"
+]
 },
 {
 "name": "Perres",
@@ -13004,10 +13238,13 @@
 "es": true
 },
 {
-"name": "Sebas Mej a",
+"name": "Sebas Mejía",
 "diamonds": 0,
 "image": "es-sebasmeja-1074.webp",
-"es": true
+"es": true,
+"aliases": [
+"Sebas Mej a"
+]
 },
 {
 "name": "Hidalgold",
@@ -13016,10 +13253,13 @@
 "es": true
 },
 {
-"name": "Piuchi coraz n",
+"name": "Piuchi corazón",
 "diamonds": 0,
 "image": "es-piuchicorazn-1076.webp",
-"es": true
+"es": true,
+"aliases": [
+"Piuchi coraz n"
+]
 },
 {
 "name": "Vibe",
@@ -13172,10 +13412,13 @@
 "es": true
 },
 {
-"name": "Esp n 22",
+"name": "Espín 22",
 "diamonds": 0,
 "image": "es-espn22-1102.webp",
-"es": true
+"es": true,
+"aliases": [
+"Esp n 22"
+]
 },
 {
 "name": "Amores Infinitos",
@@ -13304,10 +13547,13 @@
 "es": true
 },
 {
-"name": "Wizi Ara a",
+"name": "Wizi Araña",
 "diamonds": 0,
 "image": "es-wiziaraa-1124.webp",
-"es": true
+"es": true,
+"aliases": [
+"Wizi Ara a"
+]
 },
 {
 "name": "Lexy",
@@ -13322,10 +13568,13 @@
 "es": true
 },
 {
-"name": "Gallina Gui o",
+"name": "Gallina Guiño",
 "diamonds": 0,
 "image": "es-gallinaguio-1127.webp",
-"es": true
+"es": true,
+"aliases": [
+"Gallina Gui o"
+]
 },
 {
 "name": "Emece Dj",
@@ -13352,10 +13601,13 @@
 "es": true
 },
 {
-"name": "Reacci n pica",
+"name": "Reacción épica",
 "diamonds": 0,
 "image": "es-reaccinpica-1132.webp",
-"es": true
+"es": true,
+"aliases": [
+"Reacci n pica"
+]
 },
 {
 "name": "xuenovia",
@@ -13436,10 +13688,13 @@
 "es": true
 },
 {
-"name": "Familia Le n",
+"name": "Familia León",
 "diamonds": 0,
 "image": "es-familialen-1146.webp",
-"es": true
+"es": true,
+"aliases": [
+"Familia Le n"
+]
 },
 {
 "name": "Monchito",
@@ -13478,10 +13733,13 @@
 "es": true
 },
 {
-"name": "Coraz n Patr n",
+"name": "Corazón Patrón",
 "diamonds": 0,
 "image": "es-coraznpatrn-1155.webp",
-"es": true
+"es": true,
+"aliases": [
+"Coraz n Patr n"
+]
 },
 {
 "name": "Bestia Gaming",
@@ -13514,22 +13772,31 @@
 "es": true
 },
 {
-"name": "Tulip n arco ris",
+"name": "Tulipán arcoíris",
 "diamonds": 0,
 "image": "es-tulipnarcoris-1167.webp",
-"es": true
+"es": true,
+"aliases": [
+"Tulip n arco ris"
+]
 },
 {
-"name": "Tulip n helado",
+"name": "Tulipán helado",
 "diamonds": 0,
 "image": "es-tulipnhelado-1168.webp",
-"es": true
+"es": true,
+"aliases": [
+"Tulip n helado"
+]
 },
 {
-"name": "Tulip n de metal",
+"name": "Tulipán de metal",
 "diamonds": 0,
 "image": "es-tulipndemetal-1169.webp",
-"es": true
+"es": true,
+"aliases": [
+"Tulip n de metal"
+]
 },
 {
 "name": "Carpa de circo",
@@ -13538,16 +13805,22 @@
 "es": true
 },
 {
-"name": "Acar ciame",
+"name": "Acaríciame",
 "diamonds": 0,
 "image": "es-acarciame-1176.webp",
-"es": true
+"es": true,
+"aliases": [
+"Acar ciame"
+]
 },
 {
-"name": "Fuegos artificiales de Dub i",
+"name": "Fuegos artificiales de Dubái",
 "diamonds": 0,
 "image": "es-fuegosartificialesdedubi-1179.webp",
-"es": true
+"es": true,
+"aliases": [
+"Fuegos artificiales de Dub i"
+]
 },
 {
 "name": "Tarta de los EAU",
@@ -13592,10 +13865,13 @@
 "es": true
 },
 {
-"name": "Micr fono musical",
+"name": "Micrófono musical",
 "diamonds": 0,
 "image": "es-micrfonomusical-1203.webp",
-"es": true
+"es": true,
+"aliases": [
+"Micr fono musical"
+]
 },
 {
 "name": "DjLeo",
@@ -13694,10 +13970,13 @@
 "es": true
 },
 {
-"name": "T-Rex Campe n",
+"name": "T-Rex Campeón",
 "diamonds": 0,
 "image": "es-trexcampen-1272.webp",
-"es": true
+"es": true,
+"aliases": [
+"T-Rex Campe n"
+]
 },
 {
 "name": "Muelle Turbo",
@@ -13712,10 +13991,13 @@
 "es": true
 },
 {
-"name": "Lobo T ctico",
+"name": "Lobo Táctico",
 "diamonds": 0,
 "image": "es-lobotctico-1276.webp",
-"es": true
+"es": true,
+"aliases": [
+"Lobo T ctico"
+]
 },
 {
 "name": "RafaGOW",
@@ -13724,16 +14006,22 @@
 "es": true
 },
 {
-"name": "Rat n Cachumbi",
+"name": "Ratón Cachumbi",
 "diamonds": 0,
 "image": "es-ratncachumbi-1278.webp",
-"es": true
+"es": true,
+"aliases": [
+"Rat n Cachumbi"
+]
 },
 {
-"name": "Cart n Roto IV",
+"name": "Cartón Roto IV",
 "diamonds": 0,
 "image": "es-cartnrotoiv-1279.webp",
-"es": true
+"es": true,
+"aliases": [
+"Cart n Roto IV"
+]
 },
 {
 "name": "Mufas",
@@ -13784,10 +14072,13 @@
 "es": true
 },
 {
-"name": "Gato C smico",
+"name": "Gato Cósmico",
 "diamonds": 0,
 "image": "es-gatocsmico-1299.webp",
-"es": true
+"es": true,
+"aliases": [
+"Gato C smico"
+]
 },
 {
 "name": "Te quiero en lengua de signos",
@@ -13820,16 +14111,22 @@
 "es": true
 },
 {
-"name": "Buenos d as",
+"name": "Buenos días",
 "diamonds": 0,
 "image": "es-buenosdas-1306.webp",
-"es": true
+"es": true,
+"aliases": [
+"Buenos d as"
+]
 },
 {
-"name": "Puente de la Bah a de S dney",
+"name": "Puente de la Bahía de Sídney",
 "diamonds": 0,
 "image": "es-puentedelabahadesdney-1307.webp",
-"es": true
+"es": true,
+"aliases": [
+"Puente de la Bah a de S dney"
+]
 },
 {
 "name": "Ivonny Bonita",
@@ -13844,10 +14141,13 @@
 "es": true
 },
 {
-"name": "Coraz n de Egipto",
+"name": "Corazón de Egipto",
 "diamonds": 0,
 "image": "es-corazndeegipto-1313.webp",
-"es": true
+"es": true,
+"aliases": [
+"Coraz n de Egipto"
+]
 },
 {
 "name": "Rata Dorada",
@@ -13898,16 +14198,22 @@
 "es": true
 },
 {
-"name": "Le n El ctrico",
+"name": "León Eléctrico",
 "diamonds": 0,
 "image": "es-lenelctrico-1323.webp",
-"es": true
+"es": true,
+"aliases": [
+"Le n El ctrico"
+]
 },
 {
-"name": "Ovaci n de la multitud",
+"name": "Ovación de la multitud",
 "diamonds": 0,
 "image": "es-ovacindelamultitud-1326.webp",
-"es": true
+"es": true,
+"aliases": [
+"Ovaci n de la multitud"
+]
 },
 {
 "name": "Casta uelas",
@@ -13928,10 +14234,13 @@
 "es": true
 },
 {
-"name": "Balty C smico",
+"name": "Balty Cósmico",
 "diamonds": 0,
 "image": "es-baltycsmico-1336.webp",
-"es": true
+"es": true,
+"aliases": [
+"Balty C smico"
+]
 },
 {
 "name": "Ozkar Rizos",
@@ -13940,10 +14249,13 @@
 "es": true
 },
 {
-"name": "Coraz n de fuego",
+"name": "Corazón de fuego",
 "diamonds": 0,
 "image": "es-corazndefuego-1340.webp",
-"es": true
+"es": true,
+"aliases": [
+"Coraz n de fuego"
+]
 },
 {
 "name": "Scrappii",
@@ -13958,10 +14270,13 @@
 "es": true
 },
 {
-"name": "Caravana ne n",
+"name": "Caravana neón",
 "diamonds": 0,
 "image": "es-caravananen-1345.webp",
-"es": true
+"es": true,
+"aliases": [
+"Caravana ne n"
+]
 },
 {
 "name": "Team achapa",
@@ -13970,10 +14285,13 @@
 "es": true
 },
 {
-"name": "M sica din mica",
+"name": "Música dinámica",
 "diamonds": 0,
 "image": "es-msicadinmica-1347.webp",
-"es": true
+"es": true,
+"aliases": [
+"M sica din mica"
+]
 },
 {
 "name": "Rugido Simo",
@@ -14024,10 +14342,13 @@
 "es": true
 },
 {
-"name": "B ho Melesito",
+"name": "Búho Melesito",
 "diamonds": 0,
 "image": "es-bhomelesito-1362.webp",
-"es": true
+"es": true,
+"aliases": [
+"B ho Melesito"
+]
 },
 {
 "name": "Cris",
@@ -14042,10 +14363,13 @@
 "es": true
 },
 {
-"name": "Carrusel navide o",
+"name": "Carrusel navideño",
 "diamonds": 0,
 "image": "es-carruselnavideo-1365.webp",
-"es": true
+"es": true,
+"aliases": [
+"Carrusel navide o"
+]
 },
 {
 "name": "Reino del Hielo",

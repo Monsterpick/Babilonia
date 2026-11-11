@@ -8,11 +8,16 @@ export function GiftPicker({ selected, onPick, multi = false }: { selected: stri
   const [q, setQ] = useState('')
   const [maxShown, setMaxShown] = useState(120)
   const list = useMemo(() => {
-    const s = q.trim().toLowerCase()
-    if (s) return gifts.filter((g) => g.name.toLowerCase().includes(s) || String(g.diamonds) === s)
+    // búsqueda sin distinguir tildes ni mayúsculas («corazon» encuentra «Corazón»)
+    const plain = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    const s = plain(q.trim())
+    if (s) return gifts.filter((g) => plain(g.name).includes(s) || String(g.diamonds) === s)
     const popular = POPULAR_GIFTS.map((n) => findGift(gifts, n)).filter((g): g is GiftInfo => !!g)
+    // después de los populares: primero los que tienen precio conocido (de menos a más) y al final los que no
     const rest = gifts.filter((g) => !popular.includes(g) && g.image)
-    return [...popular, ...rest]
+    const priced = rest.filter((g) => g.diamonds > 0).sort((a, b) => a.diamonds - b.diamonds || a.name.localeCompare(b.name, 'es'))
+    const unpriced = rest.filter((g) => !(g.diamonds > 0)).sort((a, b) => a.name.localeCompare(b.name, 'es'))
+    return [...popular, ...priced, ...unpriced]
   }, [gifts, q])
   const sel = new Set(selected.map((s) => s.toLowerCase()))
   return (
@@ -26,13 +31,14 @@ export function GiftPicker({ selected, onPick, multi = false }: { selected: stri
           <button
             key={`${g.name}-${g.diamonds}`}
             onClick={() => onPick(g)}
+            title={g.diamonds > 0 ? `${g.name} · ${g.diamonds} monedas` : g.name}
             className={`flex flex-col items-center rounded-lg border p-2 text-center transition ${
               sel.has(g.name.toLowerCase()) ? 'border-accent bg-accent/10' : 'border-line bg-bg hover:border-white/25'
             }`}
           >
             {g.image ? <img src={g.image} alt="" loading="lazy" className="h-12 w-12 object-contain" /> : <div className="h-12 w-12 rounded bg-white/5" />}
             <span className="mt-1 line-clamp-1 text-[11px] font-medium">{g.name}</span>
-            <span className="text-[11px] text-warn">🪙 {g.diamonds}</span>
+            {g.diamonds > 0 ? <span className="text-[11px] text-warn">🪙 {g.diamonds.toLocaleString('es')}</span> : <span className="text-[10px] text-muted">sin precio</span>}
           </button>
         ))}
       </div>

@@ -21,7 +21,7 @@ import org.bukkit.block.data.type.Slab;
  */
 public final class TowerGen {
     /** Sube este número cuando cambie el generador: las torres ya construidas se reconstruyen solas. */
-    public static final int VERSION = 2;
+    public static final int VERSION = 3;
     public record Options(int levels, int baseY, int rise, double radius, double difficulty) {}
 
     private final Options o;
@@ -181,10 +181,22 @@ public final class TowerGen {
                 best = new int[] {nx, ny, nz};
             }
             if (best == null) {
-                // último recurso: un bloque sencillo justo delante, siempre posible
-                double na = Math.atan2(z, x) + 2.2 / rad;
-                best = new int[] {(int) Math.round(rad * Math.cos(na)), y, (int) Math.round(rad * Math.sin(na))};
+                // último recurso: un bloque sencillo delante a la misma altura; se busca el primer hueco libre
+                t.fallbacks++;
                 kind = "block";
+                ny = y;
+                for (double step = 2.4; step <= 3.6 && best == null; step += 0.3)
+                    for (double dr = 0; dr <= 3 && best == null; dr += 1) {
+                        double nr = Math.min(o.radius() + 3.5, rad + dr);
+                        double na = Math.atan2(z, x) + step / nr;
+                        int nx = (int) Math.round(nr * Math.cos(na)), nz = (int) Math.round(nr * Math.sin(na));
+                        double real = dist(x, z, nx, nz);
+                        if (real >= 2 + extra && real <= 4.2 + extra && free(nx, ny, nz, 3, 3)) best = new int[] {nx, ny, nz};
+                    }
+                if (best == null) {
+                    double na = Math.atan2(z, x) + 2.4 / rad;
+                    best = new int[] {(int) Math.round(rad * Math.cos(na)), y, (int) Math.round(rad * Math.sin(na))};
+                }
             }
             x = best[0];
             y = best[1];
@@ -218,6 +230,17 @@ public final class TowerGen {
                 for (int az = -1; az <= 1 && ok; az++) ok = free(nx + ax, ty, nz + az, 3, 3);
             if (ok && dist(x, z, nx, nz) <= 4.6) return new int[] {nx, ty, nz};
         }
+        // último recurso: se avanza por el arco hasta encontrar sitio libre para la plataforma
+        t.fallbacks++;
+        for (double h = 3.0; h <= 4.4; h += 0.2)
+            for (double nr = o.radius() - 2; nr <= o.radius() + 4; nr += 1) {
+                double na = Math.atan2(z, x) + h / nr;
+                int nx = (int) Math.round(nr * Math.cos(na)), nz = (int) Math.round(nr * Math.sin(na));
+                boolean ok = dist(x, z, nx, nz) <= 4.6 && dist(x, z, nx, nz) >= 2.6;
+                for (int ax = -1; ax <= 1 && ok; ax++)
+                    for (int az = -1; az <= 1 && ok; az++) ok = free(nx + ax, ty, nz + az, 3, 3);
+                if (ok) return new int[] {nx, ty, nz};
+            }
         double na = Math.atan2(z, x) + 3.4 / rad;
         return new int[] {(int) Math.round(rad * Math.cos(na)), ty, (int) Math.round(rad * Math.sin(na))};
     }

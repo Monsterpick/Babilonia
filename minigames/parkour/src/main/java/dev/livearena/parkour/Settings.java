@@ -22,9 +22,14 @@ public final class Settings {
     public Settings(FileConfiguration c) {
         worldName = c.getString("mundo.nombre", "parkour_torre");
         seed = c.getLong("torre.semilla", 2026);
-        levels = clamp(c.getInt("torre.niveles", 50), 2, 120);
-        baseY = clamp(c.getInt("torre.alturaBase", 8), -50, 200);
-        rise = clamp(c.getInt("torre.subidaPorNivel", 6), 4, 10);
+        baseY = clamp(c.getInt("torre.alturaBase", 8), -50, 100);
+        // la torre tiene que caber en el mundo (techo en y=319): si hay muchos niveles, cada uno sube menos
+        int wantLevels = clamp(c.getInt("torre.niveles", 50), 2, 60);
+        int wantRise = clamp(c.getInt("torre.subidaPorNivel", 6), 5, 10);
+        int room = 310 - baseY;
+        while (wantRise > 5 && wantLevels * wantRise > room) wantRise--; // con menos de 5 los niveles se estorban
+        levels = Math.min(wantLevels, room / wantRise);
+        rise = wantRise;
         radius = Math.max(7, Math.min(16, c.getDouble("torre.radio", 9)));
         difficulty = Math.max(0.3, Math.min(2, c.getDouble("torre.dificultad", 1)));
         timeLimitMin = clamp(c.getInt("partida.tiempoLimite", 0), 0, 600);

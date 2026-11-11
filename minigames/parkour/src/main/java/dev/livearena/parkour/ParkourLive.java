@@ -109,9 +109,12 @@ public final class ParkourLive extends JavaPlugin {
         getConfig().options().copyDefaults(true);
         settings = new Settings(getConfig());
         pack.start();
-        String before = data.getString("torre.firma", "");
-        computeTower();
-        if (!before.equals(settings.towerSignature()) && !game.running()) builder.rebuild(null);
+        // La torre en memoria debe ser siempre la que está construida en el mundo: si los ajustes la cambian con una
+        // partida en marcha, se deja la actual y la nueva se construye al terminar (al arrancar o con «Nuevo mapa»).
+        String built = data.getString("torre.firma", "");
+        if (!built.equals(settings.towerSignature())) {
+            if (!game.running() && !builder.building()) builder.rebuild(null);
+        }
         hud.refresh();
     }
 
