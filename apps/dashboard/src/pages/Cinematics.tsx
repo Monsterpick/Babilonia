@@ -237,7 +237,7 @@ export function CinematicsPage() {
 
           <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
             {CINE_ABILITIES.map((a) => (
-              <div key={a.id} className="card group relative overflow-hidden p-4">
+              <div key={a.id} className="card group relative flex flex-col overflow-hidden p-4">
                 <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full opacity-25 blur-2xl transition group-hover:opacity-40" style={{ background: a.color }} />
                 <div className="flex items-start gap-3">
                   <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-2xl" style={{ background: `${a.color}22`, boxShadow: `inset 0 0 0 1px ${a.color}55` }}>
@@ -267,7 +267,7 @@ export function CinematicsPage() {
                     </div>
                   </div>
                 )}
-                <div className="mt-3 flex gap-2">
+                <div className="mt-auto flex gap-2 pt-3">
                   <button className="btn-accent flex-1 justify-center" disabled={running === a.id} onClick={() => void run(a.id)}>
                     {running === a.id ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />} Probar
                   </button>

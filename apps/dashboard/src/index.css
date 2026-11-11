@@ -133,3 +133,52 @@ select.input {
 /* barra lateral: se puede desplazar en pantallas bajas sin mostrar la barra de scroll */
 .no-scrollbar { scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* ───────── Pulido general ───────── */
+/* Entrada suave de cada página */
+@keyframes la-page-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.page-in { animation: la-page-in 0.28s cubic-bezier(.2,.9,.3,1) both; }
+
+/* Foco visible con teclado en todo lo interactivo */
+body.dashboard :is(button, a, select, input[type='checkbox'], input[type='range'], [role='button']):focus-visible {
+  outline: 2px solid var(--color-accent-2);
+  outline-offset: 2px;
+}
+
+/* Casillas y deslizadores con el color de la app */
+body.dashboard input[type='checkbox'],
+body.dashboard input[type='radio'],
+body.dashboard input[type='range'] {
+  accent-color: var(--color-hot);
+}
+body.dashboard input[type='checkbox'] { cursor: pointer; }
+
+/* Desplegables oscuros también en su lista */
+body.dashboard select option { background: #14141f; color: #ececf7; }
+
+/* Botón principal: brillo que cruza al pasar el ratón */
+.btn-accent { position: relative; overflow: hidden; }
+.btn-accent::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%, #ffffff40 50%, transparent 65%);
+  transform: translateX(-120%);
+  transition: transform 0.6s ease;
+  pointer-events: none;
+}
+.btn-accent:hover:not(:disabled)::after { transform: translateX(120%); }
+
+/* Tarjetas: borde que se ilumina un poco al pasar el ratón */
+.card { transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+.card:hover { border-color: #ffffff1c; }
+
+/* Números de los campos sin flechitas (ocupan sitio y se pulsan sin querer) */
+body.dashboard input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
+body.dashboard input[type='number']::-webkit-outer-spin-button,
+body.dashboard input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* Quien prefiere menos movimiento: sin animaciones decorativas en el panel */
+@media (prefers-reduced-motion: reduce) {
+  body.dashboard *, body.dashboard *::before, body.dashboard *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

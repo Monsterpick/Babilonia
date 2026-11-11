@@ -103,7 +103,8 @@ export function App() {
         </aside>
         <main className="flex min-w-0 flex-1 flex-col">
           <TopBar />
-          <div className="min-h-0 flex-1 overflow-y-auto"><div className="mx-auto w-full max-w-[1680px]">{state ? current.el() : <Loading />}</div></div>
+          {/* la clave por página reinicia el desplazamiento al cambiar de sección y lanza la animación de entrada */}
+          <div key={current.id} className="min-h-0 flex-1 overflow-y-auto"><div className="page-in mx-auto w-full max-w-[1680px]">{state ? current.el() : <Loading />}</div></div>
         </main>
       </div>
       <Toasts />
