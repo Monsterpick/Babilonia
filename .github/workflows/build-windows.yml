@@ -71,6 +71,30 @@ jobs:
           path: minigames/base-defense/build/libs/BaseDefense.jar
           if-no-files-found: error
 
+  parkour:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compilar el minijuego Parkour LIVE (Paper, Gradle Kotlin DSL)
+        working-directory: minigames/parkour
+        run: |
+          META=https://repo.papermc.io/repository/maven-public/io/papermc/paper/paper-api/maven-metadata.xml
+          VER=$(curl -fsSL "$META" | grep -o '<version>[^<]*</version>' | sed 's/<[^>]*>//g' | grep '^26\.1\.2' | grep -v SNAPSHOT | tail -1)
+          echo "paper-api: $VER"
+          chmod +x gradlew
+          ./gradlew --no-daemon build ${VER:+-PpaperVersion=$VER}
+          test -f build/libs/ParkourLive.jar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ParkourLive-plugin
+          path: minigames/parkour/build/libs/ParkourLive.jar
+          if-no-files-found: error
+
   mod:
     runs-on: ubuntu-latest
     steps:
@@ -93,7 +117,7 @@ jobs:
           if-no-files-found: error
 
   windows:
-    needs: [test, plugin, basedefense, mod]
+    needs: [test, plugin, basedefense, parkour, mod]
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -113,6 +137,10 @@ jobs:
           path: apps/server/assets/plugins
       - uses: actions/download-artifact@v4
         with:
+          name: ParkourLive-plugin
+          path: apps/server/assets/plugins
+      - uses: actions/download-artifact@v4
+        with:
           name: LiveArena-mod
           path: apps/server/assets/mods
       - run: pnpm build
@@ -123,6 +151,7 @@ jobs:
           Copy-Item apps/server/assets/plugins/LiveArena.jar apps/desktop/release/
           Copy-Item apps/server/assets/mods/LiveArena-Cinematicas.jar apps/desktop/release/
           Copy-Item apps/server/assets/plugins/BaseDefense.jar apps/desktop/release/
+          Copy-Item apps/server/assets/plugins/ParkourLive.jar apps/desktop/release/
       - uses: actions/upload-artifact@v4
         with:
           name: LiveArena-Windows
@@ -131,6 +160,7 @@ jobs:
             apps/desktop/release/LiveArena.jar
             apps/desktop/release/LiveArena-Cinematicas.jar
             apps/desktop/release/BaseDefense.jar
+            apps/desktop/release/ParkourLive.jar
           if-no-files-found: error
       - name: Publicar release (solo en tags v*)
         if: startsWith(github.ref, 'refs/tags/v')
@@ -141,3 +171,4 @@ jobs:
             apps/desktop/release/LiveArena.jar
             apps/desktop/release/LiveArena-Cinematicas.jar
             apps/desktop/release/BaseDefense.jar
+            apps/desktop/release/ParkourLive.jar

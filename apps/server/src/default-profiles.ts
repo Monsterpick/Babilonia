@@ -376,3 +376,62 @@ export function baseDefenseProfile(): Profile {
     notes: 'Bando aliado (ayudan): curar, suministros, misil, bombardeo y rayo orbital. Bando enemigo: mobs, hordas y jefes. La meta de likes (jefe Wither) la lleva el propio plugin: la app le envía el total de likes con /ttlikes. «horda» = mezcla de los mobs de la fase actual.',
   })
 }
+
+/**
+ * Perfil del minijuego Parkour LIVE: los regalos suben o bajan de nivel al streamer, le empujan o le ponen trampas
+ * (y también le ayudan). /ttpk <efecto> [n] {user}.
+ */
+export function parkourProfile(): Profile {
+  const fn = (id: string, name: string, color: string, commands: string[], alignment: 'good' | 'bad' = 'bad'): ActionInput => ({
+    id,
+    name,
+    color,
+    alignment,
+    steps: [{ type: 'minecraft.command' as const, commands, mode: 'all' as const }],
+  })
+  const gift = (id: string, name: string, diamonds: number, action: string) => ({ id, trigger: { type: 'gift' as const, gifts: [{ name, diamonds }] }, actionIds: [action] })
+  return ProfileSchema.parse({
+    id: 'parkour',
+    name: 'Parkour LIVE',
+    mode: 'parkour',
+    actions: [
+      fn('pk-empujar', 'EMPUJAR', '#f59e0b', ['ttpk empujar {user}']),
+      fn('pk-subir1', 'SUBIR 1 NIVEL', '#22c55e', ['ttpk subir 1 {user}'], 'good'),
+      fn('pk-bajar1', 'BAJAR 1 NIVEL', '#ef4444', ['ttpk bajar 1 {user}']),
+      fn('pk-subir10', 'SUBIR 10 NIVELES', '#16a34a', ['ttpk subir 10 {user}'], 'good'),
+      fn('pk-bajar10', 'BAJAR 10 NIVELES', '#b91c1c', ['ttpk bajar 10 {user}']),
+      fn('pk-viento', 'VIENTO', '#38bdf8', ['ttpk viento {user}']),
+      fn('pk-niebla', 'APAGAR LUCES', '#334155', ['ttpk niebla {user}']),
+      fn('pk-hielo', 'CAMINO DE HIELO', '#7dd3fc', ['ttpk hielo {user}']),
+      fn('pk-fantasma', 'BLOQUES FANTASMA', '#a1a1aa', ['ttpk fantasma {user}']),
+      fn('pk-terremoto', 'TERREMOTO', '#a16207', ['ttpk terremoto {user}']),
+      fn('pk-lento', 'LENTITUD', '#6366f1', ['ttpk lento {user}']),
+      fn('pk-supersalto', 'SUPERSALTO', '#4ade80', ['ttpk supersalto {user}'], 'good'),
+      fn('pk-escudo', 'ESCUDO ANTICAÍDA', '#f472b6', ['ttpk escudo {user}'], 'good'),
+      fn('pk-guia', 'MARCAR CAMINO', '#facc15', ['ttpk guia {user}'], 'good'),
+      fn('pk-puente', 'PUENTE', '#67e8f9', ['ttpk puente {user}'], 'good'),
+    ],
+    events: [
+      gift('pk-ev-rose', 'Rose', 1, 'pk-empujar'),
+      gift('pk-ev-tiktok', 'TikTok', 1, 'pk-empujar'),
+      gift('pk-ev-gg', 'GG', 1, 'pk-viento'),
+      gift('pk-ev-finger', 'Finger Heart', 5, 'pk-subir1'),
+      gift('pk-ev-heartme', 'Heart Me', 1, 'pk-guia'),
+      gift('pk-ev-perfume', 'Perfume', 20, 'pk-bajar1'),
+      gift('pk-ev-donut', 'Doughnut', 30, 'pk-niebla'),
+      gift('pk-ev-cap', 'Cap', 99, 'pk-supersalto'),
+      gift('pk-ev-hearts', 'Hand Hearts', 100, 'pk-hielo'),
+      gift('pk-ev-confetti', 'Confetti', 100, 'pk-fantasma'),
+      gift('pk-ev-sunglasses', 'Sunglasses', 199, 'pk-escudo'),
+      gift('pk-ev-corgi', 'Corgi', 299, 'pk-terremoto'),
+      gift('pk-ev-moneygun', 'Money Gun', 500, 'pk-subir10'),
+      gift('pk-ev-swan', 'Swan', 699, 'pk-puente'),
+      gift('pk-ev-galaxy', 'Galaxy', 1000, 'pk-bajar10'),
+      { id: 'pk-ev-follow', trigger: { type: 'follow', oncePerUser: true }, actionIds: ['pk-guia'] },
+      { id: 'pk-ev-share', trigger: { type: 'share' }, actionIds: ['pk-empujar'], cooldown: { perUserMs: 30000 } },
+      { id: 'pk-ev-likes', trigger: { type: 'likes', every: 500 }, actionIds: ['pk-empujar'] },
+      { id: 'pk-ev-chat-sube', trigger: { type: 'chat', contains: 'sube' }, actionIds: ['pk-supersalto'], cooldown: { perUserMs: 120000 } },
+    ],
+    notes: 'Ayudas: subir niveles, supersalto, escudo anticaída, marcar camino y puente. Sabotajes: bajar niveles, empujar, viento, apagar luces, hielo, bloques fantasma, terremoto y lentitud. Los efectos van en cola, uno detrás de otro; tras varias caídas seguidas el streamer queda protegido unos segundos.',
+  })
+}

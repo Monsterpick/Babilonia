@@ -13,7 +13,7 @@ import { SceneSchema } from '@livearena/shared'
 import { ASSETS_DIR, DASHBOARD_DIST } from './resources.js'
 import { SimRequestSchema, Simulator } from './simulator.js'
 import { VERSION, type App } from './app.js'
-import { baseDefenseProfile } from './default-profiles.js'
+import { baseDefenseProfile, parkourProfile } from './default-profiles.js'
 
 
 class HttpError extends Error {
@@ -413,6 +413,8 @@ export async function buildHttp(app: App): Promise<FastifyInstance> {
     const response = await app.minigames.command(command)
     // Modos separados: al empezar la partida se activa el perfil de regalos de Base Defense; al terminar vuelve el anterior.
     if (/^bd start\b/.test(command.trim())) {
+      // un solo minijuego a la vez
+      if (app.minigames.parkour?.running) await app.mc.link.enqueue('pk stop', 900).catch(() => '')
       const bd = app.profiles.get('base-defense') ?? (await app.profiles.save(baseDefenseProfile(), false))
       if (app.activeProfile.id !== bd.id) {
         app.minigames.previousProfile = app.activeProfile.id
@@ -432,6 +434,45 @@ export async function buildHttp(app: App): Promise<FastifyInstance> {
   })
   f.post('/api/minigames/basedefense/profile', async () => {
     const p = app.profiles.get('base-defense') ?? (await app.profiles.save(baseDefenseProfile(), false))
+    app.setProfile(p)
+    return { id: p.id, name: p.name }
+  })
+  /* ---------------- minijuegos (Parkour LIVE) ---------------- */
+  const pk = () => {
+    if (!app.minigames.parkour) throw new HttpError(503, 'Parkour no disponible')
+    return app.minigames.parkour
+  }
+  f.post('/api/minigames/parkour/install', async () => pk().install())
+  f.post('/api/minigames/parkour/command', async (req) => {
+    const { command } = parse(z.object({ command: z.string().min(1).max(120) }), req.body)
+    const c = command.trim()
+    // un solo minijuego a la vez: al empezar el parkour se para Base Defense
+    if (/^pk start\b/.test(c)) {
+      const bdGame = (await app.minigames.status()).baseDefense.game
+      if (bdGame?.running) await app.mc.link.enqueue('bd stop', 900).catch(() => '')
+    }
+    const response = await pk().command(command)
+    if (/^pk start\b/.test(c)) {
+      const p = app.profiles.get('parkour') ?? (await app.profiles.save(parkourProfile(), false))
+      if (app.activeProfile.id !== p.id) {
+        if (app.activeProfile.id !== 'base-defense') pk().previousProfile = app.activeProfile.id
+        else pk().previousProfile = app.minigames.previousProfile
+        app.setProfile(p)
+      }
+    } else if (/^pk stop\b/.test(c) && pk().previousProfile) {
+      const prev = app.profiles.get(pk().previousProfile!)
+      pk().previousProfile = null
+      if (prev) app.setProfile(prev)
+    }
+    return { response }
+  })
+  f.get('/api/minigames/parkour/settings', async () => pk().getSettings())
+  f.put('/api/minigames/parkour/settings', async (req) => {
+    const values = parse(z.record(z.union([z.string().max(120), z.number()])), req.body)
+    return pk().saveSettings(values)
+  })
+  f.post('/api/minigames/parkour/profile', async () => {
+    const p = app.profiles.get('parkour') ?? (await app.profiles.save(parkourProfile(), false))
     app.setProfile(p)
     return { id: p.id, name: p.name }
   })

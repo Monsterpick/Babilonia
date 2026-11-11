@@ -38,6 +38,7 @@ export interface BaseDefenseGame {
 }
 
 export interface MinigamesStatus {
+  parkour: import('./parkour.js').ParkourStatus
   baseDefense: {
     /** ¿La app trae el .jar del plugin? */
     bundled: boolean
@@ -97,28 +98,32 @@ function unquote(v: string): string {
   return v
 }
 
-export function parseBdSettings(text: string): BdSettings {
+/** Tipos de los ajustes editables: entero, número, texto o sí/no (true/false en el YAML). */
+export type SettingType = 'int' | 'number' | 'string' | 'bool'
+
+export function parseYamlSettings(text: string, schema: Record<string, SettingType>): Record<string, string | number> {
   const lines = text.split(/\r?\n/)
-  const out: BdSettings = {}
-  for (const [key, type] of Object.entries(BD_SETTINGS) as [BdSettingKey, string][]) {
+  const out: Record<string, string | number> = {}
+  for (const [key, type] of Object.entries(schema)) {
     const i = findKey(lines, key)
     if (i < 0) continue
     const raw = unquote(lines[i]!.slice(lines[i]!.indexOf(':') + 1))
-    out[key] = type === 'string' ? raw : Number(raw)
+    out[key] = type === 'string' ? raw : type === 'bool' ? (raw === 'true' ? 1 : 0) : Number(raw)
   }
   return out
 }
 
 /** Cambia solo los valores indicados, respetando comentarios y el resto del archivo. */
-export function writeBdSettings(text: string, values: BdSettings): string {
+export function writeYamlSettings(text: string, values: Record<string, string | number>, schema: Record<string, SettingType>): string {
   const lines = text.split(/\r?\n/)
-  for (const [key, value] of Object.entries(values) as [BdSettingKey, string | number][]) {
-    const type = BD_SETTINGS[key]
+  for (const [key, value] of Object.entries(values)) {
+    const type = schema[key]
     if (!type || value === undefined || value === null || value === '') continue
     const i = findKey(lines, key)
     if (i < 0) continue
     let v: string
     if (type === 'string') v = JSON.stringify(String(value).slice(0, 120))
+    else if (type === 'bool') v = value === 1 || value === '1' || value === 'true' ? 'true' : 'false'
     else {
       const n = Number(value)
       if (!Number.isFinite(n)) continue
@@ -129,6 +134,14 @@ export function writeBdSettings(text: string, values: BdSettings): string {
     lines[i] = `  ${k}: ${v}${comment}`
   }
   return lines.join('\n')
+}
+
+export function parseBdSettings(text: string): BdSettings {
+  return parseYamlSettings(text, BD_SETTINGS) as BdSettings
+}
+
+export function writeBdSettings(text: string, values: BdSettings): string {
+  return writeYamlSettings(text, values as Record<string, string | number>, BD_SETTINGS)
 }
 
 export function parseBdStatus(line: string): BaseDefenseGame | null {
@@ -217,9 +230,13 @@ export class MinigamesService {
     return folder ? path.join(folder, 'plugins', 'BaseDefense', 'config.yml') : null
   }
 
+  /** Parkour LIVE (lo crea la app y se incluye en el mismo estado). */
+  parkour: import('./parkour.js').ParkourService | null = null
+
   async status(): Promise<MinigamesStatus> {
     const cf = this.configFile()
     return {
+      parkour: this.parkour ? await this.parkour.status() : { bundled: false, plugin: 'no-server', loaded: null, config: false, game: null, error: null },
       baseDefense: {
         bundled: await fs.access(BUNDLED_BASE_DEFENSE).then(() => true, () => false),
         plugin: await this.pluginState(),

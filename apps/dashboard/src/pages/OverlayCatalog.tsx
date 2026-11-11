@@ -269,6 +269,7 @@ const SECTIONS: { title: string; hint: string; items: Def[] }[] = [
           </>
         ),
       },
+      { id: 'parkour', name: 'Torre de parkour (Parkour LIVE)', desc: 'Tu nivel en la torre de 50 biomas, progreso, caídas y tiempo. «+N / −N» grande cuando te suben o te bajan.', w: 360, h: 620 },
       { id: 'totems', name: 'Tótems (plugin LiveArena)', desc: 'Cuántos tótems apilados te quedan. Necesita el plugin LiveArena en el servidor.', w: 300, h: 120 },
       {
         id: 'reset-salvar',

@@ -5,6 +5,7 @@ import { useLiveState, useOnAction, useTick } from '../lib/live'
 import { Avatar, Media } from '../components/ui'
 import { CardGrid, useFired } from './Cards'
 import { SceneView } from './Scene'
+import { ParkourOverlay } from './Parkour'
 import { BestV2, CombinedOverlay, TickerOverlay, TtsOverlay, DuelOverlay, FeaturedOverlay, GiftGoalOverlay, GoalBar, LivesV2, MvpOverlay, NoticesOverlay, ResetSaveOverlay, ScoreV2, TimerV2, TopV2, TotemsOverlay } from './Pro'
 
 /**
@@ -69,6 +70,8 @@ export function OverlayRouter({ name }: { name: string }) {
         return <TtsOverlay />
       case 'escena':
         return <SceneView id={params.get('s') ?? undefined} />
+      case 'parkour':
+        return <ParkourOverlay />
       case 'ticker':
         return <TickerOverlay />
       case 'legacy-top':
