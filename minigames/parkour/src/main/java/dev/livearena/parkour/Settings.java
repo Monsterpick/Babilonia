@@ -8,6 +8,8 @@ import org.bukkit.configuration.file.FileConfiguration;
 public final class Settings {
     public final String worldName;
     public final long seed;
+    /** Estilo del mapa: torre clásica (bloques flotando alrededor de una columna) o espiral (cilindro con terraza). */
+    public final boolean spiral;
     public final int levels, baseY, rise;
     public final double radius, difficulty;
     public final int timeLimitMin, celebrateSeconds;
@@ -21,6 +23,7 @@ public final class Settings {
 
     public Settings(FileConfiguration c) {
         worldName = c.getString("mundo.nombre", "parkour_torre");
+        spiral = "espiral".equalsIgnoreCase(c.getString("torre.estilo", "clasica"));
         seed = c.getLong("torre.semilla", 2026);
         baseY = clamp(c.getInt("torre.alturaBase", 8), -50, 100);
         // la torre tiene que caber en el mundo (techo en y=319): si hay muchos niveles, cada uno sube menos
@@ -66,7 +69,7 @@ public final class Settings {
 
     /** Lo que cambia la forma de la torre (si cambia, hay que regenerarla). */
     public String towerSignature() {
-        return "g" + dev.livearena.parkour.tower.TowerGen.VERSION + ":" + seed + ":" + levels + ":" + baseY + ":" + rise + ":" + radius + ":" + difficulty;
+        return "g" + dev.livearena.parkour.tower.TowerGen.VERSION + ":" + (spiral ? "espiral" : "clasica") + ":" + seed + ":" + levels + ":" + baseY + ":" + rise + ":" + radius + ":" + difficulty;
     }
 
     private static int sec(FileConfiguration c, String path, int def) {

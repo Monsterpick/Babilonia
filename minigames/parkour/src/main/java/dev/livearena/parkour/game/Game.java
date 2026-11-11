@@ -379,6 +379,10 @@ public final class Game implements Listener {
         if (p.isOnGround()) {
             Block under = l.clone().add(0, -0.2, 0).getBlock();
             long k = Tower.key(under.getX(), under.getY(), under.getZ());
+            if (t.hazard.contains(k)) { // paisaje de la terraza (estilo espiral): es caída
+                fall(p);
+                return;
+            }
             Integer lvOf = t.levelOf.get(k);
             if (lvOf == null && under.getType() == Material.AIR) {
                 under = l.clone().add(0, -0.7, 0).getBlock();

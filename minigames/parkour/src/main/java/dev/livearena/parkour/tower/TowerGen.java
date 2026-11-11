@@ -21,8 +21,8 @@ import org.bukkit.block.data.type.Slab;
  */
 public final class TowerGen {
     /** Sube este número cuando cambie el generador: las torres ya construidas se reconstruyen solas. */
-    public static final int VERSION = 3;
-    public record Options(int levels, int baseY, int rise, double radius, double difficulty) {}
+    public static final int VERSION = 5;
+    public record Options(int levels, int baseY, int rise, double radius, double difficulty, boolean spiral) {}
 
     private final Options o;
     private final Random r;
@@ -68,7 +68,7 @@ public final class TowerGen {
     /** ¿Se puede poner un bloque aquí sin tapar la cabeza de nadie ni quedarse sin espacio encima? */
     private boolean free(int x, int y, int z, int below, int above) {
         double rr = Math.sqrt(x * x + z * z);
-        if (rr < 5.2) return false;
+        if (rr < (o.spiral() ? 13.2 : 5.2) || (o.spiral() && rr > 20.2)) return false;
         for (int dy = -below; dy <= above; dy++)
             for (int dx = -1; dx <= 1; dx++)
                 for (int dz = -1; dz <= 1; dz++) {
@@ -102,8 +102,165 @@ public final class TowerGen {
             boolean top = lv == o.levels();
             pad(lv + 1, end[0], end[1], end[2], top ? 2 : 1, top ? Themes.of(lv) : Themes.of(lv + 1));
         }
+        t.spiral = o.spiral();
+        if (o.spiral()) {
+            spiralShell();
+            return;
+        }
         pillar();
         for (int lv = 1; lv <= o.levels(); lv++) scenery(lv, Themes.of(lv));
+    }
+
+    // ───────────────────────────── estilo «espiral» ─────────────────────────────
+
+    /** Punto del camino con su ángulo «desenrollado» (crece vuelta tras vuelta). */
+    private record Node(double phi, int y, int level) {}
+
+    /**
+     * Cilindro con terraza helicoidal: bajo el camino (4 bloques por debajo) va un lecho con el paisaje de cada bioma
+     * que rodea un núcleo cilíndrico; por fuera, franjas de muro entre vuelta y vuelta que dejan ver la terraza.
+     * Pisar el lecho o su decorado cuenta como caída (los bloques van a Tower.hazard).
+     */
+    private void spiralShell() {
+        final double R0 = 12.5, R1 = 20.5;
+        // 1. camino desenrollado
+        List<Node> nodes = new ArrayList<>();
+        double phi = 0, prevA = Double.NaN;
+        for (int lv = 1; lv <= o.levels() + 1; lv++) {
+            Tower.Pad p = t.pads[lv];
+            List<int[]> pts = new ArrayList<>();
+            pts.add(new int[] {p.x(), p.y(), p.z()});
+            if (lv <= o.levels()) for (Tower.Step st : t.steps.get(lv)) pts.add(new int[] {st.x(), st.y(), st.z()});
+            for (int[] q : pts) {
+                double a = Math.atan2(q[2], q[0]);
+                if (!Double.isNaN(prevA)) {
+                    double d = a - prevA;
+                    while (d > Math.PI) d -= 2 * Math.PI;
+                    while (d < -Math.PI) d += 2 * Math.PI;
+                    phi += d;
+                } else phi = a;
+                prevA = a;
+                nodes.add(new Node(phi, q[1], Math.min(lv, o.levels())));
+            }
+        }
+        // ángulos estrictamente crecientes (una escalera de mano casi no avanza)
+        List<Node> path = new ArrayList<>();
+        for (Node n : nodes) {
+            if (!path.isEmpty() && n.phi() <= path.getLast().phi() + 1e-3) {
+                Node last = path.removeLast();
+                path.add(new Node(last.phi(), Math.max(last.y(), n.y()), n.level()));
+            } else path.add(n);
+        }
+        double phiMin = path.getFirst().phi() - 0.45, phiMax = path.getLast().phi() + 0.45;
+        // 2. lecho con paisaje y luz
+        Set<Long> stepCols = new HashSet<>();
+        for (List<Tower.Step> ls : t.steps) for (Tower.Step st : ls) stepCols.add(Tower.key(st.x(), 0, st.z()));
+        for (int x = -22; x <= 22; x++)
+            for (int z = -22; z <= 22; z++) {
+                double rr = Math.hypot(x, z);
+                if (rr < R0 - 1.2 || rr > R1 + 1.1) continue;
+                double a = Math.atan2(z, x);
+                List<int[]> beds = new ArrayList<>(); // {altura, nivel}
+                for (int k = (int) Math.floor((phiMin - a) / (2 * Math.PI)); ; k++) {
+                    double f = a + 2 * Math.PI * k;
+                    if (f < phiMin) continue;
+                    if (f > phiMax) break;
+                    beds.add(bedAt(path, f));
+                }
+                if (rr > R1) { // muro exterior entre vueltas (deja 7 de hueco para ver la terraza)
+                    for (int i = 0; i < beds.size(); i++) {
+                        int topY = beds.get(i)[0];
+                        int from = i == 0 ? topY - 6 : beds.get(i - 1)[0] + 8;
+                        Theme th = Themes.of(beds.get(i)[1]);
+                        for (int y = from; y <= topY; y++) if (!isSolid(x, y, z)) put(x, y, z, y == topY ? th.pad() : th.pillarBlock(r));
+                    }
+                    continue;
+                }
+                if (rr < R0) { // núcleo: se rellena después
+                    continue;
+                }
+                boolean nearStep = false;
+                for (int dx = -3; dx <= 3 && !nearStep; dx++)
+                    for (int dz = -3; dz <= 3 && !nearStep; dz++) nearStep = stepCols.contains(Tower.key(x + dx, 0, z + dz));
+                for (int[] b : beds) {
+                    int y = b[0];
+                    Theme th = Themes.of(b[1]);
+                    if (isSolid(x, y, z) || isSolid(x, y - 1, z)) continue;
+                    hazardPut(x, y - 1, z, th.pillarBlock(r));
+                    hazardPut(x, y, z, th.pathBlock(r));
+                    // relieve y decorado bajo: montones junto al núcleo y al borde
+                    double edge = Math.min(rr - R0, R1 - rr);
+                    if (edge < 1.6 && r.nextDouble() < 0.45 && !isSolid(x, y + 1, z)) {
+                        hazardPut(x, y + 1, z, th.decoBlock(r));
+                        if (edge < 0.9 && r.nextDouble() < 0.4 && !isSolid(x, y + 2, z)) hazardPut(x, y + 2, z, th.decoBlock(r));
+                    } else if (!nearStep && r.nextDouble() < 0.035) tree(x, y, z, th);
+                    else if (r.nextDouble() < 0.05 && !isSolid(x, y + 1, z)) hazardPut(x, y + 1, z, th.decoBlock(r));
+                    if (Math.floorMod(x + 2 * z, 4) == 0) light(x, y + 3, z, 13);
+                }
+            }
+        // 3. núcleo cilíndrico hueco con anillos de luz en la altura de cada plataforma
+        int bottom = t.pads[1].y() - 10, top = t.pads[o.levels() + 1].y() + 4;
+        for (int y = bottom; y <= top; y++) {
+            int lv = levelForY(y);
+            Theme th = Themes.of(lv);
+            boolean ring = y == t.pads[Math.min(lv, o.levels())].y();
+            boolean cap = y == bottom || y == top;
+            for (int x = -13; x <= 13; x++)
+                for (int z = -13; z <= 13; z++) {
+                    double rr = Math.hypot(x, z);
+                    if (rr >= R0 || (!cap && rr < R0 - 1.3)) continue;
+                    if (isSolid(x, y, z)) continue;
+                    put(x, y, z, ring && rr >= R0 - 1.3 ? th.light() : cap && rr < R0 - 1.3 ? th.pad() : th.pillarBlock(r));
+                }
+        }
+        // corona
+        for (int a8 = 0; a8 < 12; a8++) {
+            double ang = a8 * Math.PI / 6;
+            int x = (int) Math.round(Math.cos(ang) * 11), z = (int) Math.round(Math.sin(ang) * 11);
+            for (int k = 1; k <= 3; k++) put(x, top + k, z, k == 3 ? Material.SEA_LANTERN : Material.QUARTZ_PILLAR);
+        }
+        put(0, top + 1, 0, Material.BEACON);
+    }
+
+    /** Altura del lecho (4 por debajo del camino) y nivel en un ángulo desenrollado. */
+    private static int[] bedAt(List<Node> path, double f) {
+        if (f <= path.getFirst().phi()) return new int[] {path.getFirst().y() - 4, path.getFirst().level()};
+        if (f >= path.getLast().phi()) return new int[] {path.getLast().y() - 4, path.getLast().level()};
+        int lo = 0, hi = path.size() - 1;
+        while (hi - lo > 1) {
+            int mid = (lo + hi) >>> 1;
+            if (path.get(mid).phi() <= f) lo = mid;
+            else hi = mid;
+        }
+        Node a = path.get(lo), b = path.get(hi);
+        double k = (f - a.phi()) / Math.max(1e-6, b.phi() - a.phi());
+        // el lecho nunca sube por encima del punto más bajo del tramo (siempre quedan 4 de aire bajo el camino)
+        int y = (int) Math.floor(Math.min(a.y(), b.y()) + (Math.max(a.y(), b.y()) - Math.min(a.y(), b.y())) * (a.y() <= b.y() ? k : 1 - k) * 0.999) - 4;
+        y = Math.min(y, Math.min(a.y(), b.y()) - 3);
+        return new int[] {y, k < 0.5 ? a.level() : b.level()};
+    }
+
+    private void hazardPut(int x, int y, int z, Material m) {
+        put(x, y, z, m);
+        t.hazard.add(Tower.key(x, y, z));
+    }
+
+    /** Arbolito del bioma sobre el lecho (tronco + copa); todo cuenta como paisaje. */
+    private void tree(int x, int y, int z, Theme th) {
+        int h = 2 + r.nextInt(2);
+        for (int k = 1; k <= h + 2; k++) if (isSolid(x, y + k, z)) return;
+        for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) for (int k = h; k <= h + 2; k++) if (isSolid(x + dx, y + k, z + dz)) return;
+        Material trunk = th.pillarBlock(r);
+        for (int k = 1; k <= h; k++) hazardPut(x, y + k, z, trunk);
+        for (int dx = -1; dx <= 1; dx++)
+            for (int dz = -1; dz <= 1; dz++)
+                for (int k = h; k <= h + 1; k++) {
+                    if (dx == 0 && dz == 0 && k == h) continue;
+                    if (Math.abs(dx) + Math.abs(dz) == 2 && k == h + 1) continue;
+                    double rr = Math.hypot(x + dx, z + dz);
+                    if (rr < 12.5 || rr > 20.5) continue;
+                    hazardPut(x + dx, y + k, z + dz, th.decoBlock(r));
+                }
     }
 
     private double dist(int x1, int z1, int x2, int z2) {
@@ -115,6 +272,11 @@ public final class TowerGen {
         double d = o.levels() <= 1 ? 0 : (lv - 1) / (double) (o.levels() - 1);
         d = Math.min(1, d * o.difficulty());
         int n = 8 + lv / 5;
+        if (o.spiral()) {
+            // arco casi constante por nivel (≈30 bloques) para que las vueltas de la espiral queden bien separadas
+            double avg = (2.0 + 1.25 * d + 3.0 + 1.3 * d) / 2;
+            n = Math.max(6, Math.min(12, (int) Math.round(27 / avg)));
+        }
         // plan de subidas: +1 en unos saltos, una escalera (+3) a veces, la plataforma final +1
         boolean ladder = lv >= 4 && r.nextDouble() < 0.4;
         int need = o.rise() - 1 - (ladder ? 3 : 0);
@@ -206,7 +368,8 @@ public final class TowerGen {
                 case "slab" -> th.slab();
                 case "post" -> th.post();
                 case "blink" -> th.light();
-                default -> th.pathBlock(r);
+                // en la espiral el camino va en el material liso de las plataformas para distinguirse del paisaje
+                default -> o.spiral() ? th.pad() : th.pathBlock(r);
             };
             BlockData bd = m.createBlockData();
             if (bd instanceof Slab s) s.setType(Slab.Type.BOTTOM);

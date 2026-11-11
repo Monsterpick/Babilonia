@@ -39,6 +39,9 @@ public final class Tower {
     /** Bloque → paso del camino (para el progreso dentro del nivel). */
     public final Map<Long, Step> stepAt = new HashMap<>();
     public int minY, maxY;
+    /** Estilo «espiral»: bloques del paisaje de la terraza (pisarlos = caída). */
+    public final java.util.Set<Long> hazard = new java.util.HashSet<>();
+    public boolean spiral;
     /** Saltos que el generador tuvo que resolver con la pieza de último recurso (debería ser 0 o muy pocos). */
     public int fallbacks;
 

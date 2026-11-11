@@ -49,6 +49,7 @@ export interface ParkourStatus {
 
 /** Ajustes de config.yml editables desde la app. */
 export const PK_SETTINGS: Record<string, SettingType> = {
+  'torre.estilo': 'string',
   'torre.semilla': 'int',
   'torre.niveles': 'int',
   'torre.dificultad': 'number',
@@ -198,6 +199,7 @@ export class ParkourService {
     const f = this.configFile()
     const text = f ? await fs.readFile(f, 'utf8').catch(() => null) : null
     if (!f || text === null) throw new Error('Aún no existe la configuración: arranca el servidor una vez con el plugin instalado')
+    if (values['torre.estilo'] !== undefined && !['clasica', 'espiral'].includes(String(values['torre.estilo']))) throw new Error('Estilo de mapa desconocido')
     await fs.writeFile(f, writeYamlSettings(text, values, PK_SETTINGS), 'utf8')
     let reloaded = false
     if (this.mc.link.isConnected && this.loaded) {

@@ -9,6 +9,9 @@ mundo:
   nombre: parkour_torre
 
 torre:
+  # clasica = bloques flotando alrededor de una columna · espiral = cilindro gigante con una terraza en espiral
+  # que lleva el paisaje de cada bioma (el camino va por encima; pisar el paisaje cuenta como caída)
+  estilo: clasica
   semilla: 2026
   niveles: 50            # 2–58. Cada nivel tiene su propio bioma (50 distintos; si pones más, se repiten)
   alturaBase: 8          # altura de la primera plataforma

@@ -103,7 +103,8 @@ public final class ParkourLive extends JavaPlugin {
 
     /** Calcula la torre (rápido y determinista: no toca el mundo). */
     public void computeTower() {
-        tower = TowerGen.generate(settings.seed, new TowerGen.Options(settings.levels, settings.baseY, settings.rise, settings.radius, settings.difficulty));
+        tower = TowerGen.generate(settings.seed, new TowerGen.Options(settings.levels, settings.spiral ? Math.max(settings.baseY, 12) : settings.baseY, settings.rise,
+            settings.spiral ? 16 : settings.radius, settings.difficulty, settings.spiral));
     }
 
     public void reload() {

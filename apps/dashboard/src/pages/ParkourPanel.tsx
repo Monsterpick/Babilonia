@@ -201,12 +201,24 @@ const FIELDS: {
   key: string;
   label: string;
   hint?: string;
-  type: "int" | "number" | "bool";
+  type: "int" | "number" | "bool" | "select";
+  options?: { v: string; l: string }[];
   tower?: boolean;
   min?: number;
   max?: number;
   step?: number;
 }[] = [
+  {
+    key: "torre.estilo",
+    label: "Tipo de mapa",
+    hint: "se reconstruye al guardar",
+    type: "select",
+    tower: true,
+    options: [
+      { v: "clasica", l: "Torre clásica (bloques flotando alrededor de una columna)" },
+      { v: "espiral", l: "Espiral (cilindro gigante con terraza de biomas)" },
+    ],
+  },
   {
     key: "torre.niveles",
     label: "Niveles de la torre",
@@ -991,7 +1003,15 @@ export function ParkourPanel() {
                             </span>
                           )}
                         </div>
-                        {f.type === "bool" ? (
+                        {f.type === "select" ? (
+                          <select className="input w-full" value={String(v ?? f.options![0]!.v)} onChange={(e) => setDraft({ ...draft, [f.key]: e.target.value })}>
+                            {f.options!.map((o) => (
+                              <option key={o.v} value={o.v}>
+                                {o.l}
+                              </option>
+                            ))}
+                          </select>
+                        ) : f.type === "bool" ? (
                           <select
                             className="input w-full"
                             value={Number(v) ? "1" : "0"}

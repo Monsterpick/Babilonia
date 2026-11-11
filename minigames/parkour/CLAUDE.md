@@ -41,3 +41,9 @@ Plugin Paper 26.1.2 (Java 25, Gradle KTS). Jar: `build/libs/ParkourLive.jar`. Pa
   estado (escudo / seguro / cola); aviso de cada espectador en una píldora encima (`Hud.notify(p, tipo, …)`).
 - Sin pack: versión clásica (BossBar, panel lateral, barra de XP). Con pack no se usa la XP ni el panel lateral.
 - El texto de la letra propia solo tiene mayúsculas y signos básicos: `Hud.fit` quita lo demás (emojis, flechas).
+
+## v4 · mapa «espiral» (`torre.estilo: espiral`)
+- Mismo generador de camino (radio 16, pasos por nivel según arco ≈ constante) + `TowerGen.spiralShell()`: lecho con
+  paisaje 4 bloques bajo el camino (va a `Tower.hazard`: pisarlo = caída), núcleo cilíndrico hueco r≈12 y franjas de
+  muro exterior entre vueltas (hueco de 7 para ver la terraza). El camino usa `th.pad()` para distinguirse del paisaje.
+- ~91.000 bloques (la clásica ~14.000); tarda unos segundos más en construirse. `pk reload` puede agotar el RCON corto.
