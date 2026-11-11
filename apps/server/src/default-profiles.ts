@@ -435,3 +435,11 @@ export function parkourProfile(): Profile {
     notes: 'Ayudas: subir niveles, supersalto, escudo anticaída, marcar camino y puente. Sabotajes: bajar niveles, empujar, viento, apagar luces, hielo, bloques fantasma, terremoto y lentitud. Los efectos van en cola, uno detrás de otro; tras varias caídas seguidas el streamer queda protegido unos segundos.',
   })
 }
+
+/**
+ * LAST HOUSE (juego web propio): perfil vacío. Mientras se juega, los regalos los interpreta el propio juego y no
+ * debe saltar ninguna acción de Minecraft.
+ */
+export function lastHouseProfile(): Profile {
+  return ProfileSchema.parse({ id: 'lasthouse', name: 'LAST HOUSE', mode: 'lasthouse', actions: [], events: [] })
+}

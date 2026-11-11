@@ -13,7 +13,8 @@ import { SceneSchema } from '@livearena/shared'
 import { ASSETS_DIR, DASHBOARD_DIST } from './resources.js'
 import { SimRequestSchema, Simulator } from './simulator.js'
 import { VERSION, type App } from './app.js'
-import { baseDefenseProfile, parkourProfile } from './default-profiles.js'
+import { baseDefenseProfile, lastHouseProfile, parkourProfile } from './default-profiles.js'
+import { LastHouseResultSchema, LastHouseSettingsSchema } from './lasthouse.js'
 
 
 class HttpError extends Error {
@@ -475,6 +476,39 @@ export async function buildHttp(app: App): Promise<FastifyInstance> {
     const p = app.profiles.get('parkour') ?? (await app.profiles.save(parkourProfile(), false))
     app.setProfile(p)
     return { id: p.id, name: p.name }
+  })
+  /* ---------------- LAST HOUSE (juego web propio) ---------------- */
+  f.get('/api/lasthouse/settings', async () => app.lasthouse.getSettings())
+  f.put('/api/lasthouse/settings', async (req) => app.lasthouse.saveSettings(parse(LastHouseSettingsSchema.partial(), req.body)))
+  f.get('/api/lasthouse/progress', async () => app.lasthouse.progress())
+  f.post('/api/lasthouse/progress/reset', async () => {
+    await app.lasthouse.reset()
+    return { ok: true }
+  })
+  // la página del juego manda aquí una foto del marcador (≈2 por segundo) para el overlay del directo
+  f.post('/api/lasthouse/state', async (req) => {
+    const body = parse(z.record(z.unknown()), req.body)
+    if (JSON.stringify(body).length > 20_000) throw new HttpError(413, 'Estado demasiado grande')
+    app.lasthouse.live = body
+    app.hub.setState('lasthouse', body)
+    return { ok: true }
+  })
+  f.post('/api/lasthouse/result', async (req) => app.lasthouse.record(parse(LastHouseResultSchema, req.body)))
+  // al jugar LAST HOUSE se activa un perfil vacío para que no salte ninguna acción de Minecraft; al salir, vuelve el anterior
+  f.post('/api/lasthouse/session', async (req) => {
+    const { active } = parse(z.object({ active: z.boolean() }), req.body)
+    if (active) {
+      const p = app.profiles.get('lasthouse') ?? (await app.profiles.save(lastHouseProfile(), false))
+      if (app.activeProfile.id !== p.id) {
+        app.lasthouse.previousProfile = app.activeProfile.id
+        app.setProfile(p)
+      }
+    } else if (app.lasthouse.previousProfile) {
+      const prev = app.profiles.get(app.lasthouse.previousProfile)
+      app.lasthouse.previousProfile = null
+      if (prev) app.setProfile(prev)
+    }
+    return { profile: app.activeProfile.id }
   })
   f.post('/api/minecraft/kit/give', async () => ({ commands: await app.mc.giveKit(app.activeProfile.kit) }))
   f.get('/api/minecraft/java', async () => app.mc.javaInfo())

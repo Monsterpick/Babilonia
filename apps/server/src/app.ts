@@ -1,6 +1,7 @@
 import { CineModService } from './cine-mod.js'
 import { MinigamesService } from './minigames.js'
 import { ParkourService } from './parkour.js'
+import { LastHouseService } from './lasthouse.js'
 import { TextureService } from './textures.js'
 import { TtsService } from './tts.js'
 import { ComboTracker, Deduper, PriorityWorker, RuleEngine, renderTemplate, type Job } from '@livearena/core'
@@ -41,6 +42,7 @@ export class App {
   readonly hub = new Hub(VERSION)
   readonly profiles = new ProfileStore()
   readonly stats = new StatsStore(paths.db)
+  readonly lasthouse = new LastHouseService()
   readonly gifts = new GiftCatalog(path.join(DATA_DIR, 'regalos-aprendidos.json'))
   readonly textures: TextureService
   readonly tts: TtsService

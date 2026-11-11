@@ -1,3 +1,5 @@
+import type { RenderState, Simulation } from './common'
+
 /**
  * LAST HOUSE: Invasión — simulación del juego (sin dibujo: se puede probar sola).
  *
@@ -73,7 +75,7 @@ export interface Shot {
   dmg: number
   life: number
   /** 'semilla' recta; 'mortero' cae en (tx, tz). */
-  kind: 'semilla' | 'mortero'
+  kind: 'semilla' | 'mortero' | 'rayo'
   tx: number
   tz: number
   t: number
@@ -94,7 +96,16 @@ export type Fx =
   | { type: 'assault'; n: number }
   | { type: 'down' }
   | { type: 'event'; name: string; owner: string }
-  | { type: 'end'; winner: 'rey' | 'guardianes' }
+  | { type: 'end'; winner: 'rey' | 'guardianes' | 'horda' | 'guardian' }
+  // modo Defensa
+  | { type: 'shoot'; x: number; z: number }
+  | { type: 'pulse'; x: number; z: number; r: number }
+  | { type: 'zombieDown'; x: number; z: number; big: boolean; owner: string }
+  | { type: 'spawn'; x: number; z: number; big: boolean; owner: string; kind: string }
+  | { type: 'houseHit'; dmg: number }
+  | { type: 'surface'; x: number; z: number }
+  | { type: 'wave'; n: number }
+  | { type: 'lightning'; x: number; z: number }
 
 export interface Input {
   /** −1..1 lateral y avance (ya normalizados por quien lee el teclado). */
@@ -147,6 +158,9 @@ export interface King {
   safeUntil: number
 }
 
+/** Eventos que pueden pedir los espectadores en Invasión. */
+export type InvasionEvent = 'mareo' | 'tormenta' | 'enjambre' | 'calabazas' | 'enredadera' | 'noche'
+
 export interface State {
   t: number
   phase: 'playing' | 'ended'
@@ -161,6 +175,11 @@ export interface State {
   scores: Map<string, { plants: number; damage: number }>
   fx: Fx[]
   nextId: number
+  /** Noche de tormenta (evento): rayos que caen cerca del Rey hasta. */
+  stormUntil: number
+  nextBolt: number
+  /** Caídas del Rey en la partida (para logros). */
+  downs: number
 }
 
 /** Generador determinista (mulberry32). */
@@ -190,7 +209,7 @@ const SUMMON_COST = 30
 const ROT_MAX = 100
 const ROT_REGEN = 4.5
 
-export class Game {
+export class Game implements Simulation {
   readonly cfg: Config
   readonly s: State
   private readonly rand: () => number
@@ -211,8 +230,50 @@ export class Game {
       scores: new Map(),
       fx: [],
       nextId: 1,
+      stormUntil: 0,
+      nextBolt: 0,
+      downs: 0,
     }
   }
+
+  readonly mode = 'invasion' as const
+
+  /** Lo que la vista necesita para dibujar este instante. */
+  render(): RenderState {
+    const s = this.s
+    const k = s.king
+    const atk = ATTACK_CD - (k.attackAt - s.t)
+    return {
+      mode: 'invasion',
+      t: s.t,
+      phase: s.phase,
+      winner: s.winner,
+      hero: {
+        x: k.x,
+        z: k.z,
+        facing: k.facing,
+        moving: this.moving,
+        down: k.downUntil > 0,
+        inside: k.feastUntil > 0,
+        safe: s.t < k.safeUntil,
+        dashing: s.t < k.dashUntil,
+        attack: atk >= 0 && atk < 0.25 ? atk / 0.25 : -1,
+        hurt: s.t - k.hurtAt < 0.12,
+        confused: s.t < k.confusedUntil,
+        slowed: k.slowed,
+      },
+      units: s.minions.map((m) => ({ id: m.id, kind: 'caminante', x: m.x, z: m.z, hp: m.hp, maxHp: 45, hitAt: m.hitAt, underground: false, owner: '', attacking: false, slowed: false })),
+      guardians: s.guardians,
+      shots: s.shots,
+      // anochece con cada asalto (y del todo en la noche de tormenta)
+      night: s.t < s.stormUntil ? 1 : Math.min(0.85, (s.assaults / Math.max(1, this.cfg.assaults)) * 0.9 + (s.t / this.cfg.duration) * 0.15),
+      storm: s.t < s.stormUntil,
+      house: null,
+    }
+  }
+
+  /** Si el Rey se movió en el último paso (para la animación de correr). */
+  private moving = false
 
   private newKing(): King {
     return { x: 0, z: 2, facing: 0, hp: 100, maxHp: 100, rot: 40, speedMul: 1, attackAt: 0, dashAt: 0, dashUntil: 0, roarAt: 0, summonAt: 0, downUntil: 0, confusedUntil: 0, feastUntil: 0, hurtAt: -9, slowed: false, safeUntil: 0 }
@@ -292,8 +353,8 @@ export class Game {
     if (s.likeBank > this.cfg.likesPerSprout * 6) s.likeBank = this.cfg.likesPerSprout * 6
   }
 
-  /** Eventos especiales (regalos medianos y grandes). */
-  event(name: 'mareo' | 'tormenta' | 'enjambre', owner: string): void {
+  /** Eventos especiales (regalos medianos y grandes, y los que gana una votación). */
+  event(name: InvasionEvent, owner: string): void {
     const s = this.s
     if (s.phase !== 'playing') return
     s.fx.push({ type: 'event', name, owner })
@@ -305,9 +366,25 @@ export class Game {
         const tz = Math.min(LENGTH - 2, s.king.z + 4 + this.rand() * 14)
         s.shots.push({ id: s.nextId++, x: tx, z: tz, y: 30, vx: 0, vz: 0, dmg: 14, life: 9, kind: 'mortero', tx, tz, t: -i * 0.22, dur: 1.4 })
       }
-    } else {
+    } else if (name === 'enjambre') {
       // enjambre: cinco lanzabrotes de golpe en abanico
       for (let i = 0; i < 5; i++) this.plant('lanzabrotes', owner, { x: -HALF_W + LANE_W * (i + 0.5), z: Math.min(LENGTH - 8, s.king.z + 14 + (i % 2) * 2) })
+    } else if (name === 'calabazas') {
+      // bombardeo de calabazas: 22 proyectiles repartidos por todo el tramo que tiene delante
+      for (let i = 0; i < 22; i++) {
+        const tx = -HALF_W + 1 + this.rand() * (HALF_W * 2 - 2)
+        const tz = Math.min(LENGTH - 2, s.king.z + 2 + this.rand() * 26)
+        s.shots.push({ id: s.nextId++, x: tx, z: tz, y: 34, vx: 0, vz: 0, dmg: 12, life: 12, kind: 'mortero', tx, tz, t: -i * 0.16, dur: 1.6 })
+      }
+    } else if (name === 'enredadera') {
+      // enredadera: un muro de brotes de lado a lado (con un hueco) a 12 m del Rey
+      const z = Math.min(LENGTH - 8, s.king.z + 12)
+      const gap = Math.floor(this.rand() * 9)
+      for (let i = 0; i < 9; i++) if (i !== gap) this.plant('brote', owner, { x: -HALF_W + 0.9 + i * ((HALF_W * 2 - 1.8) / 8), z })
+    } else if (name === 'noche') {
+      // noche de tormenta: 20 s de rayos que caen cerca del Rey (con aviso en el suelo)
+      s.stormUntil = Math.max(s.stormUntil, s.t) + 20
+      s.nextBolt = s.t + 1
     }
   }
 
@@ -323,6 +400,7 @@ export class Game {
       // derribado: vuelve a la calle tras unos segundos (los guardianes ganan tiempo)
       k.hp = 0
       k.downUntil = this.s.t + 3.5
+      this.s.downs++
       this.s.fx.push({ type: 'down' })
     }
   }
@@ -410,6 +488,7 @@ export class Game {
         vz /= len
       }
       if (!dashing && len > 0.1) k.facing = Math.atan2(vx, vz)
+      this.moving = dashing || len > 0.1
       let nx = k.x + vx * speed * dt
       let nz = k.z + vz * speed * dt
       // choque con guardianes sólidos (embistiendo, los rompe o los daña)
@@ -480,6 +559,16 @@ export class Game {
         k.feastUntil = t + 3
         s.minions = []
       }
+    }
+
+    if (!free) this.moving = false
+
+    // ── noche de tormenta: rayos con aviso de 1 s ──
+    if (t < s.stormUntil && t >= s.nextBolt) {
+      s.nextBolt = t + 1.6 + this.rand() * 1.2
+      const tx = Math.max(-HALF_W + 1, Math.min(HALF_W - 1, k.x + (this.rand() - 0.5) * 7))
+      const tz = Math.min(LENGTH - 2, k.z + this.rand() * 9)
+      s.shots.push({ id: s.nextId++, x: tx, z: tz, y: 40, vx: 0, vz: 0, dmg: 18, life: 3, kind: 'rayo', tx, tz, t: 0, dur: 1.0 })
     }
 
     // ── esbirros ──
@@ -573,12 +662,13 @@ export class Game {
         const i = s.shots.indexOf(sh)
         if (i >= 0) s.shots.splice(i, 1)
       }
-      if (sh.kind === 'mortero') {
+      if (sh.kind === 'mortero' || sh.kind === 'rayo') {
         sh.t += dt
         if (sh.t < 0) continue
         sh.y = 30 * (1 - sh.t / sh.dur)
         if (sh.t >= sh.dur) {
-          this.explode(sh.tx, sh.tz, 2.8, sh.dmg)
+          if (sh.kind === 'rayo') s.fx.push({ type: 'lightning', x: sh.tx, z: sh.tz })
+          this.explode(sh.tx, sh.tz, sh.kind === 'rayo' ? 2.2 : 2.8, sh.dmg)
           remove()
         }
         continue

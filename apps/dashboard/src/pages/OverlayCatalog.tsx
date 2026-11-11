@@ -270,6 +270,8 @@ const SECTIONS: { title: string; hint: string; items: Def[] }[] = [
         ),
       },
       { id: 'parkour', name: 'Torre de parkour (Parkour LIVE)', desc: 'Tu nivel en la torre de 50 biomas, progreso, caídas y tiempo. «+N / −N» grande cuando te suben o te bajan.', w: 360, h: 620 },
+      { id: 'lasthouse', name: 'Marcador de LAST HOUSE', desc: 'Modo, tiempo, asaltos o vida de la casa, los 3 mejores espectadores y la votación del chat en curso.', w: 360, h: 420 },
+      { id: 'lasthouse-regalos', name: 'LAST HOUSE: qué hace cada regalo', desc: 'Lista de qué hacen los likes, comentarios, follows, compartidos y regalos en el modo que estás jugando.', w: 380, h: 380 },
       { id: 'totems', name: 'Tótems (plugin LiveArena)', desc: 'Cuántos tótems apilados te quedan. Necesita el plugin LiveArena en el servidor.', w: 300, h: 120 },
       {
         id: 'reset-salvar',
