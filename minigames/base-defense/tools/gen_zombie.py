@@ -130,7 +130,24 @@ def skin():
             img[y + 7, x + 1:x + 3, :3] = PANTS[0] * 0.7
         img[y + 10:y + 12, x:x + w, :3] = (36, 30, 26)  # zapatos destrozados
     splat(img, lf['front'][0], lf['front'][1], 4, 12, 0.12, BLOOD, 430)
-    # bisel suave en los bordes de cada cara (da volumen)
+    # volumen: cada cara se aclara arriba y se oscurece abajo y en los bordes; la espalda y la cara de abajo, más oscuras
+    for faces in (hf, tf, af, lf):
+        for k, (x, y, w, h) in faces.items():
+            sub = img[y:y + h, x:x + w, :3]
+            if k in ('up', 'down'):
+                sub *= 1.08 if k == 'up' else 0.68
+                continue
+            grad = np.linspace(1.26, 0.92, h)[:, None, None]
+            sub *= grad
+            sub[:, 0] *= 0.88
+            sub[:, -1] *= 0.88
+            if k == 'back':
+                sub *= 0.9
+            elif k in ('left', 'right'):
+                sub *= 0.94
+    # los ojos siguen brillando después del sombreado
+    for ex in (1, 5):
+        img[fy + 3, fx + ex + (1 if ex == 1 else 0), :3] = (240, 226, 120)
     return np.clip(img, 0, 255)
 
 

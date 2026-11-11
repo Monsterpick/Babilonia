@@ -22,3 +22,12 @@ Plugin Paper 26.1.2 (Java 25, Gradle KTS). Jar: `build/libs/ParkourLive.jar`. Pa
 - `apps/server/src/parkour.ts` (servicio + whitelist de comandos), rutas `/api/minigames/parkour/*`, perfil
   `parkourProfile()` en `default-profiles.ts`, pestaña `pages/ParkourPanel.tsx`, overlay `/overlay/parkour`.
 - Un minijuego a la vez: `pk start` para Base Defense y `bd start` para el parkour.
+
+## v2 (auditoría)
+- La torre en memoria es siempre la construida: `/pk reload` con partida en marcha no la recalcula; si cambió, se
+  reconstruye al terminar. Niveles 2–58 y subida ≥ 5 (se ajusta sola para caber bajo y=319).
+- `lastSafe` se borra al cambiar de checkpoint (el escudo no devuelve a un nivel superior). Pisar el camino de un
+  nivel superior cuenta como subir. Inventario pendiente se devuelve al reconectar.
+- Sin el streamer conectado el bucle no avanza (ni tiempo ni efectos). Igual en Base Defense (mobs sin IA).
+- Efectos a la altura de los ojos tapan la pantalla en primera persona: anillos por el suelo y partículas por encima.
+- Validación de torres: `scratch pkval.py` sobre la salida de `/pk info <n>` (distancias y techo libre).

@@ -266,12 +266,19 @@ public final class Game implements Listener {
         }
         Theme th = theme();
         // checkpoint: anillo de luz, fuego artificial del color del nuevo bioma y campanilla
-        plugin.fx.firework(c.clone().add(0, 1.5, 0), th.color(), Color.WHITE, FireworkEffect.Type.BALL_LARGE, 0);
+        plugin.fx.firework(c.clone().add(0, 6, 0), th.color(), Color.WHITE, FireworkEffect.Type.BALL, 0);
         for (int i = 0; i < 3; i++) {
             int k = i;
             Bukkit.getScheduler().runTaskLater(plugin, () -> plugin.fx.ring(c.clone().add(0, 0.1 + k * 0.6, 0), th.color(), 1.6 + k * 0.5, 40, 1.6f), i * 3L);
         }
-        plugin.fx.particle(c, Particle.TOTEM_OF_UNDYING, 40, 0.6, 0.35);
+        plugin.fx.particle(c.clone().add(0, 2.6, 0), Particle.TOTEM_OF_UNDYING, 18, 0.8, 0.3);
+        // onda que se abre por el suelo y remolino que sube
+        for (int i = 0; i < 8; i++) {
+            int k = i;
+            Bukkit.getScheduler().runTaskLater(plugin, () -> plugin.fx.ring(c.clone().add(0, 0.05, 0), k % 2 == 0 ? th.color() : Color.WHITE, 0.6 + k * 0.55, 28 + k * 6, 1.3f), i);
+        }
+        // (las partículas van por el suelo y por encima de la cabeza: a la altura de los ojos taparían la pantalla)
+        plugin.fx.ambient(th, c.clone().add(0, 3.2, 0), 14, 1.8);
         plugin.fx.sound(p, "parkour:checkpoint", Sound.ENTITY_PLAYER_LEVELUP, 1f, 1.2f);
         setTime(p.getWorld(), th.time(), false);
         plugin.hud.levelTitle(p, lv, true);
@@ -393,13 +400,20 @@ public final class Game implements Listener {
             Tower.Step s = t.stepAt.get(k);
             if (s != null && s.level() == checkpoint && s.index() > furthest) {
                 furthest = s.index();
-                if (s.index() % 3 == 2) plugin.fx.sound(l, Sound.BLOCK_NOTE_BLOCK_CHIME, 0.4f, 0.8f + furthest * 0.06f);
+                // cada bloque nuevo: anillo del color del bioma bajo los pies y una nota que va subiendo
+                Location c = new Location(p.getWorld(), s.x() + 0.5, s.y() + 1.05, s.z() + 0.5);
+                plugin.fx.ring(c, theme().color(), 0.7, 14, 1.0f);
+                plugin.fx.ambient(theme(), c.clone().add(0, 0.3, 0), 6, 0.35);
+                plugin.fx.sound(l, Sound.BLOCK_NOTE_BLOCK_CHIME, 0.35f, Math.min(2f, 0.7f + furthest * 0.07f));
             }
             if (lvOf != null && lvOf >= checkpoint) {
                 lastSafe = l.clone();
                 if (fallStreak > 0 && s != null && s.index() >= 2) fallStreak = 0;
             }
         }
+        // estela del color del bioma mientras va por el aire
+        if (!p.isOnGround() && now % 2 == 0 && p.getVelocity().lengthSquared() > 0.01)
+            plugin.fx.dustTo(l.clone().add(0, 0.15, 0), theme().color(), Color.WHITE, 0.9f, 2, 0.12);
         // ambiente del bioma, guía y faro de la siguiente plataforma
         if (now % 4 == 0) {
             Theme th = theme();
