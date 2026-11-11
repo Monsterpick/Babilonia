@@ -1,0 +1,67 @@
+# ─────────────────────────────────────────────────────────────
+#  Parkour LIVE · torre de 50 niveles para TikTok LIVE
+#  Todo se puede cambiar aquí o desde la app (Minijuegos → Parkour).
+#  Tras editar a mano: /pk reload  (la torre se regenera sola si cambian semilla, niveles o tamaño)
+# ─────────────────────────────────────────────────────────────
+version: 1
+
+mundo:
+  nombre: parkour_torre
+
+torre:
+  semilla: 2026
+  niveles: 50            # cada nivel tiene su propio bioma (50 distintos; si pones más, se repiten)
+  alturaBase: 8          # altura de la primera plataforma
+  subidaPorNivel: 6      # bloques que sube cada nivel (50 × 6 = 300: cabe en el mundo)
+  radio: 9               # radio del camino alrededor de la columna central
+  dificultad: 1.0        # 0.5 = más fácil, 1.5 = más difícil (distancias y piezas)
+
+partida:
+  # Minutos para llegar a la cima (0 = sin límite). Si se acaba el tiempo cuenta como perdida.
+  tiempoLimite: 0
+  # Al llegar a la cima: reiniciar desde el nivel 1 tras unos segundos (true) o quedarse arriba (false).
+  reiniciarAlGanar: true
+  segundosCelebracion: 12
+  # Visión nocturna en los niveles oscuros (de noche o en cuevas) para que en el directo se vea bien.
+  visionNocturna: true
+
+# Efectos que mandan los espectadores (cola: uno detrás de otro para que se entiendan).
+efectos:
+  separacionSegundos: 1.5        # tiempo mínimo entre dos efectos
+  empujeFuerza: 1.15
+  vientoSegundos: 6
+  vientoFuerza: 0.09
+  nieblaSegundos: 7
+  hieloSegundos: 15
+  fantasmaSegundos: 9
+  fantasmaBloques: 6
+  terremotoSegundos: 5
+  lentoSegundos: 6
+  supersaltoSegundos: 12
+  escudoSegundos: 25
+  guiaSegundos: 15
+  puenteSegundos: 10
+  # Protección: tras X caídas seguidas sin avanzar, unos segundos sin sabotajes.
+  caidasParaProteger: 4
+  segundosProteccion: 12
+
+paquete:
+  activo: true
+  obligatorio: false
+  puerto: 25591
+  url: "http://127.0.0.1:{puerto}/parkour.zip"
+
+mensajes:
+  subir: "&a⬆ {usuario} &fte sube &a{n} nivel{s}"
+  bajar: "&c⬇ {usuario} &fte baja &c{n} nivel{s}"
+  empujar: "&e➹ {usuario} &fte empuja"
+  viento: "&b〰 {usuario} &fmanda viento"
+  niebla: "&8☁ {usuario} &fapaga las luces"
+  hielo: "&b❄ {usuario} &fcongela el camino"
+  fantasma: "&7👻 {usuario} &fhace invisibles los bloques"
+  terremoto: "&6☄ {usuario} &fprovoca un terremoto"
+  lento: "&9🐌 {usuario} &fte ralentiza"
+  supersalto: "&a⇧ {usuario} &fte da supersalto"
+  escudo: "&d🛡 {usuario} &fte protege de una caída"
+  guia: "&e✦ {usuario} &fte marca el camino"
+  puente: "&f▭ {usuario} &fte construye un puente"

@@ -21,3 +21,8 @@ apps/server/assets/mods/
 minigames/base-defense/build/
 minigames/base-defense/.gradle/
 minigames/base-defense/run/
+
+# minijuego Parkour LIVE (Gradle)
+minigames/parkour/build/
+minigames/parkour/.gradle/
+minigames/parkour/run/

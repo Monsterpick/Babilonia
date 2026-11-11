@@ -1,0 +1,14 @@
+name: ParkourLive
+version: '${version}'
+main: dev.livearena.parkour.ParkourLive
+api-version: '26.1.2'
+load: POSTWORLD
+description: Torre de parkour de 50 niveles para TikTok LIVE (el chat te sube, te baja y te empuja).
+authors: [LiveArena]
+permissions:
+  parkourlive.admin:
+    description: /pk (iniciar, torre, ajustes, pruebas)
+    default: op
+  parkourlive.tiktok:
+    description: Comando /ttpk que envía la app de TikTok (la consola y RCON siempre pueden)
+    default: false

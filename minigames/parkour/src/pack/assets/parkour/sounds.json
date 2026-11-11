@@ -1,0 +1,128 @@
+{
+ "checkpoint": {
+  "sounds": [
+   {
+    "name": "parkour:checkpoint"
+   }
+  ]
+ },
+ "nivel": {
+  "sounds": [
+   {
+    "name": "parkour:nivel"
+   }
+  ]
+ },
+ "subir": {
+  "sounds": [
+   {
+    "name": "parkour:subir"
+   }
+  ]
+ },
+ "llegada": {
+  "sounds": [
+   {
+    "name": "parkour:llegada"
+   }
+  ]
+ },
+ "bajar": {
+  "sounds": [
+   {
+    "name": "parkour:bajar"
+   }
+  ]
+ },
+ "impacto": {
+  "sounds": [
+   {
+    "name": "parkour:impacto"
+   }
+  ]
+ },
+ "empujon": {
+  "sounds": [
+   {
+    "name": "parkour:empujon"
+   }
+  ]
+ },
+ "viento": {
+  "sounds": [
+   {
+    "name": "parkour:viento"
+   }
+  ]
+ },
+ "niebla": {
+  "sounds": [
+   {
+    "name": "parkour:niebla"
+   }
+  ]
+ },
+ "hielo": {
+  "sounds": [
+   {
+    "name": "parkour:hielo"
+   }
+  ]
+ },
+ "fantasma": {
+  "sounds": [
+   {
+    "name": "parkour:fantasma"
+   }
+  ]
+ },
+ "terremoto": {
+  "sounds": [
+   {
+    "name": "parkour:terremoto"
+   }
+  ]
+ },
+ "lento": {
+  "sounds": [
+   {
+    "name": "parkour:lento"
+   }
+  ]
+ },
+ "ayuda": {
+  "sounds": [
+   {
+    "name": "parkour:ayuda"
+   }
+  ]
+ },
+ "escudo": {
+  "sounds": [
+   {
+    "name": "parkour:escudo"
+   }
+  ]
+ },
+ "caida": {
+  "sounds": [
+   {
+    "name": "parkour:caida"
+   }
+  ]
+ },
+ "cima": {
+  "sounds": [
+   {
+    "name": "parkour:cima"
+   }
+  ]
+ },
+ "perder": {
+  "sounds": [
+   {
+    "name": "parkour:perder"
+   }
+  ]
+ }
+}
