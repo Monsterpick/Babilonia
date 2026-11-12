@@ -5,6 +5,7 @@ import { api, overlayUrl } from '../lib/api'
 import { useLiveState } from '../lib/live'
 import { Check, Modal, Seg } from '../components/ui'
 import { toast } from '../components/Toast'
+import { OverlayLinks } from '../components/OverlayLinks'
 import { GiftPicker } from '../components/GiftPicker'
 import { useGifts } from '../lib/catalog'
 
@@ -23,6 +24,8 @@ interface Def {
   wide?: boolean
   /** Arranca con el ejemplo activado (útil en overlays que de otro modo salen vacíos). */
   demoFirst?: boolean
+  /** No reacciona a regalos de prueba (p. ej. las tarjetas de plugins): sin el panel «Simular eventos». */
+  noSim?: boolean
 }
 
 /** Overlays que siempre muestran algo (marcadores y metas): no llevan el aviso «vacío hasta el primer evento». */
@@ -197,7 +200,7 @@ const SECTIONS: { title: string; hint: string; items: Def[] }[] = [
           </>
         ),
       },
-      { id: 'tarjetas', name: 'Tarjetas de plugins', desc: 'Todas tus acciones; la que se activa se anima. Se configura más abajo.', w: 1080, h: 400 },
+      { id: 'tarjetas', name: 'Tarjetas de plugins', desc: 'Todas tus acciones; la que se activa se anima. Se configura más abajo.', w: 1080, h: 400, noSim: true },
       { id: 'ticker', name: 'Banda de últimos eventos', desc: 'Feed de regalos, seguidores y compartir. Perfecto como barra inferior (?dir=v para vertical).', w: 1280, h: 100 },
     ],
   },
@@ -635,6 +638,7 @@ function Tester({ d, cfg, set, onClose, bg, setBg }: { d: Def; cfg: Cfg; set: (p
           <div className="min-h-0 flex-1">
             <Stage id={d.id} w={d.w} h={d.h} nonce={nonce} example={example} bg={bg} height="100%" />
           </div>
+          {!d.noSim && (
           <div className="rounded-xl border border-white/5 bg-black/20 p-3">
             <div className="mb-2 flex items-center gap-2 text-sm">
               <b>Simular eventos</b>
@@ -654,6 +658,7 @@ function Tester({ d, cfg, set, onClose, bg, setBg }: { d: Def; cfg: Cfg; set: (p
               <SimButton emoji="🌪️" label="Ráfaga" body={{ type: 'burst', events: 40, seconds: 3 }} />
             </div>
           </div>
+          )}
         </div>
         <div className="flex min-h-0 flex-col gap-3 overflow-y-auto pr-1">
           <div className="rounded-xl border border-white/5 bg-black/20 p-3 text-sm text-muted">{d.desc}</div>
@@ -671,18 +676,7 @@ function Tester({ d, cfg, set, onClose, bg, setBg }: { d: Def; cfg: Cfg; set: (p
           )}
           <div className="mt-auto space-y-2 rounded-xl border border-accent/30 bg-accent/5 p-3">
             <span className="label">Ponerlo en OBS / TikTok LIVE Studio</span>
-            <div className="flex items-center gap-1.5 rounded-full border border-line bg-black/30 p-1 pl-3">
-              <code className="min-w-0 flex-1 truncate text-[11px] text-[#c4b5fd]">{url}</code>
-              <button className="btn-accent !px-3" onClick={() => copy(url)}>
-                <Copy size={13} /> Copiar
-              </button>
-              <a className="btn !px-3" href={url} target="_blank" rel="noreferrer" title="Abrir">
-                <ExternalLink size={13} />
-              </a>
-            </div>
-            <p className="text-[11px] text-muted">
-              Añade una «Fuente de navegador» de <b className="text-white">{d.w} × {d.h}</b> con este enlace. Fondo transparente: no hace falta croma.
-            </p>
+            <OverlayLinks url={url} w={d.w} h={d.h} />
           </div>
         </div>
       </div>

@@ -1,4 +1,6 @@
 import fs from 'node:fs'
+import { publicAllowed } from './tunnel.js'
+import { ShortLinks } from './shortlinks.js'
 import fsp from 'node:fs/promises'
 import path from 'node:path'
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify'
@@ -44,10 +46,17 @@ const MEDIA_EXT = /\.(png|jpe?g|gif|webp|mp4|webm|mp3|wav|ogg)$/i
 export async function buildHttp(app: App): Promise<FastifyInstance> {
   const f = Fastify({ logger: false, bodyLimit: 2 * 1024 * 1024 })
   const sim = new Simulator(app)
+  const shortLinks = new ShortLinks()
   const localHost = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i
 
   f.addHook('onRequest', async (req, reply) => {
-    if (!localHost.test(req.headers.host ?? '')) return reply.code(403).send({ error: 'Host no permitido' })
+    const host = (req.headers.host ?? '').toLowerCase()
+    if (app.tunnel.publicHost && host === app.tunnel.publicHost) {
+      // Enlace público: solo los overlays (lectura). Nada del panel ni de la API que cambia cosas.
+      if (!publicAllowed(req.method, req.url)) return reply.code(403).send({ error: 'Solo overlays' })
+      return
+    }
+    if (!localHost.test(host)) return reply.code(403).send({ error: 'Host no permitido' })
     if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'OPTIONS') {
       const origin = req.headers.origin
       if (origin && !/^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i.test(origin)) return reply.code(403).send({ error: 'Origen no permitido' })
@@ -77,6 +86,22 @@ export async function buildHttp(app: App): Promise<FastifyInstance> {
   }
 
   /* -------------------------------- estado -------------------------------- */
+  /* ---------------------- enlace público y enlaces cortos ---------------------- */
+  f.get('/api/tunnel', async () => app.tunnel.state)
+  f.post('/api/tunnel/start', async () => app.tunnel.start(Number((f.server.address() as { port?: number } | null)?.port ?? app.cfg.get().port)))
+  f.post('/api/tunnel/stop', async () => app.tunnel.stop())
+  // Enlace corto: /o/<código> → /overlay/... (algunos programas rechazan enlaces largos con parámetros).
+  f.post('/api/shortlinks', async (req) => {
+    const target = String((req.body as { path?: string } | null)?.path ?? '')
+    if (!/^\/(overlay|juego)\/[^\s]*$/.test(target) || target.length > 4000) throw new HttpError(400, 'Ruta no válida')
+    return { code: shortLinks.add(target) }
+  })
+  f.get('/o/:code', async (req, reply) => {
+    const t = shortLinks.get((req.params as { code: string }).code)
+    if (!t) return reply.code(404).send('Enlace no encontrado')
+    return reply.redirect(t, 302)
+  })
+
   f.get('/api/state', async () => ({
     version: VERSION,
     config: app.cfg.publicView(),

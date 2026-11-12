@@ -21,7 +21,8 @@ export async function startServer(opts: { port?: number } = {}): Promise<Running
   const http = await buildHttp(app)
   http.server.on('upgrade', (req, socket, head) => {
     const host = req.headers.host ?? ''
-    if (!/^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i.test(host) || !req.url?.startsWith('/ws')) return socket.destroy()
+    const pub = app.tunnel.publicHost !== null && host.toLowerCase() === app.tunnel.publicHost
+    if ((!pub && !/^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i.test(host)) || !req.url?.startsWith('/ws')) return socket.destroy()
     app.hub.handleUpgrade(req, socket, head)
   })
   const port = opts.port ?? Number(process.env.PORT ?? app.cfg.get().port)

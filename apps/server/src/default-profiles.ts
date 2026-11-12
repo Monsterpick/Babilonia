@@ -255,60 +255,81 @@ export function laSurvivalProfile(): Profile {
   })
 }
 
-/** Perfil «LiveArena Épico»: efectos espectaculares del plugin propio para regalos grandes. */
-export function laEpicProfile(): Profile {
+/**
+ * Perfil «Minecraft Survival Épico»: los efectos survival del plugin propio (como «LiveArena Survival») para los
+ * regalos pequeños y todas las cinemáticas (mod LiveArena Cinemáticas) para los grandes. Sustituye al antiguo
+ * «LiveArena Épico», que usaba las primeras versiones de los efectos épicos.
+ */
+export function survivalEpicProfile(): Profile {
   const fn = (id: string, name: string, color: string, commands: string[], alignment: 'good' | 'bad' = 'bad'): ActionInput => ({
     id, name, color, alignment,
     steps: commands.map((c) => ({ type: 'minecraft.command' as const, commands: [c], mode: 'all' as const })),
   })
-  const fxc = (efecto: string, extra = '') => `la efecto ${efecto} {player} {nickname}${extra ? ` ${extra}` : ''}`
+  const fx = (efecto: string, extra = '') => `la efecto ${efecto} {player} {nickname}${extra ? ` ${extra}` : ''}`
+  const cine = (id: string) => fx(`cine_${id}`)
   const gift = (id: string, name: string, diamonds: number, action: string) => ({ id, trigger: { type: 'gift' as const, gifts: [{ name, diamonds }] }, actionIds: [action] })
   return ProfileSchema.parse({
-    id: 'la-epico',
-    name: 'LiveArena Épico',
+    id: 'mc-survival-epico',
+    name: 'Minecraft Survival Épico',
     mode: 'supervivencia',
     actions: [
-      fn('ep-creeper', 'CREEPER', '#22c55e', [fxc('creeper')]),
-      fn('ep-telarana', 'TELARAÑA', '#e5e7eb', [fxc('telarana')]),
-      fn('ep-escudo', 'ESCUDO', '#34e0a1', [fxc('escudo_energia', '15')], 'good'),
-      fn('ep-totem', 'TÓTEM APILABLE', '#ffcc33', ['la totem add {player} {gift.count} {nickname}'], 'good'),
-      fn('ep-onda', 'ONDA DE REPULSIÓN', '#9be7ff', [fxc('onda_repulsion')]),
-      fn('ep-corona', 'CORONA DE ESPADAS', '#e5e7eb', [fxc('corona_espadas', '8')]),
-      fn('ep-rayo', 'SÚPER RAYO', '#5ef2ff', [fxc('super_rayo', '5')]),
-      fn('ep-trueno', 'TRUENO + EXPLOSIÓN', '#ffe066', [fxc('trueno_explosion', '4')]),
-      fn('ep-parca', 'LA PARCA', '#9ca3af', [fxc('parca')]),
-      fn('ep-carrusel', 'CARRUSEL DE CREEPERS', '#22c55e', [fxc('carrusel_creepers')]),
-      fn('ep-ojo', 'OJO DEL VACÍO', '#b15cff', [fxc('ojo_vacio', '6')]),
-      fn('ep-agujero', 'AGUJERO NEGRO', '#9b59ff', [fxc('agujero_negro', '8')]),
-      fn('ep-arcano', 'JUICIO ARCANO', '#ff7b00', [fxc('juicio_arcano', '6')]),
-      fn('ep-dragones', 'DRAGONES', '#7c3aed', [fxc('dragones', '6')]),
-      fn('ep-akaza', 'AKAZA', '#3fa9ff', [fxc('akaza', '8')]),
-      fn('ep-gojo', 'GOJO · HUECO MORADO', '#b15cff', [fxc('gojo_purpura', '10')]),
-      fn('ep-genkidama', 'ESFERA DE ENERGÍA', '#67e8f9', [fxc('genkidama', '8')]),
-      fn('ep-mil', 'MIL CORTES', '#ff3b3b', [fxc('mil_cortes', '12')]),
-      fn('ep-dominio', 'GOJO · VACÍO INFINITO', '#dca0ff', [fxc('gojo_dominio', '14')]),
-      fn('ep-meteorito', 'METEORITO', '#ff6a1a', [fxc('meteorito_gigante', '6')]),
+      // Survival (plugin LiveArena)
+      fn('se-zombie', 'ZOMBIE', '#65a30d', [fx('zombie', 'hierro')]),
+      fn('se-creeper', 'CREEPER', '#22c55e', [fx('creeper')]),
+      fn('se-skeleton', 'ESQUELETO', '#d4d4d8', [fx('esqueleto')]),
+      fn('se-spider', 'ARAÑA', '#7c3aed', [fx('arana')]),
+      fn('se-witch', 'BRUJA', '#a21caf', [fx('bruja')]),
+      fn('se-tnt', 'TNT', '#dc2626', [fx('tnt', '60 3')]),
+      fn('se-food', 'COMIDA', '#f59e0b', [fx('comida')], 'good'),
+      fn('se-totem', 'TÓTEM APILABLE', '#ffcc33', ['la totem add {player} {gift.count} {nickname}'], 'good'),
+      fn('se-web', 'TELARAÑA', '#e5e7eb', [fx('telarana')]),
+      fn('se-freeze', 'CONGELADO', '#a5f3fc', [fx('congelar', '8')]),
+      fn('se-ravager', 'DEVASTADOR', '#b45309', [fx('ravager')]),
+      fn('se-chest', 'COFRE ÉPICO', '#fde047', [fx('cofre_epico')], 'good'),
+      fn('se-boss', 'JEFE', '#dc2626', [fx('jefe')]),
+      fn('se-apple', 'MANZANA DORADA', '#ffd166', [fx('manzana')], 'good'),
+      fn('se-dog', 'PERRO', '#d6d3d1', [fx('perro')], 'good'),
+      fn('se-horde', 'HORDA', '#991b1b', [fx('horda')]),
+      // Cinemáticas (mod LiveArena Cinemáticas)
+      fn('se-escudo', 'ESCUDO DE ENERGÍA', '#5ce1ff', [cine('escudo')], 'good'),
+      fn('se-onda', 'ONDA DE REPULSIÓN', '#e8f4ff', [cine('onda_repulsion')]),
+      fn('se-corona', 'CORONA DE ESPADAS', '#9fe8ff', [cine('corona_espadas')]),
+      fn('se-rayo', 'SÚPER RAYO', '#9fdcff', [cine('super_rayo')]),
+      fn('se-trueno', 'TRUENO + EXPLOSIÓN', '#ffb347', [cine('trueno_explosion')]),
+      fn('se-carrusel', 'CARRUSEL DE CREEPERS', '#58ff7a', [cine('carrusel_creepers')]),
+      fn('se-ojo', 'OJO DEL VACÍO', '#b15cff', [cine('ojo_vacio')]),
+      fn('se-agujero', 'AGUJERO NEGRO', '#ff8a1a', [cine('agujero_negro')]),
+      fn('se-igneo', 'JUICIO ÍGNEO', '#ff6a1a', [cine('juicio_arcano')]),
+      fn('se-sangre', 'SANGRE PERFORANTE', '#c0101c', [cine('sangre_perforante')]),
+      fn('se-akaza', 'AGUJA DE BRÚJULA', '#7fd8ff', [cine('akaza')]),
+      fn('se-mil', 'MIL CORTES', '#ff3b3b', [cine('mil_cortes')]),
+      fn('se-meteorito', 'METEORITO', '#ff6a1a', [cine('meteorito')]),
+      fn('se-orbital', 'ATAQUE ORBITAL', '#ff1a2a', [cine('ataque_orbital')]),
+      fn('se-purpura', 'VACÍO PÚRPURA', '#9b30ff', [cine('vacio_purpura')]),
+      fn('se-genkidama', 'GENKIDAMA', '#8fd3ff', [cine('genkidama')]),
     ],
     events: [
-      { id: 'ep-ev-follow', trigger: { type: 'follow', oncePerUser: true }, actionIds: ['ep-escudo'] },
-      { id: 'ep-ev-likes', trigger: { type: 'likes', every: 200 }, actionIds: ['ep-creeper'] },
-      gift('ep-ev-rose', 'Rose', 1, 'ep-telarana'),
-      gift('ep-ev-heartme', 'Heart Me', 1, 'ep-totem'),
-      gift('ep-ev-gg', 'GG', 1, 'ep-onda'),
-      gift('ep-ev-finger', 'Finger Heart', 5, 'ep-corona'),
-      gift('ep-ev-perfume', 'Perfume', 20, 'ep-rayo'),
-      gift('ep-ev-donut', 'Doughnut', 30, 'ep-trueno'),
-      gift('ep-ev-hearts', 'Hand Hearts', 100, 'ep-parca'),
-      gift('ep-ev-confetti', 'Confetti', 100, 'ep-carrusel'),
-      gift('ep-ev-sunglasses', 'Sunglasses', 199, 'ep-ojo'),
-      gift('ep-ev-corgi', 'Corgi', 299, 'ep-agujero'),
-      gift('ep-ev-moneygun', 'Money Gun', 500, 'ep-arcano'),
-      gift('ep-ev-galaxy', 'Galaxy', 1000, 'ep-akaza'),
-      gift('ep-ev-gol', 'Gol', 999, 'ep-gojo'),
-      gift('ep-ev-fireworks', 'Fireworks', 1088, 'ep-genkidama'),
-      gift('ep-ev-lion', 'Lion', 29999, 'ep-dominio'),
-      { id: 'ep-ev-big', trigger: { type: 'diamonds', min: 5000 }, actionIds: ['ep-meteorito'] },
-      { id: 'ep-ev-room', trigger: { type: 'room_likes', goal: 10000, step: 10000 }, actionIds: ['ep-mil'] },
+      { id: 'se-ev-follow', trigger: { type: 'follow', oncePerUser: true }, actionIds: ['se-dog'] },
+      { id: 'se-ev-likes', trigger: { type: 'likes', every: 150 }, actionIds: ['se-zombie'] },
+      { id: 'se-ev-share', trigger: { type: 'share' }, actionIds: ['se-apple'], cooldown: { perUserMs: 60000 } },
+      gift('se-ev-rose', 'Rose', 1, 'se-creeper'),
+      gift('se-ev-tiktok', 'TikTok', 1, 'se-skeleton'),
+      gift('se-ev-gg', 'GG', 1, 'se-spider'),
+      gift('se-ev-heartme', 'Heart Me', 1, 'se-totem'),
+      gift('se-ev-finger', 'Finger Heart', 5, 'se-witch'),
+      gift('se-ev-perfume', 'Perfume', 20, 'se-tnt'),
+      gift('se-ev-donut', 'Doughnut', 30, 'se-food'),
+      gift('se-ev-hearts', 'Hand Hearts', 100, 'se-escudo'),
+      gift('se-ev-confetti', 'Confetti', 100, 'se-onda'),
+      gift('se-ev-sunglasses', 'Sunglasses', 199, 'se-corona'),
+      gift('se-ev-corgi', 'Corgi', 299, 'se-rayo'),
+      gift('se-ev-moneygun', 'Money Gun', 500, 'se-trueno'),
+      gift('se-ev-galaxy', 'Galaxy', 1000, 'se-igneo'),
+      gift('se-ev-gol', 'Gol', 999, 'se-sangre'),
+      gift('se-ev-fireworks', 'Fireworks', 1088, 'se-akaza'),
+      gift('se-ev-lion', 'Lion', 29999, 'se-purpura'),
+      { id: 'se-ev-big', trigger: { type: 'diamonds', min: 5000 }, actionIds: ['se-orbital'] },
+      { id: 'se-ev-room', trigger: { type: 'room_likes', goal: 10000, step: 10000 }, actionIds: ['se-horde'] },
     ],
   })
 }

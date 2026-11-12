@@ -16,6 +16,8 @@ import {
 interface Client {
   ws: WebSocket
   role: ClientRole | null
+  /** Llegó por el enlace público: solo recibe lo que necesitan los overlays. */
+  pub?: boolean
   subs: string[]
   screen?: number
   alive: boolean
@@ -25,6 +27,9 @@ interface Client {
  * Hub WebSocket (protocolo v1). Overlays, juegos y el panel se conectan aquí.
  * El primer mensaje del cliente debe ser `hello`; si no llega en 5 s se acepta como dashboard.
  */
+/** Estado que no se manda por el enlace público (conexión, servidor, rutas, ajustes internos). */
+const PRIVATE_STATE = new Set<string>(['source', 'minecraft', 'server', 'textures', 'cinemod', 'minigames', 'tunnel', 'ttshistory'])
+
 export class Hub {
   private readonly wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 })
   private readonly clients = new Set<Client>()
@@ -45,6 +50,9 @@ export class Hub {
     }, 15_000).unref()
   }
 
+  /** Lo asigna la app: true si el host de la petición es el del enlace público. */
+  isPublic: (host: string | undefined) => boolean = () => false
+
   handleUpgrade(req: IncomingMessage, socket: Duplex, head: Buffer): void {
     this.wss.handleUpgrade(req, socket, head, (ws) => this.accept(ws, req))
   }
@@ -56,13 +64,16 @@ export class Hub {
   private accept(ws: WebSocket, req: IncomingMessage): void {
     const url = new URL(req.url ?? '/', 'http://x')
     const c: Client = { ws, role: null, subs: [], alive: true }
+    // Conexión por el enlace público (túnel): solo puede ser un overlay y no manda nada al juego.
+    const isPublic = this.isPublic(req.headers.host)
+    c.pub = isPublic
     this.clients.add(c)
     ws.on('pong', () => (c.alive = true))
     ws.on('close', () => this.clients.delete(c))
     ws.on('error', () => this.clients.delete(c))
     const roleParam = url.searchParams.get('role')
     const t = setTimeout(() => {
-      if (!c.role) this.welcome(c, { role: (roleParam as ClientRole) || 'dashboard', subscribe: [] })
+      if (!c.role) this.welcome(c, { role: isPublic ? 'overlay' : (roleParam as ClientRole) || 'dashboard', subscribe: [] })
     }, 5000)
     ws.on('message', (raw) => {
       let msg: { type?: string; payload?: unknown }
@@ -75,10 +86,10 @@ export class Hub {
         clearTimeout(t)
         const h = HelloSchema.safeParse(msg.payload)
         if (!h.success) return this.send(c, makeEnvelope('error', { code: 'bad_hello', message: h.error.message }))
-        this.welcome(c, h.data)
+        this.welcome(c, isPublic ? { ...h.data, role: 'overlay' } : h.data)
       } else if (msg.type === 'ping') {
         this.send(c, makeEnvelope('pong', {}))
-      } else if (msg.type === 'game.report') {
+      } else if (msg.type === 'game.report' && !isPublic) {
         const p = msg.payload as { kind?: string; data?: unknown }
         if (p?.kind) this.onReport(String(p.kind), p.data)
       }
@@ -89,7 +100,8 @@ export class Hub {
     c.role = h.role
     c.subs = h.subscribe
     c.screen = h.screen
-    this.send(c, makeEnvelope('welcome', { protocol: PROTOCOL_VERSION, serverVersion: this.serverVersion, sessionId: this.sessionId, state: Object.fromEntries(this.state) }))
+    const state = [...this.state].filter(([k]) => !c.pub || !PRIVATE_STATE.has(k))
+    this.send(c, makeEnvelope('welcome', { protocol: PROTOCOL_VERSION, serverVersion: this.serverVersion, sessionId: this.sessionId, state: Object.fromEntries(state) }))
   }
 
   private send(c: Client, env: unknown): void {
@@ -101,6 +113,7 @@ export class Hub {
     for (const c of this.clients) {
       if (!c.role || c.ws.readyState !== c.ws.OPEN) continue
       if (filter && !filter(c)) continue
+      if (c.pub && (type === 'log' || (type === 'state' && kind && PRIVATE_STATE.has(kind)))) continue
       if (!matchesSubscription(c.subs, type, kind)) continue
       // Contrapresión: si un cliente va muy atrasado (OBS congelado), no le acumulamos más.
       if (c.ws.bufferedAmount > 4 * 1024 * 1024) continue

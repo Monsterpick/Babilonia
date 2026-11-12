@@ -16,6 +16,7 @@ import { MinecraftService } from './minecraft-service.js'
 import { ProfileStore } from './profiles.js'
 import { StatsStore } from './stats.js'
 import { GiftCatalog } from './gifts.js'
+import { TunnelService } from './tunnel.js'
 
 /** Versión: la de la app de escritorio si corre dentro de ella (se actualiza sola); si no, la del código. */
 export const VERSION = process.env.LIVEARENA_VERSION ?? '0.7.0'
@@ -50,6 +51,8 @@ export class App {
   readonly mc: MinecraftService
   readonly cine: CineModService
   readonly minigames: MinigamesService
+  /** Enlace público HTTPS de los overlays (TikTok LIVE Studio). */
+  readonly tunnel = new TunnelService()
   readonly tiktok: TikTokSource
   private readonly dedup = new Deduper(10_000)
   private readonly combos: ComboTracker
@@ -66,6 +69,8 @@ export class App {
 
   constructor() {
     this.log.sink = (l) => this.hub.log(l)
+    this.hub.isPublic = (h) => this.tunnel.publicHost !== null && (h ?? '').toLowerCase() === this.tunnel.publicHost
+    this.tunnel.onChange = (st) => this.hub.setState('tunnel', st)
     this.mc = new MinecraftService(this.cfg, this.log)
     this.tiktok = new TikTokSource({ signApiKey: this.cfg.eulerKey() })
     this.combos = new ComboTracker({ onGift: (ev) => this.onEvent(ev) })
@@ -597,6 +602,7 @@ export class App {
   }
 
   async shutdown(): Promise<void> {
+    this.tunnel.stop()
     await this.tiktok.disconnect().catch(() => undefined)
     if (this.cfg.get().minecraft.server.stopOnExit) await this.mc.stop().catch(() => undefined)
     this.mc.disconnect()

@@ -3,7 +3,7 @@ import path from 'node:path'
 import zlib from 'node:zlib'
 import { ProfileSchema, type Profile } from '@livearena/shared'
 import { paths } from './config.js'
-import { defaultProfiles, laEpicProfile, baseDefenseProfile, laSurvivalProfile, s2eProfile } from './default-profiles.js'
+import { defaultProfiles, survivalEpicProfile, baseDefenseProfile, laSurvivalProfile, s2eProfile } from './default-profiles.js'
 
 const safeId = (id: string) => id.toLowerCase().replace(/[^a-z0-9_-]/g, '-').slice(0, 64) || 'perfil'
 
@@ -44,8 +44,17 @@ export class ProfileStore {
     try {
       await fs.access(marker4)
     } catch {
-      if (!this.cache.has('la-epico')) await this.save(laEpicProfile(), false)
       await fs.writeFile(marker4, new Date().toISOString())
+    }
+    // v14: «LiveArena Épico» (primeras versiones de los efectos épicos) se retira (queda copia de seguridad) y llega
+    // «Minecraft Survival Épico» con los efectos survival y todas las cinemáticas.
+    const marker6 = path.join(paths.profiles, '.ejemplos-v6')
+    try {
+      await fs.access(marker6)
+    } catch {
+      if (!this.cache.has('mc-survival-epico')) await this.save(survivalEpicProfile(), false)
+      if (this.cache.has('la-epico') && this.cache.size > 1) await this.remove('la-epico')
+      await fs.writeFile(marker6, new Date().toISOString())
     }
     const marker5 = path.join(paths.profiles, '.ejemplos-v5')
     try {

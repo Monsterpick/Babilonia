@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { ArrowRight, ChevronDown, ChevronUp, Copy, History, Pause, Pickaxe, Play, Plus, Trash2, Music, Share2, Download, Layers, Loader2 } from 'lucide-react'
+import { ArrowRight, ChevronDown, ChevronUp, Copy, History, PencilLine, Pause, Pickaxe, Play, Plus, Trash2, Music, Share2, Download, Layers, Loader2 } from 'lucide-react'
 import type { Action, EventRule, Profile } from '@livearena/shared'
 import { useApp } from '../App'
 import { api } from '../lib/api'
@@ -86,6 +86,26 @@ export function PluginsPage() {
     await reload()
   }
 
+  const renameProfile = async () => {
+    const name = await askText('Nuevo nombre del perfil:', profile.name)
+    if (!name || name === profile.name) return
+    await api('PUT', `/api/profiles/${profile.id}`, { ...profile, name })
+    await reload()
+    toast('Perfil renombrado')
+  }
+
+  const deleteProfile = async () => {
+    if ((state?.profiles.length ?? 0) <= 1) return toast('Debe quedar al menos un perfil.', 'error')
+    if (!(await askConfirm(`¿Eliminar el perfil «${profile.name}»? Se guarda una copia de seguridad por si te arrepientes.`, { danger: true }))) return
+    try {
+      await api('DELETE', `/api/profiles/${profile.id}`)
+      await reload()
+      toast('Perfil eliminado')
+    } catch (e) {
+      toast((e as Error).message, 'error')
+    }
+  }
+
   const newProfile = async () => {
     const name = await askText('Nombre del nuevo perfil (se copia del actual):', `${profile.name} 2`)
     if (!name) return
@@ -111,6 +131,12 @@ export function PluginsPage() {
             <Plus size={16} />
           </button>
         </div>
+        <button className="btn !px-2.5" title="Renombrar este perfil" onClick={renameProfile}>
+          <PencilLine size={15} />
+        </button>
+        <button className="btn !px-2.5 hover:border-red-400/60 hover:text-red-300" title="Eliminar este perfil" onClick={deleteProfile}>
+          <Trash2 size={15} />
+        </button>
         <button className="btn" onClick={() => setBackups(true)}>
           <History size={15} /> Copias de seguridad
         </button>
