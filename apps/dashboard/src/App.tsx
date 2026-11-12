@@ -17,6 +17,7 @@ import { SettingsPage } from './pages/Settings'
 import { Dialogs } from './components/Dialog'
 import { Toasts, toast } from './components/Toast'
 import { UpdateBanner } from './components/UpdateBanner'
+import { WhatsNew } from './components/WhatsNew'
 
 export interface AppState {
   config: any
@@ -110,6 +111,7 @@ export function App() {
       </div>
       <Toasts />
       <UpdateBanner />
+      <WhatsNew />
       <Dialogs />
     </AppCtx.Provider>
   )

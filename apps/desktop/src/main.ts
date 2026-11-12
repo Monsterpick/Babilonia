@@ -5,6 +5,7 @@
 import { app, BrowserWindow, dialog, ipcMain, shell, Menu } from 'electron'
 import { autoUpdater } from 'electron-updater'
 import path from 'node:path'
+import fs from 'node:fs'
 import { pathToFileURL } from 'node:url'
 
 const PORT = Number(process.env.PORT ?? 7420)
@@ -63,6 +64,9 @@ async function boot(): Promise<void> {
     return r.canceled ? null : r.filePaths[0]
   })
   ipcMain.handle('open-path', (_e, p: string) => shell.openPath(p))
+
+  // al abrir: si hay una versión nueva, ventana de actualización (descarga, instala y vuelve a abrirse sola)
+  if (await startupUpdate()) return
 
   try {
     // El servidor va empaquetado aparte (ESM) y se carga después de fijar las rutas.
@@ -160,6 +164,8 @@ app.on('before-quit', (e) => {
   })
 })
 app.on('window-all-closed', () => {
+  // la ventana de actualización se cierra antes de que exista el panel: eso no es salir de la app
+  if (!win) return
   // con una actualización ya descargada: se instala en silencio y la app vuelve a abrirse sola
   // (antes se instalaba al salir sin reabrirse y, si la abrías mientras tanto, parecía que no arrancaba)
   if (updateState.state === 'ready' && app.isPackaged && !process.env.PORTABLE_EXECUTABLE_DIR) {
@@ -176,3 +182,113 @@ app.on('window-all-closed', () => {
   }
   app.quit()
 })
+
+
+// ─────────────────────── ventana de actualización al abrir ───────────────────────
+
+function splashHtml(icon: string): string {
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>LiveArena</title><style>
+  *{box-sizing:border-box}body{margin:0;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:radial-gradient(circle at 50% 22%,#2a1640 0,#0c0e12 62%);color:#e9e6f5;font:15px "Segoe UI",system-ui,sans-serif;padding:28px;user-select:none}
+  img{width:118px;height:118px;border-radius:50%;box-shadow:0 0 40px #8b5cf655}h1{margin:16px 0 2px;font-size:26px}
+  .sub{color:#a59fbf;font-size:13px;margin-bottom:22px}.box{width:100%;border-radius:14px;padding:14px 16px;margin-bottom:12px;font-size:13.5px;line-height:1.45}
+  #st{background:#2a2112;border:1px solid #6b5420;color:#f5b84a}#info{background:#13221a;border:1px solid #2e5a3a}
+  .bar{height:6px;border-radius:3px;background:#ffffff14;margin-top:8px;overflow:hidden}.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#8b5cf6,#ff5a7a);transition:width .3s}
+  button{width:100%;border:0;border-radius:14px;padding:14px;font-size:15px;font-weight:700;color:#fff;cursor:pointer;
+  background:linear-gradient(90deg,#8b5cf6,#ff4f7a)}button:disabled{opacity:.6;cursor:default}
+  .skip{background:none;color:#8d88a6;font-weight:500;font-size:12.5px;padding:8px;margin-top:4px}.hide{display:none}
+  </style></head><body><img src="${icon}"><h1>LiveArena</h1><div class="sub" id="sub">Buscando actualizaciones…</div>
+  <div class="box hide" id="st"></div><div class="box hide" id="info"></div>
+  <button id="go" class="hide" onclick="location.hash='#instalar-'+Date.now()">Actualizar ahora</button>
+  <button id="skip" class="skip hide" onclick="location.hash='#saltar-'+Date.now()">Ahora no</button></body></html>`
+}
+
+/**
+ * Comprueba si hay una versión nueva antes de abrir el panel. Si la hay, muestra la ventana de actualización:
+ * «Actualizar ahora» descarga (con porcentaje), instala en silencio y la app se vuelve a abrir.
+ * Devuelve true si la app se va a cerrar para instalar (no hay que seguir arrancando).
+ * Sin conexión, en la versión portable o en desarrollo, sigue de largo enseguida.
+ */
+async function startupUpdate(): Promise<boolean> {
+  if (!app.isPackaged || process.env.PORTABLE_EXECUTABLE_DIR) return false
+  let icon = ''
+  try {
+    icon = 'data:image/png;base64,' + fs.readFileSync(path.join(process.env.LIVEARENA_RESOURCES ?? '', 'icon.png')).toString('base64')
+  } catch {
+    /* sin icono */
+  }
+  const splash = new BrowserWindow({
+    width: 440, height: 600, resizable: false, maximizable: false, minimizable: true, backgroundColor: '#0c0e12', title: 'LiveArena',
+    icon: path.join(process.env.LIVEARENA_RESOURCES ?? '', 'icon.png'), show: false, autoHideMenuBar: true,
+    webPreferences: { sandbox: true, contextIsolation: true, javascript: true },
+  })
+  await splash.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(splashHtml(icon)))
+  splash.show()
+  const js = (code: string) => (splash.isDestroyed() ? Promise.resolve() : splash.webContents.executeJavaScript(code).then(() => undefined, () => undefined))
+  const set = (id: string, html: string, show = true) =>
+    js(`(()=>{const e=document.getElementById(${JSON.stringify(id)});e.innerHTML=${JSON.stringify(html)};e.classList.toggle('hide',${!show})})()`)
+
+  autoUpdater.autoDownload = false
+  autoUpdater.autoInstallOnAppQuit = false
+  let version: string | null = null
+  try {
+    const r = await Promise.race([autoUpdater.checkForUpdates(), new Promise<null>((ok) => setTimeout(() => ok(null), 8000))])
+    const v = r?.updateInfo?.version
+    if (v && r?.isUpdateAvailable !== false && v !== app.getVersion()) version = v
+  } catch {
+    version = null
+  }
+  if (!version) {
+    if (!splash.isDestroyed()) splash.close()
+    autoUpdater.autoDownload = true
+    autoUpdater.autoInstallOnAppQuit = true
+    return false
+  }
+
+  await set('sub', 'Actualización disponible')
+  await set('info', `Hay una versión nueva de LiveArena (<b>${version}</b>). Se descarga, se instala sola y la app se vuelve a abrir. No pierdes tus perfiles, overlays ni ajustes.`)
+  await js(`document.getElementById('go').classList.remove('hide');document.getElementById('skip').classList.remove('hide')`)
+
+  return new Promise<boolean>((resolve) => {
+    let started = false
+    const cont = () => {
+      autoUpdater.autoDownload = true
+      autoUpdater.autoInstallOnAppQuit = true
+      if (!splash.isDestroyed()) splash.close()
+      resolve(false)
+    }
+    const install = async () => {
+      if (started) return
+      started = true
+      await js(`document.getElementById('go').disabled=true;document.getElementById('go').textContent='Actualizando…';document.getElementById('skip').classList.add('hide')`)
+      await set('st', `Descargando la versión ${version}… 0 %<div class="bar"><i id="pb"></i></div>`)
+      autoUpdater.on('download-progress', (p) => {
+        const pc = Math.round(p.percent)
+        void js(`(()=>{const s=document.getElementById('st');s.firstChild.textContent='Descargando la versión ${version}… ${pc} %';document.getElementById('pb').style.width='${pc}%'})()`)
+      })
+      autoUpdater.once('update-downloaded', () => {
+        void set('st', 'Instalando… la app se volverá a abrir en unos segundos.')
+        setTimeout(() => {
+          resolve(true)
+          autoUpdater.quitAndInstall(true, true)
+        }, 900)
+      })
+      try {
+        await autoUpdater.downloadUpdate()
+      } catch (e) {
+        started = false
+        await set('st', `No se pudo descargar la actualización: ${String((e as Error)?.message ?? e).slice(0, 140)}`)
+        await js(`(()=>{const b=document.getElementById('go');b.disabled=false;b.textContent='Reintentar';document.getElementById('skip').classList.remove('hide');document.getElementById('skip').textContent='Continuar sin actualizar'})()`)
+      }
+    }
+    splash.webContents.on('did-navigate-in-page', (_e, url) => {
+      const h = url.slice(url.indexOf('#'))
+      if (h.startsWith('#instalar')) void install()
+      else if (h.startsWith('#saltar') && !started) cont()
+    })
+    // cerrar la ventana sin actualizar = seguir con la versión actual (mientras no se esté instalando)
+    splash.on('closed', () => {
+      if (!started) resolve(false)
+    })
+  })
+}
