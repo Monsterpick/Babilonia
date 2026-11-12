@@ -225,7 +225,7 @@ describe('texturas', () => {
     const files: [string, Buffer, boolean][] = [
       ['assets/minecraft/textures/item/diamond_sword.png', Buffer.from('PNGsword'), true],
       ['assets/minecraft/textures/block/tnt_side.png', Buffer.from('PNGtnt'), false],
-      ['assets/minecraft/textures/entity/x.png', Buffer.from('no'), true],
+      ['assets/minecraft/textures/gui/x.png', Buffer.from('no'), true], // gui/ no se extrae (entity/ sí, para el catálogo)
     ]
     const locals: Buffer[] = []
     const centrals: Buffer[] = []
