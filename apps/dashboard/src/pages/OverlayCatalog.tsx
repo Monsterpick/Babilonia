@@ -444,7 +444,7 @@ const SECTIONS: { title: string; hint: string; items: Def[] }[] = [
     title: 'Rankings',
     hint: 'Los que más aportan. Elige el estilo que más te guste.',
     items: [
-      { id: 'top-regalos', name: 'Top regalos', desc: 'Quién más monedas ha regalado. ?align=right para alinearlo a la derecha.', w: 440, h: 800, settings: topSettings, wide: true, demoFirst: true },
+      { id: 'top-regalos', name: 'Top regalos', desc: 'Quién más monedas ha regalado.', w: 440, h: 800, settings: topSettings, wide: true, demoFirst: true },
       { id: 'top-likes', name: 'Top likes', desc: 'Quién más likes ha dado.', w: 440, h: 800, settings: topSettings, wide: true, demoFirst: true },
       { id: 'mvp-monedas', name: 'MVP de monedas', desc: 'Solo el número 1, en grande.', w: 480, h: 150 },
       { id: 'mvp-likes', name: 'MVP de likes', desc: 'Solo el número 1 de likes.', w: 480, h: 150 },
@@ -473,6 +473,14 @@ function topSettings(c: Cfg, set: (p: Cfg) => void) {
         ))}
       </div>
       <Num label="Cuántos" min={1} value={c.top?.n} onChange={(v) => set({ top: { n: Math.min(10, v) } })} />
+      <Seg
+        value={c.top?.align ?? 'left'}
+        options={[
+          { v: 'left', l: 'Alinear a la izquierda' },
+          { v: 'right', l: 'Alinear a la derecha' },
+        ]}
+        onChange={(v) => set({ top: { align: v } })}
+      />
     </>
   )
 }

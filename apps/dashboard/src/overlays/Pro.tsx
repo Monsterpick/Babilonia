@@ -561,7 +561,7 @@ export function TopV2({ kind }: { kind: 'donors' | 'likers' }) {
   const style = (params.get('style') ?? cfg.top?.style ?? 'clasico') as TopStyle
   const n = Number(params.get('n') ?? cfg.top?.n ?? 10)
   const rows = (DEMO ? DEMO_ROWS : (lb?.[kind] ?? [])).slice(0, n)
-  const right = params.get('align') === 'right'
+  const right = (params.get('align') ?? cfg.top?.align) === 'right'
   const title = params.get('title') ?? (kind === 'donors' ? 'TOP REGALOS' : 'TOP LIKES')
   const S = TOP_STYLES[style] ?? TOP_STYLES.oro
   // Nunca se corta una fila a medias: si no caben todas en el alto de la fuente, se muestran las que entren.

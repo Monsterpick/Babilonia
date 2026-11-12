@@ -13,6 +13,12 @@ export interface Novedad {
 
 export const NOVEDADES: Novedad[] = [
   {
+    id: 4,
+    titulo: 'Tops a la izquierda o a la derecha',
+    fecha: 'noviembre 2026',
+    mejorado: ['Top regalos y Top likes: ahora puedes elegir si van alineados a la izquierda o a la derecha desde sus ajustes en Overlays.'],
+  },
+  {
     id: 3,
     titulo: 'Actualizaciones más cómodas y overlays más fáciles',
     fecha: 'noviembre 2026',

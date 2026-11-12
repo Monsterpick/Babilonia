@@ -126,7 +126,7 @@ export const ConfigSchema = z.object({
           followers: z.object({ target: z.number().int().min(1).default(6000), label: z.string().max(40).default('SEGUIDORES') }).default({}),
         })
         .default({}),
-      top: z.object({ style: z.enum(['clasico', 'tarjetas', 'barras', 'neon', 'desfile', 'minimo', 'arcade', 'oro']).default('clasico'), n: z.number().int().min(1).max(10).default(10) }).default({}),
+      top: z.object({ style: z.enum(['clasico', 'tarjetas', 'barras', 'neon', 'desfile', 'minimo', 'arcade', 'oro']).default('clasico'), n: z.number().int().min(1).max(10).default(10), align: z.enum(['left', 'right']).default('left') }).default({}),
       /** Reiniciar regalos y rankings al conectar un live nuevo. */
       resetOnNewLive: z.boolean().default(true),
     })
