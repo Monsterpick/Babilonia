@@ -18,6 +18,8 @@ interface Info {
   version: string
   source: string
   count: number
+  /** 2: también incluye texturas de entidades (entity/). */
+  layout?: number
 }
 
 /** Texturas de items sacadas del Minecraft instalado del usuario, en caché en datos/texturas. */
@@ -46,6 +48,8 @@ export class TextureService extends EventEmitter {
       this.dir = path.join(paths.textures, info.version)
       await fs.access(path.join(this.dir, 'item'))
       this.set({ state: 'ready', ...info })
+      // Cachés antiguas sin texturas de mobs: se reimportan en segundo plano desde el mismo .jar.
+      if ((info.layout ?? 1) < 2) void fs.access(info.source).then(() => this.import(info.source, info.version)).catch(() => undefined)
       return
     } catch {
       /* sin caché */
@@ -71,7 +75,7 @@ export class TextureService extends EventEmitter {
     try {
       await fs.rm(dest, { recursive: true, force: true })
       const count = await extractTextures(jarFile, dest, (done, total) => this.set({ ...this.st, pct: Math.round((done / total) * 100) }))
-      const info: Info = { version: v, source: jarFile, count }
+      const info: Info = { version: v, source: jarFile, count, layout: 2 }
       await fs.writeFile(path.join(paths.textures, 'info.json'), JSON.stringify(info, null, 2))
       this.dir = dest
       this.resolved.clear()
@@ -82,6 +86,19 @@ export class TextureService extends EventEmitter {
       this.set({ state: 'error', message: (err as Error).message })
       this.log.warn('servidor', `Texturas: ${(err as Error).message}`)
       throw err
+    }
+  }
+
+  /** Ruta de una textura por su ruta relativa (block/x.png, entity/zombie/zombie.png…), o null. */
+  async raw(rel: string): Promise<string | null> {
+    if (this.st.state !== 'ready' || !this.dir) return null
+    if (!/^(item|block|entity)\/[a-z0-9_/]+\.png$/.test(rel) || rel.includes('..')) return null
+    const f = path.join(this.dir, rel)
+    try {
+      await fs.access(f)
+      return f
+    } catch {
+      return null
     }
   }
 

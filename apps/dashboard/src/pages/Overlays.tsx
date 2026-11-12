@@ -35,8 +35,18 @@ export function OverlaysPage() {
 
       <div className="mt-12 flex items-center px-8">
         <h2 className="mr-auto text-xl font-extrabold tracking-tight">Estilo de las tarjetas de plugins</h2>
-        <button className="btn mr-2" onClick={() => set({ cardStyle: 'minimal', glow: 0, border: 0, background: 0, showGift: true })}>
-          <Sparkles size={14} /> Diseño minimalista
+        <span className="mr-2 text-xs text-muted">Diseños rápidos:</span>
+        <button className="btn mr-2" onClick={() => set({ layout: 'cards', cardStyle: 'solid', backdrop: 'none', glow: 0.2, border: 1, background: 1 })}>
+          Tarjetas
+        </button>
+        <button className="btn mr-2" onClick={() => set({ layout: 'pills', cardStyle: 'solid', backdrop: 'ondas', columns: 4, glow: 0, border: 0, background: 0.6, showGift: true, showName: true, nameColor: 'white' })}>
+          Lista de colores
+        </button>
+        <button className="btn mr-2" onClick={() => set({ layout: 'pills', cardStyle: 'neon', backdrop: 'neon', columns: 3, glow: 0.6, border: 2, showGift: true })}>
+          Lista neón
+        </button>
+        <button className="btn mr-2" onClick={() => set({ layout: 'cards', cardStyle: 'minimal', backdrop: 'none', glow: 0, border: 0, background: 0, showGift: true })}>
+          <Sparkles size={14} /> Minimalista
         </button>
         <button className="btn" onClick={() => setStyle(OverlayStyleSchema.parse({}))}>
           <RotateCcw size={14} /> Valores por defecto
@@ -109,7 +119,20 @@ export function OverlaysPage() {
             <Seg value={style.onFire} onChange={(v) => set({ onFire: v })} options={[{ v: 'flash', l: 'Destello' }, { v: 'pulse', l: 'Pulso' }, { v: 'shake', l: 'Sacudida' }]} />
           </Row>
         </Panel>
-        <Panel title="Temporada">
+        <Panel title="Diseño">
+          <Row label="Disposición">
+            <Seg value={style.layout} onChange={(v) => set({ layout: v })} options={[{ v: 'cards', l: 'Tarjetas' }, { v: 'pills', l: 'Lista' }]} />
+          </Row>
+          <Row label="Fondo">
+            <select className="input" value={style.backdrop} onChange={(e) => set({ backdrop: e.target.value as typeof style.backdrop })}>
+              <option value="none">Transparente</option>
+              <option value="ondas">Ondas de colores</option>
+              <option value="aurora">Aurora</option>
+              <option value="atardecer">Atardecer</option>
+              <option value="oceano">Océano</option>
+              <option value="neon">Neón oscuro</option>
+            </select>
+          </Row>
           <Row label="Tema">
             <Seg value={style.theme} onChange={(v) => set({ theme: v })} options={[{ v: 'normal', l: 'Normal' }, { v: 'halloween', l: 'Halloween' }]} />
           </Row>

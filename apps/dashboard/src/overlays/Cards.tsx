@@ -96,20 +96,89 @@ export function PluginCard({ row, style, gifts, fx }: { row: CardRow; style: Ove
   )
 }
 
+/** Fondos del overlay completo (detrás de las tarjetas o píldoras). */
+export const BACKDROPS: Record<string, string> = {
+  none: 'transparent',
+  ondas: 'linear-gradient(115deg, #f472b6 0 18%, #a855f7 18% 44%, #facc15 44% 66%, #22d3ee 66% 100%)',
+  aurora: 'radial-gradient(120% 140% at 0% 0%, #22d3ee 0, transparent 45%), radial-gradient(120% 140% at 100% 100%, #a855f7 0, transparent 50%), linear-gradient(135deg, #0f172a, #1e1b4b)',
+  atardecer: 'linear-gradient(135deg, #f97316 0%, #ec4899 50%, #7c3aed 100%)',
+  oceano: 'linear-gradient(135deg, #0ea5e9 0%, #2563eb 45%, #1e3a8a 100%)',
+  neon: 'linear-gradient(135deg, #050510, #120a2a)',
+}
+
+/** Píldora (diseño de lista): imagen de la función, regalo que la activa y nombre debajo. */
+export function PillCard({ row, style, gifts, fx, w }: { row: CardRow; style: OverlayStyle; gifts: GiftInfo[]; fx?: number; w: number }) {
+  const { action, event } = row
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!fx || !style.animate || !ref.current) return
+    const cls = { flash: 'fx-flash', pulse: 'fx-pulse', shake: 'fx-shake' }[style.onFire]
+    ref.current.classList.remove(cls)
+    void ref.current.offsetWidth
+    ref.current.classList.add(cls)
+  }, [fx, style.animate, style.onFire])
+  const t = triggerLabel(event.trigger, gifts)
+  const h = Math.round(w * 0.3)
+  const neon = style.backdrop === 'neon' || style.cardStyle === 'neon'
+  return (
+    <div
+      ref={ref}
+      className="relative flex items-center justify-center"
+      style={{
+        width: w,
+        height: h,
+        borderRadius: h / 2,
+        background: style.cardStyle === 'minimal' ? 'transparent' : neon ? 'rgba(10,10,25,0.85)' : `rgba(255,255,255,${0.35 + style.background * 0.45})`,
+        border: neon ? `2px solid ${action.color}` : style.border ? `${style.border}px solid rgba(0,0,0,0.25)` : 'none',
+        boxShadow: neon ? `0 0 ${18 * (style.glow + 0.3)}px ${action.color}` : style.glow > 0 ? `0 2px ${10 * style.glow}px rgba(0,0,0,.35)` : undefined,
+        opacity: event.enabled ? 1 : 0.4,
+        gap: h * 0.18,
+      }}
+    >
+      <div className="relative" style={{ width: h * 0.82, height: h * 0.82 }}>
+        {action.media ? <Media media={action.media} className="h-full w-full object-contain drop-shadow-[0_2px_2px_rgba(0,0,0,.6)]" /> : <div className="h-full w-full rounded-full" style={{ background: action.color }} />}
+        {event.multiplier > 1 && (
+          <span className="absolute -bottom-1 -left-2 font-black text-white" style={{ fontSize: h * 0.3, WebkitTextStroke: `${Math.max(1, h * 0.04)}px #7c3aed`, fontFamily: FONT.bold }}>
+            {event.multiplier}x
+          </span>
+        )}
+      </div>
+      {style.showGift &&
+        (t.image ? (
+          <img src={t.image} alt="" style={{ width: h * 0.68 * style.giftSize, height: h * 0.68 * style.giftSize }} className="object-contain drop-shadow-[0_2px_2px_rgba(0,0,0,.6)]" />
+        ) : (
+          <span className="max-w-[55%] truncate font-black whitespace-nowrap" style={{ fontSize: h * 0.2, color: '#ff4f7a', fontFamily: FONT.bold, textShadow: '0 1px 0 #fff8' }}>
+            {t.label}
+          </span>
+        ))}
+      {style.showName && (
+        <span
+          className="pointer-events-none absolute inset-x-2 truncate text-center"
+          style={{ bottom: h * 0.02, fontFamily: FONT[style.font], fontWeight: 900, fontSize: Math.round(h * 0.17 * style.nameSize), color: neon || style.nameColor === 'event' ? (neon ? '#fff' : action.color) : '#111', textShadow: neon ? `0 0 6px ${action.color}` : '0 0 2px #fff, 0 0 2px #fff', letterSpacing: 0.3 }}
+        >
+          {action.name}
+        </span>
+      )}
+    </div>
+  )
+}
+
 /** Rejilla de tarjetas (lo que se ve en el live): se anima la tarjeta que se activa. */
 export function CardGrid({ profile, gifts, fired, width }: { profile: Profile; gifts: GiftInfo[]; fired: Record<string, number>; width?: number }) {
   const style = profile.overlay
   const rows = cardRows(profile)
   const groups = style.split ? [rows.filter((r) => r.action.alignment !== 'bad'), rows.filter((r) => r.action.alignment === 'bad')] : [rows]
-  const w = SIZE[style.size]
+  const pills = style.layout === 'pills'
+  const w = pills ? SIZE[style.size] * 1.7 : SIZE[style.size]
   const cols = style.columns === 'auto' ? undefined : style.columns
+  const bd = BACKDROPS[style.backdrop] ?? 'transparent'
   return (
-    <div className="flex flex-col" style={{ gap: 12, width }}>
+    <div className="flex flex-col" style={{ gap: 12, width, background: bd, padding: style.backdrop === 'none' ? 0 : 10, borderRadius: style.backdrop === 'none' ? 0 : 14 }}>
       {groups.map((g, gi) => (
-        <div key={gi} className="flex flex-wrap justify-center" style={{ gap: 6, maxWidth: cols ? cols * (w + 6) : undefined }}>
-          {g.map((r) => (
-            <PluginCard key={r.event.id} row={r} style={style} gifts={gifts} fx={fired[r.action.id]} />
-          ))}
+        <div key={gi} className="flex flex-wrap justify-center" style={{ gap: pills ? 8 : 6, maxWidth: cols ? cols * (w + (pills ? 8 : 6)) : undefined, margin: '0 auto' }}>
+          {g.map((r) =>
+            pills ? <PillCard key={r.event.id} row={r} style={style} gifts={gifts} fx={fired[r.action.id]} w={w} /> : <PluginCard key={r.event.id} row={r} style={style} gifts={gifts} fx={fired[r.action.id]} />,
+          )}
         </div>
       ))}
     </div>

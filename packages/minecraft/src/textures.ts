@@ -63,13 +63,16 @@ const PREFIX = 'assets/minecraft/textures/'
 export async function extractTextures(jarFile: string, dest: string, onProgress?: (done: number, total: number) => void): Promise<number> {
   const zip = await ZipReader.open(jarFile)
   try {
-    const wanted = zip.entries.filter((e) => e.name.startsWith(PREFIX) && e.name.endsWith('.png') && /^(item|block)\/[^/]+\.png$/.test(e.name.slice(PREFIX.length)))
+    // item/ y block/ (iconos) y entity/ (caras de mobs para el catálogo de imágenes de la app).
+    const wanted = zip.entries.filter((e) => e.name.startsWith(PREFIX) && e.name.endsWith('.png') && /^((item|block)\/[^/]+|entity\/[a-z0-9_/]+)\.png$/.test(e.name.slice(PREFIX.length)))
     if (wanted.length === 0) throw new Error('Ese .jar no tiene texturas (¿es el jar del servidor?). Usa el de .minecraft/versions.')
     await fs.mkdir(path.join(dest, 'item'), { recursive: true })
     await fs.mkdir(path.join(dest, 'block'), { recursive: true })
     let done = 0
     for (const e of wanted) {
-      await fs.writeFile(path.join(dest, e.name.slice(PREFIX.length)), await zip.read(e))
+      const out = path.join(dest, e.name.slice(PREFIX.length))
+      await fs.mkdir(path.dirname(out), { recursive: true })
+      await fs.writeFile(out, await zip.read(e))
       if (++done % 200 === 0) onProgress?.(done, wanted.length)
     }
     onProgress?.(done, wanted.length)

@@ -137,6 +137,10 @@ export const OverlayStyleSchema = z.object({
   animate: z.boolean().default(true),
   onFire: z.enum(['flash', 'pulse', 'shake']).default('shake'),
   theme: z.enum(['normal', 'halloween']).default('normal'),
+  /** Disposición: tarjetas (rejilla) o lista de píldoras (imagen de la función + regalo + nombre). */
+  layout: z.enum(['cards', 'pills']).default('cards'),
+  /** Fondo detrás de todo el overlay. */
+  backdrop: z.enum(['none', 'ondas', 'aurora', 'atardecer', 'oceano', 'neon']).default('none'),
 })
 export type OverlayStyle = z.infer<typeof OverlayStyleSchema>
 

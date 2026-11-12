@@ -7,6 +7,7 @@ import { Check, Field, Media, Modal, Seg } from './ui'
 import { GiftPicker } from './GiftPicker'
 import { STEP_TYPES, StepFields, TRIGGERS, defaultStep, defaultTrigger } from './RuleEditor'
 import { toast } from './Toast'
+import { ImageCatalog } from './ImageCatalog'
 
 const MAX_COMMANDS = 30
 const clamp = (v: string | number, lo: number, hi: number) => Math.max(lo, Math.min(hi, Math.round(Number(v) || 0)))
@@ -75,6 +76,7 @@ export function FunctionEditor({
     }
   }
 
+  const [catalog, setCatalog] = useState(false)
   const onMedia = async (f: File | undefined) => {
     if (!f) return
     try {
@@ -96,7 +98,8 @@ export function FunctionEditor({
   }
 
   return (
-    <Modal open onClose={onCancel} title={isNew ? 'Nuevo comando' : `Editar · ${ac.name}`} wide>
+    <Modal open onClose={catalog ? () => undefined : onCancel} title={isNew ? 'Nuevo comando' : `Editar · ${ac.name}`} wide>
+      <ImageCatalog open={catalog} onClose={() => setCatalog(false)} onPicked={(media) => setAc({ ...ac, media })} />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)]">
         {/* ------------------------------ CUÁNDO ------------------------------ */}
         <div className="space-y-4">
@@ -275,6 +278,9 @@ export function FunctionEditor({
                   <option value="good">Tipo: ayuda</option>
                   <option value="bad">Tipo: sabotaje</option>
                 </select>
+                <button className="btn !py-1 text-xs" onClick={() => setCatalog(true)} title="Imágenes listas de Minecraft: mobs, bloques, packs y objetos">
+                  <LayoutGrid size={12} /> Catálogo
+                </button>
                 {ac.media && (
                   <button className="text-xs text-muted hover:text-bad" onClick={() => setAc({ ...ac, media: undefined })}>
                     Quitar imagen

@@ -130,6 +130,13 @@ export async function buildHttp(app: App): Promise<FastifyInstance> {
     if (!found) throw new HttpError(404, 'No encontré Minecraft instalado. Abre el juego una vez o elige el .jar a mano.')
     return app.textures.import(found.file, found.version)
   })
+  // Textura por ruta (catálogo de imágenes: caras de mobs, bloques, objetos).
+  f.get<{ Params: { '*': string } }>('/textures/raw/*', async (req, reply) => {
+    const file = await app.textures.raw(req.params['*'])
+    if (!file) return reply.code(404).send()
+    reply.header('cache-control', 'public, max-age=86400').type('image/png')
+    return fsp.readFile(file)
+  })
   f.get<{ Params: { id: string } }>('/textures/:id', async (req, reply) => {
     const id = req.params.id.replace(/\.png$/, '')
     if (!/^[a-z0-9_:]{1,80}$/.test(id)) return reply.code(400).send()
