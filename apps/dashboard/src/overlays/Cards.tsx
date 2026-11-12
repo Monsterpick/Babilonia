@@ -89,7 +89,8 @@ export function PluginCard({ row, style, gifts, fx }: { row: CardRow; style: Ove
           ) : (
             <span style={{ color: '#ff4f7a' }}>{t.icon === 'heart' || t.icon === 'users' ? '♥' : t.icon === 'user-plus' ? '+' : t.icon === 'share' ? '↗' : '★'}</span>
           )}
-          <span className="max-w-[9em] truncate">{t.label.replace(/^(Likes|Sala) · /, '')}</span>
+          {/* con imagen, solo el icono del regalo; sin imagen (likes, seguir, compartir…), el símbolo y el texto */}
+          {t.image ? null : <span className="max-w-[9em] truncate">{t.label.replace(/^(Likes|Sala) · /, '')}</span>}
         </div>
       )}
     </div>
@@ -145,12 +146,7 @@ export function PillCard({ row, style, gifts, fx, w }: { row: CardRow; style: Ov
       </div>
       {style.showGift &&
         (t.image ? (
-          <span className="flex flex-col items-center">
-            <img src={t.image} alt="" style={{ width: h * 0.56 * style.giftSize, height: h * 0.56 * style.giftSize }} className="object-contain drop-shadow-[0_2px_2px_rgba(0,0,0,.6)]" />
-            <span className="max-w-[7em] truncate font-black" style={{ fontSize: h * 0.13, color: '#ff4f7a', fontFamily: FONT.bold, textShadow: '0 1px 0 #fff8' }}>
-              {t.label}
-            </span>
-          </span>
+          <img src={t.image} alt="" style={{ width: h * 0.68 * style.giftSize, height: h * 0.68 * style.giftSize }} className="object-contain drop-shadow-[0_2px_2px_rgba(0,0,0,.6)]" />
         ) : (
           <span className="max-w-[55%] truncate font-black whitespace-nowrap" style={{ fontSize: h * 0.2, color: '#ff4f7a', fontFamily: FONT.bold, textShadow: '0 1px 0 #fff8' }}>
             {t.label}

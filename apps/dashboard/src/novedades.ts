@@ -23,7 +23,7 @@ export const NOVEDADES: Novedad[] = [
     ],
     mejorado: [
       'Enlaces de overlays fijos, del tipo http://127.0.0.1:7420/tarjetas.html: los acepta TikTok LIVE Studio y ya no cambian nunca.',
-      'Las tarjetas muestran el regalo arriba a la derecha (imagen y nombre) y el nombre de la función abajo.',
+      'Las tarjetas muestran el icono del regalo arriba a la derecha y el nombre de la función abajo.',
     ],
     corregido: [
       'La app ya no se queda colgada en segundo plano al cerrarla: si no abría después de cerrarla para actualizar, era eso.',
