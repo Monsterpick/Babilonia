@@ -75,6 +75,8 @@ export function OverlayRouter({ name }: { name: string }) {
         return <ParkourOverlay />
       case 'dropper':
         return <ParkourOverlay source="dropper" />
+      case 'nosalpiques':
+        return <ParkourOverlay source="nosalpiques" />
       case 'lasthouse':
         return <LastHouseOverlay />
       case 'lasthouse-regalos':

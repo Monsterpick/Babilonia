@@ -7,6 +7,7 @@ import {
   Download,
   Gamepad2,
   ArrowDownToLine,
+  Droplets,
   Gift,
   Heart,
   Loader2,
@@ -31,6 +32,7 @@ import { PageHeader } from "../components/ui";
 import { toast } from "../components/Toast";
 import { ParkourPanel } from "./ParkourPanel";
 import { DropperPanel } from "./DropperPanel";
+import { NoSalpiquesPanel } from "./NoSalpiquesPanel";
 import { LastHousePanel } from "./LastHousePanel";
 
 interface Game {
@@ -343,15 +345,15 @@ export function MinigamesPage() {
   const [draft, setDraft] = useState<Settings>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [showGuide, setShowGuide] = useState(false);
-  const [tab, setTab] = useState<"bd" | "parkour" | "dropper" | "lasthouse">(() => {
+  const [tab, setTab] = useState<"bd" | "parkour" | "dropper" | "nosalpiques" | "lasthouse">(() => {
     try {
       const t = localStorage.getItem("minijuego");
-      return t === "parkour" || t === "dropper" || t === "lasthouse" ? t : "bd";
+      return t === "parkour" || t === "dropper" || t === "nosalpiques" || t === "lasthouse" ? t : "bd";
     } catch {
       return "bd";
     }
   });
-  const pickTab = (t: "bd" | "parkour" | "dropper" | "lasthouse") => {
+  const pickTab = (t: "bd" | "parkour" | "dropper" | "nosalpiques" | "lasthouse") => {
     setTab(t);
     try {
       localStorage.setItem("minijuego", t);
@@ -541,6 +543,7 @@ export function MinigamesPage() {
             ["bd", "Base Defense", <Shield key="i" size={15} />],
             ["parkour", "Parkour LIVE", <Gamepad2 key="i" size={15} />],
             ["dropper", "Dropper LIVE", <ArrowDownToLine key="i" size={15} />],
+            ["nosalpiques", "No Salpiques", <Droplets key="i" size={15} />],
             ["lasthouse", "LAST HOUSE", <Crown key="i" size={15} />],
           ] as const
         ).map(([id, label, icon]) => (
@@ -552,7 +555,7 @@ export function MinigamesPage() {
             {icon} {label}
             {(id === "bd"
               ? g?.running
-              : (id === "parkour" || id === "dropper") && (live as any)?.[id]?.game?.running) && (
+              : (id === "parkour" || id === "dropper" || id === "nosalpiques") && (live as any)?.[id]?.game?.running) && (
               <span className="ml-1 h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
             )}
           </button>
@@ -564,6 +567,8 @@ export function MinigamesPage() {
         <ParkourPanel />
       ) : tab === "dropper" ? (
         <DropperPanel />
+      ) : tab === "nosalpiques" ? (
+        <NoSalpiquesPanel />
       ) : (
         <div className="space-y-5 px-8">
           {/* Portada */}

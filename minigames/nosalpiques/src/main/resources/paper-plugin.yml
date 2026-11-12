@@ -1,0 +1,14 @@
+name: NoSalpiquesLive
+version: '${version}'
+main: dev.livearena.nosalpiques.NoSalpiquesLive
+api-version: '26.1.2'
+load: POSTWORLD
+description: No Salpiques para TikTok LIVE (salta entre plataformas sin tocar el agua o algo despertará).
+authors: [LiveArena]
+permissions:
+  nosalpiqueslive.admin:
+    description: /ns (iniciar, mapa, ajustes, pruebas)
+    default: op
+  nosalpiqueslive.tiktok:
+    description: Comando /ttns que envía la app de TikTok (la consola y RCON siempre pueden)
+    default: false

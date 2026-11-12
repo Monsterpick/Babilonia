@@ -1,0 +1,67 @@
+# ─────────────────────────────────────────────────────────────
+#  No Salpiques · salas de piscinas para TikTok LIVE
+#  Salta de plataforma en plataforma sin tocar el agua. Si salpicas, algo despierta y te persigue.
+#  Todo se puede cambiar aquí o desde la app (Minijuegos → No Salpiques).
+#  Tras editar a mano: /ns reload
+# ─────────────────────────────────────────────────────────────
+version: 1
+
+mundo:
+  nombre: nosalpiques_salas
+
+mapa:
+  semilla: 2026
+  salas: 8               # 3–12 (la última es la de la gran crecida: el agua sube)
+  dificultad: 1.0        # 0.5 = plataformas grandes y saltos cortos, 1.5 = pequeñas y largos
+
+partida:
+  tiempoLimite: 0        # minutos (0 = sin límite); si se acaba, cuenta como perdida
+  reiniciarAlGanar: true
+  segundosCelebracion: 10
+  piedrasAlEmpezar: 2
+  bengalasAlEmpezar: 1
+
+monstruo:
+  velocidad: 0.17        # bloques por tick al perseguir (sube un poco en cada sala)
+  segundosDespertar: 3   # lo que tarda en salir del agua
+  distanciaAtrapar: 1.6
+  segundosDistraido: 5   # tras una piedra
+  segundosCegado: 6      # tras una bengala
+
+sala:
+  segundosHundir: 1.2    # lo que aguanta una plataforma que se hunde
+  segundosParpadeo: 2.0
+  segundosMemoria: 4     # lo que se ven las baldosas seguras del puente de memoria
+  segundosCrecida: 3.0   # cada cuánto sube un bloque el agua en la sala final
+
+efectos:
+  separacionSegundos: 1.5
+  empujeFuerza: 0.85
+  apagarSegundos: 6
+  resbalarSegundos: 6
+  supersaltoSegundos: 10
+  puenteSegundos: 10
+  escudoSegundos: 30
+  # Protección: tras X salpicones seguidos en la misma sala, unos segundos sin sabotajes.
+  salpiconesParaProteger: 4
+  segundosProteccion: 15
+
+paquete:
+  activo: true
+  obligatorio: false
+  puerto: 25593
+  url: "http://127.0.0.1:{puerto}/nosalpiques.zip"
+
+mensajes:
+  empujar: "&e➹ {usuario} &fte empuja"
+  despertar: "&4☠ {usuario} &fdespierta a la criatura"
+  hundir: "&c⬇ {usuario} &fhunde tu plataforma"
+  apagar: "&8☁ {usuario} &fapaga las luces"
+  resbalar: "&b❄ {usuario} &fte hace resbalar"
+  rapido: "&c» {usuario} &fenfurece a la criatura"
+  piedra: "&7● {usuario} &fte da {n} piedra{s}"
+  bengala: "&6✦ {usuario} &fte da {n} bengala{s}"
+  supersalto: "&a⇧ {usuario} &fte ayuda a saltar"
+  puente: "&f▭ {usuario} &fte construye un puente"
+  escudo: "&d🛡 {usuario} &fte protege de un salpicón"
+  dormir: "&9☾ {usuario} &fduerme a la criatura"

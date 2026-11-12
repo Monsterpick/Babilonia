@@ -40,6 +40,7 @@ export interface BaseDefenseGame {
 export interface MinigamesStatus {
   parkour: import('./parkour.js').ParkourStatus
   dropper: import('./parkour.js').ParkourStatus
+  nosalpiques: import('./parkour.js').ParkourStatus
   baseDefense: {
     /** ¿La app trae el .jar del plugin? */
     bundled: boolean
@@ -235,12 +236,14 @@ export class MinigamesService {
   parkour: import('./parkour.js').ParkourService | null = null
   /** Dropper LIVE (mismo tipo de servicio que el parkour). */
   dropper: import('./parkour.js').DropperService | null = null
+  nosalpiques: import('./parkour.js').NoSalpiquesService | null = null
 
   async status(): Promise<MinigamesStatus> {
     const cf = this.configFile()
     return {
       parkour: this.parkour ? await this.parkour.status() : { bundled: false, plugin: 'no-server', loaded: null, config: false, game: null, error: null },
       dropper: this.dropper ? await this.dropper.status() : { bundled: false, plugin: 'no-server', loaded: null, config: false, game: null, error: null },
+      nosalpiques: this.nosalpiques ? await this.nosalpiques.status() : { bundled: false, plugin: 'no-server', loaded: null, config: false, game: null, error: null },
       baseDefense: {
         bundled: await fs.access(BUNDLED_BASE_DEFENSE).then(() => true, () => false),
         plugin: await this.pluginState(),

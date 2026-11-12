@@ -519,3 +519,55 @@ export function dropperProfile(): Profile {
     notes: 'Ayudas: saltar niveles, caída lenta, escudo antichoque y marcar huecos. Sabotajes: empujar, viento, apagar luces, acelerar, terremoto, volver arriba y atrás niveles.',
   })
 }
+
+/**
+ * Perfil del minijuego No Salpiques: el público te ayuda a saltar (piedras, bengalas, supersalto, puente, escudo,
+ * dormir a la criatura) o te empuja al agua (empujar, despertar, hundir, apagar luces, resbalar, enfurecer). /ttns.
+ */
+export function noSalpiquesProfile(): Profile {
+  const fn = (id: string, name: string, color: string, commands: string[], alignment: 'good' | 'bad' = 'bad'): ActionInput => ({
+    id,
+    name,
+    color,
+    alignment,
+    steps: [{ type: 'minecraft.command' as const, commands, mode: 'all' as const }],
+  })
+  const gift = (id: string, name: string, diamonds: number, action: string) => ({ id, trigger: { type: 'gift' as const, gifts: [{ name, diamonds }] }, actionIds: [action] })
+  return ProfileSchema.parse({
+    id: 'nosalpiques',
+    name: 'No Salpiques',
+    mode: 'parkour',
+    actions: [
+      fn('ns-empujar', 'EMPUJAR AL AGUA', '#f59e0b', ['ttns empujar {user}']),
+      fn('ns-despertar', 'DESPERTAR CRIATURA', '#7f1d1d', ['ttns despertar {user}']),
+      fn('ns-hundir', 'HUNDIR PLATAFORMA', '#ef4444', ['ttns hundir {user}']),
+      fn('ns-apagar', 'APAGAR LUCES', '#334155', ['ttns apagar {user}']),
+      fn('ns-resbalar', 'SUELO RESBALADIZO', '#7dd3fc', ['ttns resbalar {user}']),
+      fn('ns-rapido', 'ENFURECER CRIATURA', '#b91c1c', ['ttns rapido {user}']),
+      fn('ns-piedra', 'PIEDRAS', '#9ca3af', ['ttns piedra 2 {user}'], 'good'),
+      fn('ns-bengala', 'BENGALA', '#f97316', ['ttns bengala 1 {user}'], 'good'),
+      fn('ns-supersalto', 'SUPERSALTO', '#4ade80', ['ttns supersalto {user}'], 'good'),
+      fn('ns-puente', 'PUENTE', '#e5e7eb', ['ttns puente {user}'], 'good'),
+      fn('ns-escudo', 'ESCUDO ANTISALPICÓN', '#f472b6', ['ttns escudo {user}'], 'good'),
+      fn('ns-dormir', 'DORMIR CRIATURA', '#6366f1', ['ttns dormir {user}'], 'good'),
+    ],
+    events: [
+      gift('ns-ev-rose', 'Rose', 1, 'ns-empujar'),
+      gift('ns-ev-tiktok', 'TikTok', 1, 'ns-piedra'),
+      gift('ns-ev-gg', 'GG', 1, 'ns-resbalar'),
+      gift('ns-ev-heartme', 'Heart Me', 1, 'ns-supersalto'),
+      gift('ns-ev-finger', 'Finger Heart', 5, 'ns-bengala'),
+      gift('ns-ev-perfume', 'Perfume', 20, 'ns-hundir'),
+      gift('ns-ev-donut', 'Doughnut', 30, 'ns-apagar'),
+      gift('ns-ev-cap', 'Cap', 99, 'ns-puente'),
+      gift('ns-ev-hearts', 'Hand Hearts', 100, 'ns-escudo'),
+      gift('ns-ev-confetti', 'Confetti', 100, 'ns-rapido'),
+      gift('ns-ev-sunglasses', 'Sunglasses', 199, 'ns-dormir'),
+      gift('ns-ev-corgi', 'Corgi', 299, 'ns-despertar'),
+      { id: 'ns-ev-likes', trigger: { type: 'likes', every: 200 }, actionIds: ['ns-empujar'] },
+      { id: 'ns-ev-follow', trigger: { type: 'follow', oncePerUser: true }, actionIds: ['ns-piedra'] },
+      { id: 'ns-ev-share', trigger: { type: 'share' }, actionIds: ['ns-bengala'], cooldown: { perUserMs: 60000 } },
+    ],
+    notes: 'Ayudas: piedras (distraen), bengalas (ciegan), supersalto, puente, escudo y dormir a la criatura. Sabotajes: empujar al agua, despertar o enfurecer a la criatura, hundir plataforma, apagar luces y suelo resbaladizo.',
+  })
+}

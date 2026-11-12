@@ -50,9 +50,10 @@ function useDemo(): Game {
 const TEXTS = {
   parkour: { title: 'TORRE PARKOUR', top: '¡CIMA!', whole: 'Torre', falls: 'CAÍDAS' },
   dropper: { title: 'DROPPER', top: '¡VICTORIA!', whole: 'Mapa', falls: 'CHOQUES' },
+  nosalpiques: { title: 'NO SALPIQUES', top: '¡SALISTE!', whole: 'Salas', falls: 'SALPICONES' },
 }
 
-export function ParkourOverlay({ source = 'parkour' }: { source?: 'parkour' | 'dropper' }) {
+export function ParkourOverlay({ source = 'parkour' }: { source?: 'parkour' | 'dropper' | 'nosalpiques' }) {
   const st = useLiveState<Record<string, { game: Game | null } | undefined>>('minigames')
   const demo = useDemo()
   const g: Game | null = DEMO ? demo : (st?.[source]?.game ?? null)

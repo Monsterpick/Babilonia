@@ -15,7 +15,7 @@ import { SceneSchema } from '@livearena/shared'
 import { ASSETS_DIR, DASHBOARD_DIST } from './resources.js'
 import { SimRequestSchema, Simulator } from './simulator.js'
 import { VERSION, type App } from './app.js'
-import { baseDefenseProfile, dropperProfile, lastHouseProfile, parkourProfile } from './default-profiles.js'
+import { baseDefenseProfile, dropperProfile, lastHouseProfile, noSalpiquesProfile, parkourProfile } from './default-profiles.js'
 import { LastHouseResultSchema, LastHouseSettingsSchema } from './lasthouse.js'
 
 
@@ -449,6 +449,7 @@ export async function buildHttp(app: App): Promise<FastifyInstance> {
       // un solo minijuego a la vez
       if (app.minigames.parkour?.running) await app.mc.link.enqueue('pk stop', 900).catch(() => '')
       if (app.minigames.dropper?.running) await app.mc.link.enqueue('dr stop', 900).catch(() => '')
+      if (app.minigames.nosalpiques?.running) await app.mc.link.enqueue('ns stop', 900).catch(() => '')
       const bd = app.profiles.get('base-defense') ?? (await app.profiles.save(baseDefenseProfile(), false))
       if (app.activeProfile.id !== bd.id) {
         app.minigames.previousProfile = app.activeProfile.id
@@ -485,6 +486,7 @@ export async function buildHttp(app: App): Promise<FastifyInstance> {
       const bdGame = (await app.minigames.status()).baseDefense.game
       if (bdGame?.running) await app.mc.link.enqueue('bd stop', 900).catch(() => '')
       if (app.minigames.dropper?.running) await app.mc.link.enqueue('dr stop', 900).catch(() => '')
+      if (app.minigames.nosalpiques?.running) await app.mc.link.enqueue('ns stop', 900).catch(() => '')
     }
     const response = await pk().command(command)
     if (/^pk start\b/.test(c)) {
@@ -525,6 +527,7 @@ export async function buildHttp(app: App): Promise<FastifyInstance> {
       const bdGame = (await app.minigames.status()).baseDefense.game
       if (bdGame?.running) await app.mc.link.enqueue('bd stop', 900).catch(() => '')
       if (app.minigames.parkour?.running) await app.mc.link.enqueue('pk stop', 900).catch(() => '')
+      if (app.minigames.nosalpiques?.running) await app.mc.link.enqueue('ns stop', 900).catch(() => '')
     }
     const response = await dr().command(command)
     if (/^dr start\b/.test(c)) {
@@ -547,6 +550,46 @@ export async function buildHttp(app: App): Promise<FastifyInstance> {
   })
   f.post('/api/minigames/dropper/profile', async () => {
     const p = app.profiles.get('dropper') ?? (await app.profiles.save(dropperProfile(), false))
+    app.setProfile(p)
+    return { id: p.id, name: p.name }
+  })
+  /* ---------------- minijuegos (No Salpiques) ---------------- */
+  const ns = () => {
+    if (!app.minigames.nosalpiques) throw new HttpError(503, 'No Salpiques no disponible')
+    return app.minigames.nosalpiques
+  }
+  f.post('/api/minigames/nosalpiques/install', async () => ns().install())
+  f.post('/api/minigames/nosalpiques/command', async (req) => {
+    const { command } = parse(z.object({ command: z.string().min(1).max(120) }), req.body)
+    const c = command.trim()
+    // un solo minijuego a la vez
+    if (/^ns start\b/.test(c)) {
+      const bdGame = (await app.minigames.status()).baseDefense.game
+      if (bdGame?.running) await app.mc.link.enqueue('bd stop', 900).catch(() => '')
+      if (app.minigames.parkour?.running) await app.mc.link.enqueue('pk stop', 900).catch(() => '')
+      if (app.minigames.dropper?.running) await app.mc.link.enqueue('dr stop', 900).catch(() => '')
+    }
+    const response = await ns().command(command)
+    if (/^ns start\b/.test(c)) {
+      const p = app.profiles.get('nosalpiques') ?? (await app.profiles.save(noSalpiquesProfile(), false))
+      if (app.activeProfile.id !== p.id) {
+        if (!['base-defense', 'parkour', 'dropper'].includes(app.activeProfile.id)) ns().previousProfile = app.activeProfile.id
+        app.setProfile(p)
+      }
+    } else if (/^ns stop\b/.test(c) && ns().previousProfile) {
+      const prev = app.profiles.get(ns().previousProfile!)
+      ns().previousProfile = null
+      if (prev) app.setProfile(prev)
+    }
+    return { response }
+  })
+  f.get('/api/minigames/nosalpiques/settings', async () => ns().getSettings())
+  f.put('/api/minigames/nosalpiques/settings', async (req) => {
+    const values = parse(z.record(z.union([z.string().max(120), z.number()])), req.body)
+    return ns().saveSettings(values)
+  })
+  f.post('/api/minigames/nosalpiques/profile', async () => {
+    const p = app.profiles.get('nosalpiques') ?? (await app.profiles.save(noSalpiquesProfile(), false))
     app.setProfile(p)
     return { id: p.id, name: p.name }
   })

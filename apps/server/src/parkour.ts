@@ -36,6 +36,9 @@ export interface ParkourGame {
   streamer: string
   /** Color de cada nivel (para dibujar la torre en el overlay). */
   colors: string[]
+  /** No Salpiques: veces que te atrapó la criatura y si te persigue ahora. */
+  catches?: number
+  monster?: boolean
 }
 
 export interface ParkourStatus {
@@ -98,6 +101,8 @@ export function parsePkStatus(line: string, tag = 'PKSTATUS'): ParkourGame | nul
     theme: (kv.theme ?? '').replace(/_/g, ' '),
     color: hex(kv.color),
     streamer: kv.streamer && kv.streamer !== '-' ? kv.streamer : '',
+    catches: n('catches'),
+    monster: kv.monster === '1',
     colors: (kv.colors ?? '').split(',').filter(Boolean).map(hex),
   }
 }
@@ -324,6 +329,53 @@ export class DropperService extends PluginGameService {
         /^dr nivel \d{1,3}$/,
         /^dr mapa nuevo( -?\d{1,18})?$/,
         /^dr test [a-z]{1,20}( \d{1,3})?$/,
+      ],
+    })
+  }
+}
+
+/* ─────────────────────────────── No Salpiques ─────────────────────────────── */
+
+export const BUNDLED_NOSALPIQUES = path.join(ASSETS_DIR, 'plugins', 'NoSalpiquesLive.jar')
+
+export const NS_SETTINGS: Record<string, SettingType> = {
+  'mapa.semilla': 'int',
+  'mapa.salas': 'int',
+  'mapa.dificultad': 'number',
+  'partida.tiempoLimite': 'int',
+  'partida.reiniciarAlGanar': 'bool',
+  'partida.piedrasAlEmpezar': 'int',
+  'partida.bengalasAlEmpezar': 'int',
+  'monstruo.velocidad': 'number',
+  'monstruo.segundosDespertar': 'int',
+  'monstruo.distanciaAtrapar': 'number',
+  'sala.segundosHundir': 'number',
+  'sala.segundosMemoria': 'int',
+  'sala.segundosCrecida': 'number',
+  'efectos.separacionSegundos': 'number',
+  'efectos.empujeFuerza': 'number',
+  'efectos.escudoSegundos': 'int',
+  'efectos.salpiconesParaProteger': 'int',
+}
+
+/** No Salpiques: salas de piscinas; si tocas el agua, la criatura despierta y te persigue. */
+export class NoSalpiquesService extends PluginGameService {
+  constructor(cfg: ConfigStore, mc: MinecraftService, log: Logger, onChange: () => void) {
+    super(cfg, mc, log, onChange, {
+      label: 'No Salpiques',
+      bundled: BUNDLED_NOSALPIQUES,
+      jar: 'NoSalpiquesLive.jar',
+      dataFolder: 'NoSalpiquesLive',
+      cmd: 'ns',
+      statusTag: 'NSSTATUS',
+      reply: 'NoSalpiques',
+      settings: NS_SETTINGS,
+      allowed: [
+        /^ns (start|stop|reload|status)( [A-Za-z0-9_]{1,16})?$/,
+        /^ns marcador reiniciar$/,
+        /^ns sala \d{1,2}$/,
+        /^ns mapa nuevo( -?\d{1,18})?$/,
+        /^ns test [a-z]{1,20}( \d{1,3})?$/,
       ],
     })
   }
