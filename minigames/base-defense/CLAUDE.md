@@ -194,3 +194,13 @@ Decisiones:
   (más arriba quedaba entre las copas y detrás de la placa del jefe).
 - v14 F6: `tools/gen_infected.py` (lo llama gen_pack): texturas propias de husk, esqueleto, esqueleto wither y araña (+ojos)
   «infectados», dibujadas por código sobre el desplegado UV estándar.
+- v14 F4 (armas por piezas, mod ≥ 0.10.0): `gen_guns.py` marca con `T('pieza', …)` las partes móviles y escribe, además del
+  arma entera, `<arma>_cuerpo|mano|cargador|corredera|tambor` (mismo sistema de coordenadas y misma «display») más
+  `fogonazo` (alfa binario: lo semitransparente no se dibuja en la mano) y `casquillo`. El mod (`client/BdGuns`) cancela
+  la mano de vanilla y dibuja cada pieza con fotogramas clave: el cargador cae, la mano izquierda trae otro y lo encaja de
+  golpe, se monta la corredera/cerrojo (la tapa de la ametralladora se abre), el tambor del lanzagranadas gira 60° por
+  disparo y la minigun gira con el fuego; fogonazo 3 ticks a plena luz, casquillos con física; G = inspeccionar.
+  Pose de primera persona `FP_T/FP_R/FP_S` (abajo a la derecha, fuera del HUD central) repetida en `BdGuns` (FP_*); al
+  apuntar, la mira se coloca sobre la cruz calculándolo con esa pose. Sin las piezas en el pack se anima en bloque.
+  Banco de pruebas sin audio: con el fichero `run/bdguns-test`, F7 recarga, F8 dispara y F9 congela la recarga por fases.
+  Un cliente que se reconecta no recibe el pack solo: `bd pack`.

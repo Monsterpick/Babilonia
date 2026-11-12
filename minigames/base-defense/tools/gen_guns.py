@@ -47,7 +47,7 @@ def mat(name, seed):
         return np.clip(np.array(c, float)[None, None, :] + ((n - 0.5) * 2 * var + (fine - 0.5) * var * 0.6)[..., None], 0, 255)
 
     if name == 'acero':          # pavonado oscuro con cepillado y arañazos
-        img = base((86, 90, 98), 12)
+        img = base((112, 117, 126), 12)
         img += ((np.sin(y * 2.7 + n * 6) * 3))[..., None]
         for _ in range(7):
             yy, xx, ln = rng.integers(0, SW), rng.integers(0, SW), rng.integers(4, 12)
@@ -56,10 +56,10 @@ def mat(name, seed):
         img = base((150, 153, 158), 10)
         img += (np.sin(y * 3.1) * 5)[..., None]
     elif name == 'polimero':     # negro mate con punteado
-        img = base((52, 53, 56), 7)
+        img = base((78, 80, 84), 7)
         img[(fine > 0.93)] += 14
     elif name == 'goma':         # estriado en rombos
-        img = base((44, 44, 46), 5)
+        img = base((66, 66, 70), 5)
         d = ((x + y) % 4 == 0) | ((x - y) % 4 == 0)
         img[d] += 18
     elif name == 'madera':       # nogal con veta
@@ -83,13 +83,13 @@ def mat(name, seed):
     elif name == 'boca':         # interior del cañón (casi negro)
         img = base((10, 10, 11), 2)
     elif name == 'quemado':      # acero ennegrecido por el calor
-        img = base((64, 58, 54), 9)
+        img = base((88, 80, 74), 9)
         img[(n > 0.7)] += (30, 14, 4)
     elif name == 'tela':         # correa
         img = base((80, 76, 58), 7)
         img[:, ::2] *= 0.9
     elif name == 'guante':       # guante táctico negro con nudillos reforzados
-        img = base((40, 40, 42), 6)
+        img = base((60, 60, 64), 6)
         img[::6, :] += 10
         img[(fine > 0.9)] += 12
     elif name == 'manga':        # manga de camuflaje ceniza
@@ -147,6 +147,13 @@ def box(fr, to, m, rot=None, ends=None):
     return e
 
 
+def T(g, x):
+    """Marca elementos como pieza móvil (el mod las anima por separado en primera persona)."""
+    for el in (x if isinstance(x, list) else [x]):
+        el['_g'] = g
+    return x if isinstance(x, list) else [x]
+
+
 def rx(angle, origin):
     return {'angle': angle, 'axis': 'x', 'origin': list(origin)}
 
@@ -168,19 +175,21 @@ def tube(cx, cy, z0, z1, r, m, ends=None):
 
 def pistola():
     e = []
-    e += [box((7.05, 8.6, 0.6), (8.95, 10.5, 10.2), 'acero')]                 # corredera
+    e += T('corredera', box((7.05, 8.6, 0.6), (8.95, 10.5, 10.2), 'acero'))     # corredera
     for z in (7.4, 8.0, 8.6, 9.2):                                             # estrías de agarre de la corredera
-        e.append(box((6.95, 8.9, z), (9.05, 10.2, z + 0.3), 'boca'))
-    e += [box((8.95, 9.4, 3.0), (9.1, 10.1, 5.6), 'boca')]                     # ventana de expulsión
-    e += [box((7.55, 9.05, 0.3), (8.45, 9.95, 0.6), 'boca', ends='boca')]      # boca
+        e += T('corredera', box((6.95, 8.9, z), (9.05, 10.2, z + 0.3), 'boca'))
+    e += T('corredera', box((8.95, 9.4, 3.0), (9.1, 10.1, 5.6), 'boca'))       # ventana de expulsión
+    e += T('corredera', box((7.55, 9.05, 0.3), (8.45, 9.95, 0.6), 'boca', ends='boca'))  # boca
     e += [box((7.15, 7.6, 1.8), (8.85, 8.6, 10.0), 'polimero')]               # armazón
     e += [box((7.3, 7.2, 1.8), (8.7, 7.6, 4.2), 'polimero')]                  # riel inferior
     e += [box((7.2, 3.4, 7.0), (8.8, 7.7, 9.9), 'goma', rx(-22.5, (8, 7.7, 8.5)))]  # empuñadura
-    e += [box((7.35, 3.0, 7.4), (8.65, 3.5, 9.6), 'polimero', rx(-22.5, (8, 7.7, 8.5)))]  # base del cargador
+    e += T('cargador', box((7.35, 3.0, 7.4), (8.65, 3.5, 9.6), 'polimero', rx(-22.5, (8, 7.7, 8.5))))  # base del cargador
+    e += T('cargador', box((7.45, 3.5, 7.6), (8.55, 7.3, 9.3), 'acero', rx(-22.5, (8, 7.7, 8.5))))     # cargador (dentro)
+    e += T('cargador', box((7.6, 7.3, 7.7), (8.4, 7.6, 8.4), 'laton', rx(-22.5, (8, 7.7, 8.5))))       # bala de arriba
     e += [box((7.65, 6.0, 5.0), (8.35, 7.6, 5.5), 'acero')]                   # gatillo
     e += [box((7.45, 5.6, 3.8), (8.55, 5.95, 7.2), 'polimero'), box((7.45, 5.6, 3.8), (8.55, 7.6, 4.2), 'polimero')]  # guardamonte
-    e += [box((7.7, 10.5, 1.2), (8.3, 11.0, 1.9), 'mira')]                    # mira delantera
-    e += [box((7.25, 10.5, 9.2), (7.7, 11.1, 9.9), 'polimero'), box((8.3, 10.5, 9.2), (8.75, 11.1, 9.9), 'polimero')]  # mira trasera
+    e += T('corredera', box((7.7, 10.5, 1.2), (8.3, 11.0, 1.9), 'mira'))      # mira delantera
+    e += T('corredera', [box((7.25, 10.5, 9.2), (7.7, 11.1, 9.9), 'polimero'), box((8.3, 10.5, 9.2), (8.75, 11.1, 9.9), 'polimero')])  # mira trasera
     e += [box((7.6, 9.6, 10.2), (8.4, 10.3, 10.7), 'acero_claro')]            # martillo
     return e
 
@@ -195,8 +204,9 @@ def subfusil():
     for z in (-5.3, -4.3, -3.3):
         e.append(box((6.7, 8.6, z), (9.3, 9.5, z + 0.4), 'boca'))           # ranuras de ventilación
     e += tube(8, 9.2, -10.5, -6.0, 0.9, 'acero', ends='boca')                 # cañón con supresor
-    e += [box((7.25, 2.2, 0.6), (8.75, 8.0, 2.6), 'acero', rx(22.5, (8, 8, 1.6)))]   # cargador curvo (dos tramos)
-    e += [box((7.25, 0.4, 1.8), (8.75, 2.6, 3.6), 'acero', rx(22.5, (8, 2.4, 2.6)))]
+    e += T('cargador', box((7.25, 2.2, 0.6), (8.75, 8.0, 2.6), 'acero', rx(22.5, (8, 8, 1.6))))   # cargador curvo (dos tramos)
+    e += T('cargador', box((7.25, 0.4, 1.8), (8.75, 2.6, 3.6), 'acero', rx(22.5, (8, 2.4, 2.6))))
+    e += T('cargador', box((7.5, 7.9, 1.0), (8.5, 8.2, 1.9), 'laton'))
     e += [box((7.2, 3.6, 6.2), (8.8, 8.0, 8.4), 'goma', rx(-22.5, (8, 8, 7.3)))]  # empuñadura
     e += [box((7.6, 6.6, 4.6), (8.4, 8.0, 5.1), 'acero')]                     # gatillo
     e += [box((7.4, 6.2, 3.8), (8.6, 6.55, 6.4), 'polimero')]
@@ -204,22 +214,22 @@ def subfusil():
     e += [box((7.1, 6.8, 14.6), (8.9, 9.8, 15.6), 'goma')]                    # cantonera
     e += [box((7.4, 11.1, 2.4), (8.6, 12.4, 6.0), 'polimero'), box((7.6, 12.4, 2.8), (8.4, 12.9, 3.4), 'mira')]  # visor rojo
     e += [box((9.1, 9.0, 2.0), (9.35, 9.8, 4.0), 'boca')]                     # ventana de expulsión
-    e += [box((6.65, 9.6, 6.5), (6.9, 10.0, 7.3), 'acero_claro')]             # palanca de carga
+    e += T('corredera', box((6.4, 9.6, 6.5), (6.9, 10.0, 7.3), 'acero_claro'))  # palanca de carga
     return e
 
 
 def ametralladora():
     e = []
     e += [box((6.6, 7.8, -2.0), (9.4, 11.0, 11.0), 'oliva')]                  # cajón
-    e += [box((6.5, 10.9, -1.5), (9.5, 11.3, 8.0), 'acero')]                  # tapa
+    e += T('corredera', box((6.5, 10.9, -1.5), (9.5, 11.3, 8.0), 'acero'))    # tapa (se abre al recargar)
     e += [box((6.9, 8.2, -12.0), (9.1, 10.6, -2.0), 'quemado')]               # camisa de refrigeración
     for z in range(-11, -2, 2):
         e.append(box((6.85, 9.0, z), (9.15, 9.8, z + 0.6), 'boca'))          # agujeros de la camisa
     e += tube(8, 9.4, -15.2, -12.0, 0.6, 'acero', ends='boca')               # cañón
     e += [box((7.3, 8.8, -16.0), (8.7, 10.0, -15.2), 'quemado', ends='boca')]  # apagallamas
-    e += [box((6.0, 3.6, 0.0), (10.0, 7.8, 4.2), 'oliva'), box((5.95, 6.9, 0.2), (10.05, 7.3, 4.0), 'acero')]  # caja de munición
+    e += T('cargador', [box((6.0, 3.6, 0.0), (10.0, 7.8, 4.2), 'oliva'), box((5.95, 6.9, 0.2), (10.05, 7.3, 4.0), 'acero')])  # caja de munición
     for i in range(5):                                                       # cinta de balas
-        e.append(box((5.4, 7.2 + i * 0.4, 1.0 + i * 0.2), (6.0, 7.6 + i * 0.4, 3.2 + i * 0.2), 'laton'))
+        e += T('cargador', box((5.4, 7.2 + i * 0.4, 1.0 + i * 0.2), (6.0, 7.6 + i * 0.4, 3.2 + i * 0.2), 'laton'))
     e += [box((7.2, 3.6, 6.0), (8.8, 7.8, 8.2), 'goma', rx(-22.5, (8, 7.8, 7.1)))]   # empuñadura
     e += [box((7.6, 6.6, 4.8), (8.4, 7.8, 5.3), 'acero'), box((7.4, 6.2, 4.2), (8.6, 6.55, 6.6), 'acero')]
     e += [box((7.0, 7.2, 11.0), (9.0, 10.6, 17.0), 'madera'), box((7.1, 6.4, 13.5), (8.9, 7.2, 17.0), 'madera')]  # culata
@@ -233,11 +243,15 @@ def ametralladora():
 
 def lanzagranadas():
     e = []
-    e += tube(8, 9.2, -1.0, 5.0, 2.3, 'acero')                               # tambor de 6
+    e += T('tambor', tube(8, 9.2, -1.0, 5.0, 2.3, 'acero'))                  # tambor de 6
     for a in range(6):                                                       # recámaras visibles
         ang = a * math.pi / 3
         x, y = 8 + math.cos(ang) * 1.45, 9.2 + math.sin(ang) * 1.45
-        e.append(box((x - 0.5, y - 0.5, -1.15), (x + 0.5, y + 0.5, -0.95), 'laton'))
+        e += T('tambor', box((x - 0.5, y - 0.5, -1.15), (x + 0.5, y + 0.5, -0.95), 'laton'))
+    for a in range(0, 6, 2):                                                 # estrías del tambor (se ve girar)
+        ang = a * math.pi / 3 + 0.5
+        x, y = 8 + math.cos(ang) * 2.2, 9.2 + math.sin(ang) * 2.2
+        e += T('tambor', box((x - 0.3, y - 0.3, -0.6), (x + 0.3, y + 0.3, 4.6), 'boca'))
     e += [box((7.6, 8.8, -1.0), (8.4, 9.6, 5.0), 'acero_claro')]              # eje
     e += tube(8, 10.6, -7.5, -1.0, 1.25, 'polimero', ends='boca')            # cañón ancho
     e += [box((6.6, 8.6, -6.5), (9.4, 9.6, -1.5), 'polimero')]               # guardamanos inferior
@@ -257,9 +271,10 @@ def lanzacohetes():
     e += [box((6.2, 7.2, 4.5), (9.8, 10.8, 7.5), 'madera')]                  # protector térmico de madera
     e += tube(8, 9.0, 15.5, 16.6, 2.2, 'polimero', ends='boca')             # tobera trasera (campana)
     e += tube(8, 9.0, -6.6, -6.0, 2.2, 'polimero', ends='boca')             # boca
-    e += tube(8, 9.0, -9.5, -6.6, 1.5, 'cabeza')                            # ojiva
-    e += tube(8, 9.0, -11.2, -9.5, 0.9, 'cabeza')
-    e += [box((7.7, 8.7, -12.0), (8.3, 9.3, -11.2), 'acero_claro')]          # espoleta
+    e += T('cargador', tube(8, 9.0, -9.5, -6.6, 1.5, 'cabeza'))             # ojiva
+    e += T('cargador', tube(8, 9.0, -11.2, -9.5, 0.9, 'cabeza'))
+    e += T('cargador', box((7.7, 8.7, -12.0), (8.3, 9.3, -11.2), 'acero_claro'))  # espoleta
+    e += T('cargador', tube(8, 9.0, -6.6, -2.0, 1.1, 'oliva'))              # cuerpo del cohete (entra en el tubo)
     e += [box((6.3, 7.3, -6.4), (6.6, 10.7, -5.6), 'acero'), box((9.4, 7.3, -6.4), (9.7, 10.7, -5.6), 'acero')]  # aletas
     e += [box((7.2, 2.6, 3.0), (8.8, 7.2, 5.0), 'goma', rx(-22.5, (8, 7.2, 4)))]   # empuñadura con gatillo
     e += [box((7.6, 5.6, 2.0), (8.4, 7.0, 2.5), 'acero')]
@@ -280,16 +295,16 @@ def minigun():
     for a in range(6):                                                       # 6 cañones giratorios
         ang = a * math.pi / 3
         x, y = 8 + math.cos(ang) * 1.75, 9 + math.sin(ang) * 1.75
-        e.append(box((x - 0.45, y - 0.45, -15.0), (x + 0.45, y + 0.45, 0.0), 'quemado', ends='boca'))
-    e += tube(8, 9.0, -12.5, -11.6, 2.5, 'acero_claro')                      # abrazaderas
-    e += tube(8, 9.0, -5.0, -4.1, 2.5, 'acero_claro')
-    e += [box((7.6, 8.6, -15.0), (8.4, 9.4, 0.0), 'acero')]                  # eje central
+        e += T('tambor', box((x - 0.45, y - 0.45, -15.0), (x + 0.45, y + 0.45, 0.0), 'quemado', ends='boca'))
+    e += T('tambor', tube(8, 9.0, -12.5, -11.6, 2.5, 'acero_claro'))         # abrazaderas
+    e += T('tambor', tube(8, 9.0, -5.0, -4.1, 2.5, 'acero_claro'))
+    e += T('tambor', box((7.6, 8.6, -15.0), (8.4, 9.4, 0.0), 'acero'))       # eje central
     e += [box((7.2, 2.4, 7.0), (8.8, 6.1, 9.0), 'goma')]                     # empuñadura
     e += [box((7.6, 5.0, 6.0), (8.4, 6.1, 6.5), 'acero')]
     e += [box((6.4, 11.9, 3.5), (9.6, 12.4, 4.2), 'acero'), box((6.4, 11.9, 9.3), (9.6, 12.4, 10.0), 'acero'), box((6.4, 12.4, 3.5), (9.6, 13.4, 10.0), 'goma')]  # asa
-    e += [box((10.4, 3.8, 3.0), (14.2, 9.2, 9.0), 'oliva'), box((10.35, 8.4, 3.2), (14.25, 8.9, 8.8), 'acero')]  # caja de munición
+    e += T('cargador', [box((10.4, 3.8, 3.0), (14.2, 9.2, 9.0), 'oliva'), box((10.35, 8.4, 3.2), (14.25, 8.9, 8.8), 'acero')])  # caja de munición
     for i in range(4):
-        e.append(box((10.0 - i * 0.3, 8.8 + i * 0.35, 4.2), (10.6 - i * 0.3, 9.2 + i * 0.35, 7.8), 'laton'))  # cinta
+        e += T('cargador', box((10.0 - i * 0.3, 8.8 + i * 0.35, 4.2), (10.6 - i * 0.3, 9.2 + i * 0.35, 7.8), 'laton'))  # cinta
     e += [box((7.4, 6.1, 12.0), (8.6, 8.0, 13.2), 'acero_claro')]            # batería
     return e
 
@@ -374,6 +389,7 @@ def arms(grip, fore, two_hand=True, fore_top=False):
     e += [box((gx - 1.9, gy - 5.2, gz + 6.0), (gx + 2.2, gy - 0.8, gz + 22.0), 'manga', rx(22.5, (gx, gy - 0.6, gz + 0.6)))]   # manga
     if two_hand and fore:
         fx, fy, fz = fore
+        n0 = len(e)
         if fore_top:
             e += [box((fx - 1.3, fy - 0.4, fz - 1.3), (fx + 1.3, fy + 1.4, fz + 1.3), 'guante')]
             e += [box((fx - 4.2, fy - 1.5, fz + 0.2), (fx - 1.0, fy + 1.2, fz + 14.0), 'manga', rx(22.5, (fx, fy, fz)))]
@@ -381,6 +397,7 @@ def arms(grip, fore, two_hand=True, fore_top=False):
             e += [box((fx - 1.6, fy - 1.4, fz - 1.4), (fx + 1.6, fy + 0.6, fz + 1.4), 'guante')]                  # mano izquierda
             e += [box((fx - 3.6, fy - 3.4, fz + 0.4), (fx - 0.8, fy - 0.6, fz + 10.0), 'guante', rx(22.5, (fx, fy - 0.6, fz)))]
             e += [box((fx - 4.3, fy - 4.6, fz + 6.0), (fx - 0.4, fy - 0.6, fz + 21.0), 'manga', rx(22.5, (fx, fy - 0.6, fz)))]
+        T('mano', e[n0:])
     return e
 
 
@@ -400,17 +417,31 @@ GUNS = {
 }
 
 
+# pose en primera persona (la misma que usa el mod en BdGuns.enter/exit): abajo a la derecha, fuera del HUD central,
+# girada para que se vea el costado derecho del arma y con la boca hacia la cruz
+FP_T = [1.4, 3.0, -1.0]
+FP_R = [0, 9, 0]
+FP_S = 0.82
+
+
 def display(k):
-    fp = round(1.0 * k, 3)
+    fp = round(FP_S * k, 3)
     return {
         'thirdperson_righthand': {'rotation': [0, 0, 0], 'translation': [0, 2.5, -1.5], 'scale': [0.62 * k] * 3},
         'thirdperson_lefthand': {'rotation': [0, 0, 0], 'translation': [0, 2.5, -1.5], 'scale': [0.62 * k] * 3},
-        'firstperson_righthand': {'rotation': [2, 4, 0], 'translation': [-5.5, 4.0, -2.0], 'scale': [fp] * 3},
+        'firstperson_righthand': {'rotation': FP_R, 'translation': FP_T, 'scale': [fp] * 3},
         'firstperson_lefthand': {'rotation': [0, -5, 0], 'translation': [-0.5, 0.5, -4], 'scale': [fp] * 3},
         'gui': {'rotation': [15, -90, 0], 'translation': [0, 0, 0], 'scale': [0.62 * k] * 3},
         'ground': {'rotation': [0, 0, 0], 'translation': [0, 2, 0], 'scale': [0.5] * 3},
         'fixed': {'rotation': [0, -90, 0], 'translation': [0, 0, 0], 'scale': [0.8] * 3},
     }
+
+
+PARTS = ('cuerpo', 'mano', 'cargador', 'corredera', 'tambor')
+
+
+def clean(els):
+    return [{k: v for k, v in el.items() if k != '_g'} for el in els]
 
 
 def write(name, elements, disp, seed, fp=None):
@@ -419,7 +450,7 @@ def write(name, elements, disp, seed, fp=None):
     mkdir(os.path.dirname(p))
     Image.fromarray(img.astype(np.uint8), 'RGBA').save(p)
     model = {'texture_size': [TS, TS], 'textures': {'0': 'basedefense:item/' + name, 'particle': 'basedefense:item/' + name},
-             'elements': elements, 'display': disp}
+             'elements': clean(elements), 'display': disp}
     mp = os.path.join(BD, 'models', 'item', name + '.json')
     mkdir(os.path.dirname(mp))
     json.dump(model, open(mp, 'w'), indent=1)
@@ -431,11 +462,53 @@ def write(name, elements, disp, seed, fp=None):
         return
     # en primera persona, el modelo con los brazos sujetando el arma
     fpm = dict(model)
-    fpm['elements'] = elements + fp
+    fpm['elements'] = clean(elements + fp)
     json.dump(fpm, open(os.path.join(BD, 'models', 'item', name + '_fp.json'), 'w'), indent=1)
     json.dump({'model': {'type': 'minecraft:select', 'property': 'minecraft:display_context',
                          'cases': [{'when': ['firstperson_righthand', 'firstperson_lefthand'], 'model': {'type': 'minecraft:model', 'model': 'basedefense:item/' + name + '_fp'}}],
                          'fallback': base}}, open(ip, 'w'), indent=1)
+    # piezas sueltas para las animaciones por fotogramas clave del mod (mismo sistema de coordenadas y misma «display»):
+    # el mod dibuja cada una con su propio movimiento (cargador que cae, mano que trae otro, corredera, tambor que gira)
+    for part in PARTS:
+        els = [el for el in elements + fp if el.get('_g', 'cuerpo') == part]
+        if not els:
+            continue
+        pm = dict(model)
+        pm['elements'] = clean(els)
+        json.dump(pm, open(os.path.join(BD, 'models', 'item', name + '_' + part + '.json'), 'w'), indent=1)
+        json.dump({'model': {'type': 'minecraft:model', 'model': 'basedefense:item/' + name + '_' + part}},
+                  open(os.path.join(BD, 'items', name + '_' + part + '.json'), 'w'), indent=1)
+
+
+def fx_models():
+    """Fogonazo (estrella de planos cruzados con textura radial) y casquillo de latón, sin «display»: el mod los coloca."""
+    n = 32
+    y, x = np.mgrid[0:n, 0:n]
+    r = np.hypot(x - 15.5, y - 15.5) / 15.5
+    ang = np.arctan2(y - 15.5, x - 15.5)
+    spikes = 0.55 + 0.45 * np.abs(np.cos(ang * 3.5))
+    a = np.clip(1 - r / spikes, 0, 1) ** 1.3
+    img = np.zeros((n, n, 4))
+    img[..., 0] = 255
+    img[..., 1] = 150 + 105 * a
+    img[..., 2] = 40 + 200 * a ** 3
+    img[..., 3] = np.where(a > 0.22, 255, 0)  # alfa binario: recorte (el semitransparente no se dibuja en la mano)
+    p = os.path.join(BD, 'textures', 'item', 'fogonazo.png')
+    Image.fromarray(img.astype(np.uint8), 'RGBA').save(p)
+    f = {'uv': [0, 0, 16, 16], 'texture': '#0'}
+    els = [{'from': [0, 0, 8], 'to': [16, 16, 8], 'faces': {'north': f, 'south': f}},
+           {'from': [8, 0, 0], 'to': [8, 16, 16], 'faces': {'east': f, 'west': f}},
+           {'from': [2, 2, 2], 'to': [14, 14, 14], 'rotation': {'angle': 45, 'axis': 'z', 'origin': [8, 8, 8]},
+            'faces': {'north': f, 'south': f}}]
+    json.dump({'textures': {'0': 'basedefense:item/fogonazo', 'particle': 'basedefense:item/fogonazo'}, 'elements': els},
+              open(os.path.join(BD, 'models', 'item', 'fogonazo.json'), 'w'), indent=1)
+    json.dump({'model': {'type': 'minecraft:model', 'model': 'basedefense:item/fogonazo'}}, open(os.path.join(BD, 'items', 'fogonazo.json'), 'w'))
+    tex = texture(1200)
+    Image.fromarray(tex.astype(np.uint8), 'RGBA').save(os.path.join(BD, 'textures', 'item', 'casquillo.png'))
+    els = clean(tube(8, 8, 6.5, 9.5, 0.55, 'laton') + [box((7.3, 7.3, 9.5), (8.7, 8.7, 9.8), 'laton', ends='boca')])
+    json.dump({'texture_size': [TS, TS], 'textures': {'0': 'basedefense:item/casquillo', 'particle': 'basedefense:item/casquillo'}, 'elements': els},
+              open(os.path.join(BD, 'models', 'item', 'casquillo.json'), 'w'), indent=1)
+    json.dump({'model': {'type': 'minecraft:model', 'model': 'basedefense:item/casquillo'}}, open(os.path.join(BD, 'items', 'casquillo.json'), 'w'))
 
 
 def guns():
@@ -451,7 +524,8 @@ def guns():
     json.dump({'model': {'type': 'minecraft:empty'}}, open(ip, 'w'))
     write('bloqueada', bloqueada(), {'gui': {'rotation': [15, -30, 0], 'scale': [0.8] * 3}, 'firstperson_righthand': {'rotation': [0, -20, 0], 'translation': [2, -1, -2], 'scale': [0.28] * 3},
                                      'thirdperson_righthand': {'scale': [0.4] * 3}, 'ground': {'scale': [0.4] * 3}, 'fixed': {'scale': [0.8] * 3}}, 950)
-    print('armas: modelos', len(GUNS) + 2)
+    fx_models()
+    print('armas: modelos', len(GUNS) + 2, '+ piezas animables, fogonazo y casquillo')
 
 
 if __name__ == '__main__':
