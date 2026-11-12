@@ -17,6 +17,18 @@ import { View } from './view'
 
 const params = new URLSearchParams(location.search)
 const DEMO = params.get('demo') === '1'
+/** ?galeria=1: todos los modelos quietos delante de la cámara (para revisar el arte). */
+const GALERIA = params.get('galeria') === '1'
+
+function gallery(g: DefenseGame): void {
+  const kinds = ['caminante', 'corredor', 'blindado', 'excavador', 'coloso', 'titan'] as const
+  kinds.forEach((kind, i) => {
+    const big = kind === 'coloso' || kind === 'titan'
+    g.s.zombies.push({ id: 900 + i, kind, x: -6 + i * 2.4 + (big ? 0 : 0), z: LENGTH - 17 - (kind === 'titan' ? 8 : kind === 'coloso' ? 3 : 0), hp: 50, maxHp: 100, owner: '', hitAt: -9, slowUntil: 0, stunUntil: 0, underground: false, attacking: false, next: 0 })
+  })
+  const gk = ['brote', 'lanzabrotes', 'tronco', 'glacial', 'hongo', 'raiz'] as const
+  gk.forEach((kind, i) => g.s.guardians.push({ id: 950 + i, kind, x: -6.5 + i * 2.6, z: LENGTH - 12, hp: 30, maxHp: 40, owner: '', born: -5, next: 99, fuse: -1, stunUntil: 0, hitAt: -9 }))
+}
 
 interface Settings {
   mode: Mode
@@ -96,20 +108,28 @@ export function LastHouse() {
   const labels = useRef<HTMLDivElement>(null)
   const flash = useRef<HTMLDivElement>(null)
   const settings = useRef<Settings>({ ...DEFAULTS, mode: params.get('modo') === 'defensa' ? 'defensa' : 'invasion', vertical: params.get('vertical') === '1' })
-  const sim = useRef<Sim>(makeSim(settings.current.mode, settings.current))
+  const sim = useRef<Sim>(
+    GALERIA
+      ? (() => {
+          const g = new DefenseGame({ seed: 1 })
+          gallery(g)
+          return g
+        })()
+      : makeSim(settings.current.mode, settings.current),
+  )
   const director = useRef(new Director(sim.current, { voteEvery: DEMO ? 45 : DEFAULTS.voteEvery }))
   const view = useRef<View | null>(null)
   const sound = useRef(new Sound(DEFAULTS.volume))
   const keys = useRef(new Set<string>())
   const press = useRef({ attack: false, dash: false, roar: false, summon: false })
   const pick = useRef<GuardianKind>('lanzabrotes')
-  const started = useRef(DEMO)
+  const started = useRef(DEMO || GALERIA)
   const [mode, setMode] = useState<Mode>(settings.current.mode)
   const [vertical, setVertical] = useState(settings.current.vertical)
   const [hud, setHud] = useState<Hud | null>(null)
   const [feed, setFeed] = useState<Feed[]>([])
   const [banner, setBanner] = useState<{ text: string; sub: string; key: number; color?: string } | null>(null)
-  const [intro, setIntro] = useState(!DEMO)
+  const [intro, setIntro] = useState(!DEMO && !GALERIA)
   const [muted, setMuted] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<{ unlocked: { name: string; desc: string }[]; crowns: string[] } | null>(null)
@@ -289,7 +309,10 @@ export function LastHouse() {
       const one = { dash: press.current.dash, roar: press.current.roar, summon: press.current.summon }
       press.current.dash = press.current.roar = press.current.summon = false
       let moving = false
-      if (started.current) {
+      if (GALERIA) {
+        g.s.t += dt
+        acc = 0
+      } else if (started.current) {
         acc += dt
         let first = true
         while (acc >= STEP) {

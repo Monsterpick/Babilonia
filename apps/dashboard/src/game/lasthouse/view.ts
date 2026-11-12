@@ -9,6 +9,12 @@
 import * as THREE from 'three'
 import { type HeroView, type Mode, type RenderState, type UnitView, type ZombieKind, ZOMBIES } from './common'
 import { GUARDIANS, HALF_W, LANES, LENGTH, type Fx, type Guardian, type GuardianKind } from './sim'
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js'
+import { buildClouds, buildScenery } from './scenery'
+import { FLASH, FROZEN, TOON, guardianDef, heroDef, instantiate, kingDef, zombieDef, type Instance } from './models'
 
 const mat = (color: number, opts: Partial<THREE.MeshStandardMaterialParameters> = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.85, flatShading: true, ...opts })
 
@@ -57,340 +63,41 @@ interface Actor {
   parts: Record<string, THREE.Object3D>
   bar?: { bg: THREE.Mesh; fill: THREE.Mesh; w: number }
   born: number
-  /** materiales que se tiñen (frío, golpe) */
-  tint?: THREE.MeshStandardMaterial[]
+  /** mallas con sombreado: se les cambia el material para el destello de golpe o el congelado */
+  skins?: THREE.Mesh[]
+  /** escala propia del modelo (coloso, titán…) */
+  scale?: number
+  /** material puesto ahora en las pieles */
+  look?: THREE.Material
 }
 
 // ───────────────────────────── modelos ─────────────────────────────
+// Los modelos están en models.ts (estilo dibujo animado: formas redondeadas, sombreado por escalones y contorno).
 
-/** El Rey de la Horda: zombi grandullón con corona torcida y capa hecha jirones. */
-function kingModel(crown: number): Actor {
-  const root = new THREE.Group()
-  const skin = mat(0x7fae6a)
-  const dark = mat(0x4d7a48)
-  const cloth = mat(0x5b2a6e)
-  const gold = mat(crown, { metalness: 0.5, roughness: 0.4, emissive: crown, emissiveIntensity: 0.18 })
-  const body = new THREE.Group()
-  root.add(body)
-  body.add(mesh(G.box(1.05, 1.15, 0.62), cloth, 0, 1.45, 0))
-  body.add(mesh(G.box(1.1, 0.22, 0.66), mat(0x2f1638), 0, 0.95, 0))
-  // hombreras con pinchos
-  for (const sx of [-1, 1]) {
-    body.add(mesh(G.box(0.42, 0.22, 0.5), mat(0x3a2448), sx * 0.62, 2.0, 0))
-    body.add(mesh(G.cone(0.08, 0.26, 4), gold, sx * 0.72, 2.2, 0))
-  }
-  const head = new THREE.Group()
-  head.position.set(0, 2.42, 0.02)
-  head.add(mesh(G.box(0.86, 0.8, 0.8), skin))
-  head.add(mesh(G.box(0.9, 0.2, 0.84), dark, 0, -0.34, 0))
-  const eyeM = new THREE.MeshBasicMaterial({ color: 0xfff27a })
-  head.add(mesh(G.box(0.2, 0.2, 0.06), eyeM, -0.2, 0.08, 0.41, false))
-  head.add(mesh(G.box(0.14, 0.26, 0.06), eyeM, 0.22, 0.1, 0.41, false))
-  head.add(mesh(G.box(0.5, 0.08, 0.06), mat(0x1a0d10), 0, -0.2, 0.41, false))
-  const crownG = new THREE.Group()
-  crownG.position.set(0.05, 0.5, 0)
-  crownG.rotation.z = -0.18
-  crownG.add(mesh(G.cyl(0.42, 0.46, 0.2, 8), gold))
-  for (let i = 0; i < 5; i++) {
-    const a = (i / 5) * Math.PI * 2
-    crownG.add(mesh(G.cone(0.09, 0.26, 4), gold, Math.cos(a) * 0.38, 0.2, Math.sin(a) * 0.38))
-  }
-  head.add(crownG)
-  body.add(head)
-  const armL = new THREE.Group()
-  armL.position.set(-0.7, 1.95, 0)
-  armL.add(mesh(G.box(0.3, 1.05, 0.3), skin, 0, -0.5, 0))
-  armL.add(mesh(G.box(0.34, 0.34, 0.36), cloth, 0, -0.05, 0))
-  for (let i = 0; i < 3; i++) armL.add(mesh(G.cone(0.05, 0.22, 4), mat(0xe8e2c8), -0.1 + i * 0.1, -1.1, 0.08))
-  const armR = armL.clone()
-  armR.position.x = 0.7
-  body.add(armL, armR)
-  const legL = new THREE.Group()
-  legL.position.set(-0.27, 0.9, 0)
-  legL.add(mesh(G.box(0.36, 0.9, 0.4), mat(0x3a3350), 0, -0.45, 0))
-  const legR = legL.clone()
-  legR.position.x = 0.27
-  root.add(legL, legR)
-  const cape = mesh(G.box(1.0, 1.5, 0.08), mat(0x8a2a3c), 0, 1.35, -0.38)
-  cape.rotation.x = 0.16
-  body.add(cape)
-  return { root, parts: { body, head, armL, armR, legL, legR, cape }, born: 0 }
-}
-
-/** El Guardián (modo Defensa): jardinero acorazado con capa de hojas y un cañón de semillas. */
-function heroModel(): Actor {
-  const root = new THREE.Group()
-  const skin = mat(0xf0c8a0)
-  const armor = mat(0x6f8a9a, { metalness: 0.4, roughness: 0.45 })
-  const green = mat(0x3f9a45)
-  const body = new THREE.Group()
-  root.add(body)
-  body.add(mesh(G.box(0.9, 1.0, 0.56), armor, 0, 1.45, 0))
-  body.add(mesh(G.box(0.95, 0.2, 0.6), mat(0x6b4a2b), 0, 0.98, 0))
-  const head = new THREE.Group()
-  head.position.set(0, 2.25, 0)
-  head.add(mesh(G.box(0.7, 0.66, 0.66), skin))
-  // sombrero de ala ancha con una flor
-  head.add(mesh(G.cyl(0.62, 0.66, 0.08, 10), mat(0xc9a25c), 0, 0.36, 0))
-  head.add(mesh(G.cyl(0.36, 0.42, 0.3, 10), mat(0xc9a25c), 0, 0.52, 0))
-  head.add(mesh(G.sph(0.12, 6), mat(0xff5fd2), 0.3, 0.5, 0.25))
-  const eye = new THREE.MeshBasicMaterial({ color: 0x1a1a24 })
-  head.add(mesh(G.box(0.1, 0.12, 0.05), eye, -0.15, 0.04, 0.34, false), mesh(G.box(0.1, 0.12, 0.05), eye, 0.15, 0.04, 0.34, false))
-  body.add(head)
-  // cañón de semillas en brazos
-  const gun = new THREE.Group()
-  gun.position.set(0.3, 1.5, 0.35)
-  const barrel = mesh(G.cyl(0.16, 0.22, 1.3, 10), mat(0x5a3a22), 0, 0, 0.45)
-  barrel.rotation.x = Math.PI / 2
-  gun.add(barrel)
-  gun.add(mesh(G.cyl(0.24, 0.24, 0.16, 10), green, 0, 0, 1.08).rotateX(Math.PI / 2))
-  gun.add(mesh(G.sph(0.3, 8), mat(0xe8703a), 0, 0.28, 0.0))
-  body.add(gun)
-  const armL = new THREE.Group()
-  armL.position.set(-0.6, 1.85, 0)
-  armL.add(mesh(G.box(0.26, 0.8, 0.26), armor, 0, -0.35, 0.15))
-  armL.rotation.x = -1.1
-  const armR = armL.clone()
-  armR.position.x = 0.6
-  body.add(armL, armR)
-  const legL = new THREE.Group()
-  legL.position.set(-0.24, 0.9, 0)
-  legL.add(mesh(G.box(0.32, 0.9, 0.36), mat(0x3d4f2c), 0, -0.45, 0))
-  const legR = legL.clone()
-  legR.position.x = 0.24
-  root.add(legL, legR)
-  const cape = new THREE.Group()
-  cape.position.set(0, 1.9, -0.32)
-  for (let i = 0; i < 5; i++) {
-    const l = mesh(G.cone(0.2, 1.1, 4), green, (i - 2) * 0.17, -0.55, 0)
-    l.rotation.x = Math.PI
-    cape.add(l)
-  }
-  body.add(cape)
-  return { root, parts: { body, head, armL, armR, legL, legR, cape, gun }, born: 0 }
-}
-
-const SHIRTS = [0x6a5a8a, 0x8a5a3a, 0x3a6a8a, 0x7a3a4a, 0x4a6a3a]
-
-/** Zombis de la horda (y esbirros del Rey). Mismo esqueleto, con piezas y escala según el tipo. */
-function zombieModel(kind: ZombieKind, id: number): Actor {
-  const root = new THREE.Group()
-  const skinC = kind === 'titan' ? 0x5a7a52 : kind === 'excavador' ? 0x8aa070 : 0x8fbf7a
-  const skin = mat(skinC)
-  const shirt = mat(kind === 'titan' ? 0x2a1830 : kind === 'coloso' ? 0x6b4a2b : SHIRTS[id % SHIRTS.length]!)
-  const pants = mat(0x3a3350)
-  const tint = [skin, shirt, pants]
-  const body = new THREE.Group()
-  root.add(body)
-  body.add(mesh(G.box(0.58, 0.66, 0.38), shirt, 0, 0.88, 0))
-  const head = new THREE.Group()
-  head.position.set(0, 1.45, 0.02)
-  head.add(mesh(G.box(0.5, 0.48, 0.46), skin))
-  const eyeC = kind === 'titan' ? 0xff3040 : 0xfff27a
-  const eye = new THREE.MeshBasicMaterial({ color: eyeC })
-  head.add(mesh(G.box(0.1, 0.1, 0.04), eye, -0.12, 0.04, 0.24, false), mesh(G.box(0.08, 0.13, 0.04), eye, 0.12, 0.05, 0.24, false))
-  head.add(mesh(G.box(0.26, 0.05, 0.04), mat(0x1a0d10), 0, -0.13, 0.24, false))
-  body.add(head)
-  const armL = new THREE.Group()
-  armL.position.set(-0.38, 1.12, 0)
-  armL.add(mesh(G.box(0.17, 0.6, 0.17), skin, 0, -0.25, 0.0))
-  armL.rotation.x = -1.35
-  const armR = armL.clone()
-  armR.position.x = 0.38
-  body.add(armL, armR)
-  const legL = new THREE.Group()
-  legL.position.set(-0.15, 0.55, 0)
-  legL.add(mesh(G.box(0.21, 0.55, 0.23), pants, 0, -0.27, 0))
-  const legR = legL.clone()
-  legR.position.x = 0.15
-  root.add(legL, legR)
-  switch (kind) {
-    case 'corredor':
-      head.add(mesh(G.box(0.54, 0.09, 0.5), mat(0xff7a2e), 0, 0.15, 0))
-      body.rotation.x = 0.35
-      break
-    case 'blindado':
-      head.add(mesh(G.cyl(0.3, 0.34, 0.38, 8), mat(0x9aa0a8, { metalness: 0.6, roughness: 0.4 }), 0, 0.3, 0))
-      armL.add(mesh(G.box(0.7, 0.8, 0.1), mat(0x7a5230), 0.25, -0.5, 0.2))
-      break
-    case 'excavador':
-      {
-        const helmet = mesh(G.sph(0.3, 8), mat(0xf2c43d), 0, 0.2, 0)
-        helmet.scale.set(1, 0.6, 1)
-        head.add(helmet)
-      }
-      head.add(mesh(G.box(0.1, 0.1, 0.06), new THREE.MeshBasicMaterial({ color: 0xffffcc }), 0, 0.26, 0.28, false))
-      armR.add(mesh(G.box(0.05, 0.05, 0.7), mat(0x6b4a2b), 0, -0.55, 0.15), mesh(G.box(0.5, 0.07, 0.07), mat(0x8a8a90), 0, -0.55, 0.5))
-      break
-    case 'coloso':
-      root.scale.setScalar(2.1)
-      armR.add(mesh(G.cyl(0.14, 0.22, 1.3, 7), mat(0x6b4a2b), 0, -0.85, 0.1))
-      body.add(mesh(G.box(0.7, 0.2, 0.44), mat(0x3a2414), 0, 0.6, 0))
-      break
-    case 'titan':
-      root.scale.setScalar(3.6)
-      for (let i = 0; i < 6; i++) {
-        const a = (i / 6) * Math.PI * 2
-        head.add(mesh(G.cone(0.05, 0.28, 4), mat(0x2a1a10), Math.cos(a) * 0.22, 0.34, Math.sin(a) * 0.22))
-      }
-      body.add(mesh(G.box(0.7, 0.3, 0.44), mat(0x6a2030), 0, 1.15, 0))
-      armL.add(mesh(G.sph(0.22, 7), mat(0x3a3a40, { metalness: 0.5 }), 0, -0.6, 0))
-      armR.add(mesh(G.sph(0.22, 7), mat(0x3a3a40, { metalness: 0.5 }), 0, -0.6, 0))
-      break
-    default:
-      break
-  }
-  // montículo de tierra (excavador bajo tierra)
-  const mound = mesh(G.sph(0.6, 8), mat(0x6b4a2b), 0, 0, 0)
-  mound.scale.set(1, 0.35, 1.3)
-  mound.visible = false
-  root.add(mound)
-  // barra de vida
-  const big = kind === 'coloso' || kind === 'titan'
-  const w = big ? 1.4 : 0.8
-  const bg = new THREE.Mesh(new THREE.PlaneGeometry(w, 0.1), new THREE.MeshBasicMaterial({ color: 0x1a1a1a, transparent: true, opacity: 0.8 }))
-  const fill = new THREE.Mesh(new THREE.PlaneGeometry(w, 0.07), new THREE.MeshBasicMaterial({ color: 0xe6483c }))
-  bg.position.y = fill.position.y = 2.05
+function bars(root: THREE.Object3D, w: number, top: number): NonNullable<Actor['bar']> {
+  const bg = new THREE.Mesh(new THREE.PlaneGeometry(w + 0.06, 0.16), new THREE.MeshBasicMaterial({ color: 0x1b1226, transparent: true, opacity: 0.85 }))
+  const fill = new THREE.Mesh(new THREE.PlaneGeometry(w, 0.1), new THREE.MeshBasicMaterial({ color: 0x6ee06e, toneMapped: false }))
+  bg.position.y = fill.position.y = top
+  fill.position.z = 0.002
   bg.visible = fill.visible = false
+  bg.renderOrder = 5
+  fill.renderOrder = 6
   root.add(bg, fill)
-  return { root, parts: { body, head, armL, armR, legL, legR, mound }, bar: { bg, fill, w }, born: 0, tint }
+  return { bg, fill, w }
 }
 
-const leaf = (c = 0x4caf50) => mat(c)
+function fromInstance(i: Instance, barW?: number): Actor {
+  const a: Actor = { root: i.root, parts: i.parts, born: 0, skins: i.skins, scale: i.scale }
+  if (barW) a.bar = bars(i.root, barW, i.top)
+  return a
+}
 
-function guardianModel(kind: GuardianKind): Actor {
-  const root = new THREE.Group()
-  const parts: Record<string, THREE.Object3D> = {}
-  const pot = () => root.add(mesh(G.cyl(0.42, 0.3, 0.36, 8), mat(0xa5673f), 0, 0.18, 0))
-  switch (kind) {
-    case 'brote': {
-      const body = mesh(G.sph(0.62, 8), mat(0xc9a25c), 0, 0.62, 0)
-      body.scale.set(1, 0.9, 0.95)
-      root.add(body)
-      const l1 = mesh(G.cone(0.2, 0.5, 4), leaf(0x66bb4a), 0.12, 1.3, 0)
-      l1.rotation.z = -0.5
-      const l2 = mesh(G.cone(0.18, 0.44, 4), leaf(0x4caf50), -0.14, 1.26, 0)
-      l2.rotation.z = 0.55
-      root.add(l1, l2)
-      const eye = new THREE.MeshBasicMaterial({ color: 0x2a1c0c })
-      root.add(mesh(G.box(0.12, 0.16, 0.05), eye, -0.2, 0.75, -0.55, false), mesh(G.box(0.12, 0.16, 0.05), eye, 0.2, 0.75, -0.55, false))
-      root.add(mesh(G.box(0.3, 0.05, 0.05), eye, 0, 0.92, -0.55, false))
-      parts.body = body
-      break
-    }
-    case 'lanzabrotes': {
-      pot()
-      root.add(mesh(G.cyl(0.11, 0.14, 0.9, 6), leaf(0x3f9a45), 0, 0.8, 0))
-      const head = new THREE.Group()
-      head.position.set(0, 1.4, 0)
-      head.add(mesh(G.sph(0.4, 8), mat(0xe8703a)))
-      for (let i = 0; i < 3; i++) {
-        const p = mesh(G.cone(0.2, 0.5, 4), mat(0xffb347), Math.cos((i / 3) * Math.PI * 2) * 0.3, 0.2, Math.sin((i / 3) * Math.PI * 2) * 0.3)
-        p.rotation.z = Math.cos((i / 3) * Math.PI * 2) * -0.7
-        p.rotation.x = Math.sin((i / 3) * Math.PI * 2) * 0.7
-        head.add(p)
-      }
-      const barrel = mesh(G.cyl(0.16, 0.2, 0.5, 8), mat(0x6b4a2b), 0, 0, -0.5)
-      barrel.rotation.x = Math.PI / 2
-      head.add(barrel)
-      root.add(head)
-      parts.head = head
-      break
-    }
-    case 'tronco': {
-      const trunk = mesh(G.cyl(1.05, 1.2, 1.9, 10), mat(0x7a5230), 0, 0.95, 0)
-      root.add(trunk)
-      root.add(mesh(G.cyl(1.0, 1.05, 0.12, 10), mat(0xd9b77e), 0, 1.92, 0))
-      root.add(mesh(G.box(1.5, 1.1, 0.25), mat(0x5d3d22), 0, 0.95, -1.05))
-      root.add(mesh(G.box(0.5, 0.14, 0.1), leaf(0x3f9a45), -0.4, 1.5, -1.05), mesh(G.box(0.5, 0.14, 0.1), leaf(0x3f9a45), 0.4, 1.5, -1.05))
-      root.add(mesh(G.sph(0.3, 6), leaf(0x4caf50), 0.5, 2.05, 0.2))
-      parts.body = trunk
-      break
-    }
-    case 'glacial': {
-      pot()
-      root.add(mesh(G.cyl(0.09, 0.12, 0.8, 6), mat(0x4aa0a8), 0, 0.75, 0))
-      const flower = new THREE.Group()
-      flower.position.set(0, 1.3, 0)
-      const ice = mat(0xa8e6ff, { emissive: 0x2a7fb0, emissiveIntensity: 0.5, roughness: 0.25 })
-      flower.add(mesh(G.sph(0.24, 8), mat(0xffffff, { emissive: 0x88ccff, emissiveIntensity: 0.6 })))
-      for (let i = 0; i < 6; i++) {
-        const a = (i / 6) * Math.PI * 2
-        const p = mesh(G.cone(0.16, 0.62, 4), ice, Math.cos(a) * 0.42, 0, Math.sin(a) * 0.42)
-        p.rotation.z = Math.cos(a) * -1.3
-        p.rotation.x = Math.sin(a) * 1.3
-        flower.add(p)
-      }
-      root.add(flower)
-      const ring = new THREE.Mesh(new THREE.RingGeometry(5.3, 5.5, 40), new THREE.MeshBasicMaterial({ color: 0x9fe7ff, transparent: true, opacity: 0.45, side: THREE.DoubleSide }))
-      ring.rotation.x = -Math.PI / 2
-      ring.position.y = 0.05
-      root.add(ring)
-      parts.head = flower
-      parts.ring = ring
-      break
-    }
-    case 'hongo': {
-      root.add(mesh(G.cyl(0.24, 0.3, 0.5, 8), mat(0xefe2c4), 0, 0.25, 0))
-      const cap = mesh(G.sph(0.6, 10), mat(0xb5306a, { emissive: 0x5a0030, emissiveIntensity: 0.4 }), 0, 0.55, 0)
-      cap.scale.set(1, 0.6, 1)
-      root.add(cap)
-      for (let i = 0; i < 5; i++) {
-        const a = (i / 5) * Math.PI * 2
-        root.add(mesh(G.sph(0.1, 6), mat(0xffe08a, { emissive: 0xffa000, emissiveIntensity: 0.8 }), Math.cos(a) * 0.38, 0.72, Math.sin(a) * 0.38, false))
-      }
-      parts.body = cap
-      break
-    }
-    case 'raiz': {
-      pot()
-      const core = mesh(G.sph(0.34, 8), mat(0x7cff9e, { emissive: 0x1f9a4a, emissiveIntensity: 0.8 }), 0, 0.95, 0)
-      root.add(core)
-      for (let i = 0; i < 4; i++) {
-        const a = (i / 4) * Math.PI * 2 + 0.4
-        const r = mesh(G.cyl(0.07, 0.11, 1.0, 5), mat(0x8a6a3f), Math.cos(a) * 0.3, 0.6, Math.sin(a) * 0.3)
-        r.rotation.z = Math.cos(a) * 0.6
-        r.rotation.x = -Math.sin(a) * 0.6
-        root.add(r)
-      }
-      parts.body = core
-      break
-    }
-    case 'ancestral': {
-      const trunk = mesh(G.cyl(1.6, 2.1, 4.6, 10), mat(0x5d4027), 0, 2.3, 0)
-      root.add(trunk)
-      const crown = mesh(G.sph(3.0, 9), leaf(0x2f7d3a), 0, 5.6, 0)
-      crown.scale.set(1, 0.7, 1)
-      root.add(crown)
-      for (let i = 0; i < 7; i++) {
-        const a = (i / 7) * Math.PI * 2
-        root.add(mesh(G.sph(0.25, 6), mat(0xffd27a, { emissive: 0xffa000, emissiveIntensity: 0.7 }), Math.cos(a) * 2.6, 5.2 + (i % 2) * 0.6, Math.sin(a) * 2.6, false))
-      }
-      const amber = new THREE.MeshBasicMaterial({ color: 0xffb020 })
-      root.add(mesh(G.box(0.42, 0.3, 0.1), amber, -0.6, 3.3, -1.75, false), mesh(G.box(0.42, 0.3, 0.1), amber, 0.6, 3.3, -1.75, false))
-      const armL = new THREE.Group()
-      armL.position.set(-1.7, 3.2, 0)
-      armL.add(mesh(G.cyl(0.32, 0.45, 3.0, 6), mat(0x4a321e), 0, -1.3, -0.6))
-      const armR = armL.clone()
-      armR.position.x = 1.7
-      root.add(armL, armR)
-      parts.armL = armL
-      parts.armR = armR
-      parts.body = trunk
-      break
-    }
-  }
-  const def = GUARDIANS[kind]
-  const w = Math.max(1, def.radius * 1.8)
-  const bg = new THREE.Mesh(new THREE.PlaneGeometry(w, 0.14), new THREE.MeshBasicMaterial({ color: 0x1a1a1a, transparent: true, opacity: 0.8 }))
-  const fill = new THREE.Mesh(new THREE.PlaneGeometry(w, 0.1), new THREE.MeshBasicMaterial({ color: 0x6ee06e }))
-  const top = kind === 'ancestral' ? 8 : kind === 'tronco' ? 2.5 : 2.0
-  bg.position.y = top
-  fill.position.y = top
-  fill.position.z = -0.001
-  bg.visible = fill.visible = false
-  root.add(bg, fill)
-  return { root, parts, bar: { bg, fill, w }, born: 0 }
+const kingModel = (crown: number): Actor => fromInstance(instantiate(kingDef(crown)))
+const heroModel = (): Actor => fromInstance(instantiate(heroDef()))
+const zombieModel = (kind: ZombieKind, id: number): Actor => fromInstance(instantiate(zombieDef(kind, id)), 0.9)
+const guardianModel = (kind: GuardianKind): Actor => {
+  const def = guardianDef(kind)
+  return fromInstance(instantiate(def), Math.max(1, GUARDIANS[kind].radius * 1.8))
 }
 
 // ───────────────────────────── partículas ─────────────────────────────
@@ -404,7 +111,7 @@ interface Particle {
   max: number
   grav: number
   /** 'p' partícula · 'ring' anillo que crece · 'beam' rayo que se apaga */
-  kind: 'p' | 'ring' | 'beam'
+  kind: 'p' | 'ring' | 'beam' | 'smoke'
   r: number
 }
 
@@ -445,7 +152,8 @@ export class View {
   cameraMode = 0
   private introStart = -1
   private baseFov = 58
-  private readonly pGeo = G.box(0.22, 0.22, 0.22)
+  private readonly pGeo = new THREE.IcosahedronGeometry(0.16, 1)
+  private readonly smokeGeo = new THREE.IcosahedronGeometry(0.5, 1)
   private readonly ringGeo = new THREE.RingGeometry(0.82, 1, 40)
   private readonly pMats = new Map<number, THREE.MeshBasicMaterial>()
   private readonly shotGeo = { semilla: G.sph(0.2, 6), mortero: G.sph(0.45, 8), warn: new THREE.RingGeometry(2.4, 2.8, 32) }
@@ -459,7 +167,10 @@ export class View {
   private hemi!: THREE.HemisphereLight
   private skyU!: { top: { value: THREE.Color }; bottom: { value: THREE.Color } }
   private lamps: THREE.PointLight[] = []
-  private lampBulbs: THREE.MeshStandardMaterial[] = []
+  private nightGlow!: THREE.MeshBasicMaterial
+  private clouds: THREE.Group | null = null
+  private composer!: EffectComposer
+  private bloom!: UnrealBloomPass
   private rain!: THREE.Points
   private stars!: THREE.Points
   private readonly opts: ViewOptions
@@ -473,14 +184,23 @@ export class View {
     this.renderer.shadowMap.enabled = true
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping
-    this.renderer.toneMappingExposure = 1.05
-    for (const g of [this.pGeo, this.ringGeo, this.shotGeo.semilla, this.shotGeo.mortero, this.shotGeo.warn]) g.userData.shared = true
+    this.renderer.toneMappingExposure = 1.1
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace
+    // resplandor: lo que brilla (ojos, núcleos, ventanas de noche, explosiones) desprende un halo suave
+    this.composer = new EffectComposer(this.renderer)
+    this.composer.addPass(new RenderPass(this.scene, this.camera))
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.55, 0.5, 0.92)
+    this.composer.addPass(this.bloom)
+    this.composer.addPass(new OutputPass())
+    for (const g of [this.pGeo, this.smokeGeo, this.ringGeo, this.shotGeo.semilla, this.shotGeo.mortero, this.shotGeo.warn]) g.userData.shared = true
     for (const m of Object.values(this.shotMat)) m.userData.shared = true
     this.buildWorld()
   }
 
   resize(w: number, h: number): void {
     this.renderer.setSize(w, h, false)
+    this.composer.setSize(w, h)
+    this.composer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1))
     this.camera.aspect = w / Math.max(1, h)
     // en vertical (9:16) se abre el ángulo para que quepa el jardín
     this.baseFov = this.camera.aspect < 0.8 ? 80 : 58
@@ -559,115 +279,19 @@ export class View {
     this.rain.visible = false
     sc.add(this.rain)
 
-    // suelo y césped a cuadros por carriles
-    const ground = mesh(new THREE.PlaneGeometry(500, 500), mat(0x4f9a3f), 0, -0.02, LENGTH / 2, false)
-    ground.rotation.x = -Math.PI / 2
-    sc.add(ground)
-    const cnv = document.createElement('canvas')
-    cnv.width = LANES * 32
-    cnv.height = 32 * 22
-    const ctx = cnv.getContext('2d')!
-    for (let i = 0; i < LANES; i++)
-      for (let j = 0; j < 22; j++) {
-        ctx.fillStyle = (i + j) % 2 === 0 ? '#63c04a' : '#56b041'
-        ctx.fillRect(i * 32, j * 32, 32, 32)
-        // briznas para que no sea liso
-        ctx.fillStyle = (i + j) % 2 === 0 ? '#6fcc55' : '#4ea53a'
-        for (let k = 0; k < 10; k++) ctx.fillRect(i * 32 + ((k * 7 + j * 3) % 30), j * 32 + ((k * 11 + i * 5) % 30), 2, 2)
-      }
-    const tex = new THREE.CanvasTexture(cnv)
-    tex.magFilter = THREE.NearestFilter
-    tex.colorSpace = THREE.SRGBColorSpace
-    const lawn = mesh(new THREE.PlaneGeometry(HALF_W * 2, LENGTH), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.95 }), 0, 0, LENGTH / 2, false)
-    lawn.rotation.x = -Math.PI / 2
-    sc.add(lawn)
-    const side = mesh(new THREE.PlaneGeometry(60, 5), mat(0xd8d2c4), 0, 0.01, -2.5, false)
-    side.rotation.x = -Math.PI / 2
-    const road = mesh(new THREE.PlaneGeometry(60, 10), mat(0x4a4d55), 0, 0.0, -10, false)
-    road.rotation.x = -Math.PI / 2
-    sc.add(side, road)
-    for (let x = -26; x < 28; x += 6) sc.add(mesh(G.box(2.6, 0.02, 0.3), mat(0xf2e6a0), x, 0.02, -10, false))
-
-    // hierba alta y flores fuera del camino (instanciadas: miles por un solo dibujo)
-    const tuft = new THREE.InstancedMesh(G.cone(0.12, 0.5, 3), mat(0x3f9a32), 1400)
-    const flower = new THREE.InstancedMesh(G.sph(0.14, 5), new THREE.MeshStandardMaterial({ roughness: 0.6 }), 420)
-    const m4 = new THREE.Matrix4()
-    const col = new THREE.Color()
-    const FLOWERS = [0xff5fd2, 0xffe066, 0xffffff, 0x9fe7ff, 0xff7a59]
-    for (let i = 0; i < 1400; i++) {
-      const sx = Math.random() < 0.5 ? -1 : 1
-      const x = sx * (HALF_W + 2 + Math.random() * 22)
-      const z = -2 + Math.random() * (LENGTH + 6)
-      m4.makeRotationY(Math.random() * 3).setPosition(x, 0.25, z)
-      tuft.setMatrixAt(i, m4)
-    }
-    for (let i = 0; i < 420; i++) {
-      const sx = Math.random() < 0.5 ? -1 : 1
-      m4.makeTranslation(sx * (HALF_W + 2 + Math.random() * 18), 0.18, Math.random() * LENGTH)
-      flower.setMatrixAt(i, m4)
-      flower.setColorAt(i, col.setHex(FLOWERS[i % FLOWERS.length]!))
-    }
-    tuft.receiveShadow = true
-    sc.add(tuft, flower)
-
-    // setos, árboles y farolas
-    const hedge = mat(0x2f8a3a)
-    const lampGlass = mat(0xffe9a8, { emissive: 0xffc840, emissiveIntensity: 0.4 })
-    this.lampBulbs.push(lampGlass)
-    for (const sx of [-1, 1]) {
-      sc.add(mesh(G.box(1.6, 1.8, LENGTH + 4), hedge, sx * (HALF_W + 0.9), 0.9, LENGTH / 2))
-      for (let z = 4; z < LENGTH; z += 11) {
-        const off = sx * (HALF_W + 5 + ((z * 7) % 5))
-        sc.add(mesh(G.cyl(0.45, 0.6, 3.4, 7), mat(0x6b4a2b), off, 1.7, z))
-        const top = mesh(G.sph(2.6, 8), leaf(z % 22 === 4 ? 0x3d9a42 : 0x2f8a3a), off, 4.8, z)
-        top.scale.y = 0.85
-        sc.add(top)
-        if (z % 22 === 4) {
-          sc.add(mesh(G.cyl(0.08, 0.1, 2.6, 6), mat(0x2b2b33), sx * (HALF_W + 2.4), 1.3, z + 5))
-          sc.add(mesh(G.box(0.36, 0.42, 0.36), lampGlass, sx * (HALF_W + 2.4), 2.75, z + 5, false))
-        }
-      }
-    }
-    // pocas luces reales (caras): las de la casa y dos a mitad de camino; se encienden al anochecer
-    for (const [x, z] of [[-6, LENGTH - 6], [6, LENGTH - 6], [-HALF_W - 2.4, LENGTH / 2], [HALF_W + 2.4, LENGTH / 2 - 11]] as const) {
-      const l = new THREE.PointLight(0xffc870, 0, 24, 1.6)
-      l.position.set(x, 3.4, z)
+    // escenario de dibujo animado (models/scenery.ts): jardín, setos, valla, árboles, farolas y la casa
+    const scen = buildScenery()
+    sc.add(scen.group)
+    this.nightGlow = scen.nightGlow
+    this.clouds = buildClouds()
+    sc.add(this.clouds)
+    // pocas luces reales (caras): delante de la casa y dos farolas; se encienden al anochecer
+    const picks: [number, number, number][] = [[-5, 3.6, LENGTH - 6], [5, 3.6, LENGTH - 6], scen.lamps[1] ?? [0, 3, 40], scen.lamps[scen.lamps.length - 2] ?? [0, 3, 70]]
+    for (const [x, y, z] of picks) {
+      const l = new THREE.PointLight(0xffc870, 0, 26, 1.6)
+      l.position.set(x, y, z)
       sc.add(l)
       this.lamps.push(l)
-    }
-
-    // la última casa
-    const house = new THREE.Group()
-    house.position.set(0, 0, LENGTH + 6)
-    house.add(mesh(G.box(22, 7, 9), mat(0xf2e6cf), 0, 3.5, 0))
-    const roof = mesh(G.box(24, 0.6, 7.2), mat(0xc0452f), 0, 8.6, -1.6)
-    roof.rotation.x = 0.6
-    const roof2 = mesh(G.box(24, 0.6, 7.2), mat(0xa83a27), 0, 8.6, 1.6)
-    roof2.rotation.x = -0.6
-    house.add(roof, roof2)
-    house.add(mesh(G.box(2.6, 4.4, 0.4), mat(0x5a3a22), 0, 2.2, -4.6))
-    house.add(mesh(G.box(3.2, 0.3, 0.6), mat(0xffffff), 0, 4.6, -4.6))
-    house.add(mesh(G.box(4, 0.4, 1.4), mat(0xbfb5a2), 0, 0.2, -5.2))
-    const glass = mat(0x8fd0ff, { emissive: 0xffd27a, emissiveIntensity: 0.55, roughness: 0.2 })
-    this.lampBulbs.push(glass)
-    for (const x of [-7, 7]) {
-      house.add(mesh(G.box(3.4, 2.6, 0.3), glass, x, 3.6, -4.55, false))
-      house.add(mesh(G.box(3.8, 0.24, 0.5), mat(0xffffff), x, 2.2, -4.6))
-      house.add(mesh(G.box(3.6, 0.5, 0.6), mat(0x8a5a3a), x, 1.9, -4.9))
-      for (let i = 0; i < 4; i++) house.add(mesh(G.sph(0.2, 5), mat(FLOWERS[i % 5]!), x - 1.2 + i * 0.8, 2.25, -4.9, false))
-    }
-    house.add(mesh(G.box(1.4, 3, 1.4), mat(0x8a4a3a), 7, 10.2, 0))
-    sc.add(house)
-    const goal = new THREE.Mesh(new THREE.PlaneGeometry(HALF_W * 2, 2.2), new THREE.MeshBasicMaterial({ color: 0xffe066, transparent: true, opacity: 0.55 }))
-    goal.rotation.x = -Math.PI / 2
-    goal.position.set(0, 0.03, LENGTH - 0.6)
-    sc.add(goal)
-    const cloud = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, fog: false })
-    for (let i = 0; i < 9; i++) {
-      const g = new THREE.Group()
-      for (let j = 0; j < 4; j++) g.add(mesh(G.sph(5 + ((i + j) % 3) * 2, 7), cloud, j * 6 - 9, ((j * 3) % 4) - 1, (j % 2) * 3, false))
-      g.position.set(-120 + i * 34, 52 + (i % 3) * 9, 60 + ((i * 53) % 150))
-      sc.add(g)
     }
   }
 
@@ -687,7 +311,9 @@ export class View {
     ;(this.stars.material as THREE.PointsMaterial).opacity = Math.max(0, (night - 0.55) * 2.2) * (storm ? 0.2 : 1)
     const lit = Math.max(0, (night - 0.35) / 0.65)
     for (const l of this.lamps) l.intensity = lit * 30
-    for (const m of this.lampBulbs) m.emissiveIntensity = 0.4 + lit * 1.6
+    // ventanas y farolas: apagadas de día, encendidas (y con resplandor) de noche
+    this.nightGlow.color.setRGB(0.6 + lit * 1.0, 0.54 + lit * 0.9, 0.44 + lit * 0.6)
+    if (this.clouds) this.clouds.position.x = Math.sin(this.time * 0.01) * 20
     this.rain.visible = storm
   }
 
@@ -696,7 +322,8 @@ export class View {
   private pmat(color: number): THREE.MeshBasicMaterial {
     let m = this.pMats.get(color)
     if (!m) {
-      m = new THREE.MeshBasicMaterial({ color })
+      // sin mapeo de tonos: los colores vivos (fuego, chispas, energía) se ven intensos y el resplandor los recoge
+      m = new THREE.MeshBasicMaterial({ color, toneMapped: false })
       m.userData.shared = true
       this.pMats.set(color, m)
     }
@@ -712,6 +339,19 @@ export class View {
       const r = Math.random() * speed
       this.scene.add(p)
       this.particles.push({ m: p, vx: Math.cos(a) * r, vy: (0.4 + Math.random()) * speed * up, vz: Math.sin(a) * r, life, max: life, grav, kind: 'p', r: 0 })
+    }
+  }
+
+  /** Bocanadas de humo o polvo: bolas que crecen, suben despacio y se desvanecen. */
+  private smoke(x: number, y: number, z: number, n: number, color: number, size = 1, life = 1.2): void {
+    for (let i = 0; i < n && this.particles.length < 1100; i++) {
+      const m = new THREE.MeshToonMaterial({ color, transparent: true, opacity: 0.85, depthWrite: false, gradientMap: (TOON as THREE.MeshToonMaterial).gradientMap })
+      const p = new THREE.Mesh(this.smokeGeo, m)
+      p.position.set(x + (Math.random() - 0.5) * size, y + Math.random() * size * 0.5, z + (Math.random() - 0.5) * size)
+      this.scene.add(p)
+      const a = Math.random() * Math.PI * 2
+      const l = life * (0.7 + Math.random() * 0.6)
+      this.particles.push({ m: p, vx: Math.cos(a) * size * 0.8, vy: 0.6 + Math.random() * 0.8, vz: Math.sin(a) * size * 0.8, life: l, max: l, grav: 0, kind: 'smoke', r: size * (0.8 + Math.random() * 0.6) })
     }
   }
 
@@ -750,6 +390,7 @@ export class View {
     for (const f of list) {
       switch (f.type) {
         case 'plant':
+          this.smoke(f.x, 0.2, f.z, 3, 0xc9a070, 0.6, 0.6)
           this.burst(f.x, 0.3, f.z, 10, 0x6b4a2b, 2.2, 0.5)
           this.burst(f.x, 0.4, f.z, 6, this.colors[f.kind], 1.6, 0.6)
           this.label(f.owner, f.x, GUARDIANS[f.kind].radius * 2 + 1.4, f.z, 'lh-owner')
@@ -757,10 +398,12 @@ export class View {
         case 'break':
           this.burst(f.x, 0.8, f.z, f.kind === 'ancestral' ? 60 : 16, this.colors[f.kind], 4, 0.8)
           this.burst(f.x, 0.6, f.z, 8, 0x6b4a2b, 3, 0.7)
+          this.smoke(f.x, 0.4, f.z, f.kind === 'ancestral' ? 10 : 4, 0xe8dcc0, f.kind === 'ancestral' ? 2.2 : 0.9, 0.9)
           if (f.kind === 'ancestral' || f.kind === 'tronco') this.shake = Math.max(this.shake, 0.4)
           break
         case 'hit':
           this.burst(f.x, 1, f.z, f.big ? 12 : 5, 0xfff2a8, f.big ? 4 : 2.4, 0.35)
+          this.burst(f.x, 1, f.z, 3, 0xb8ff6a, 2, 0.25, 0.6, 3)
           break
         case 'kingHurt':
           this.flash = 0.35
@@ -769,9 +412,15 @@ export class View {
           this.label(`−${Math.round(f.dmg)}`, h.x, 3.4, h.z, 'lh-dmg')
           break
         case 'boom':
+          // fogonazo, bola de fuego, chispas, humo que sube y onda
+          this.burst(f.x, 0.8, f.z, 10, 0xffffd0, 3, 0.25, 1, 0)
           this.burst(f.x, 0.6, f.z, 34, 0xffa033, 7, 0.7)
-          this.burst(f.x, 0.6, f.z, 18, 0x3b3b3b, 4, 1.1, 1.4, 2)
+          this.burst(f.x, 0.6, f.z, 16, 0xff5a1a, 5, 0.6)
+          this.smoke(f.x, 0.5, f.z, 6, 0xffb060, f.r * 0.5, 0.5)
+          this.smoke(f.x, 0.8, f.z, 8, 0x8a8494, f.r * 0.6, 1.6)
           this.ring(f.x, f.z, f.r, 0xffc04d, 0.45)
+          this.ring(f.x, f.z, f.r * 1.6, 0xffffff, 0.3)
+          this.bolt = Math.max(this.bolt, 0.08)
           this.shake = Math.max(this.shake, 0.5)
           break
         case 'swipe':
@@ -800,8 +449,10 @@ export class View {
           this.burst(f.x + Math.sin(h.facing) * 1.4, 1.5, f.z + Math.cos(h.facing) * 1.4, 3, 0xd8ff8a, 1.4, 0.18, 0.3, 0)
           break
         case 'zombieDown':
-          this.burst(f.x, 1, f.z, f.big ? 50 : 14, 0x8fbf7a, f.big ? 6 : 3.5, 0.7)
-          this.burst(f.x, 1, f.z, f.big ? 20 : 6, 0x6a5a8a, 3, 0.7)
+          // ¡puf! nube de polvo verdoso y trocitos
+          this.burst(f.x, 1, f.z, f.big ? 50 : 12, 0x9fd08a, f.big ? 6 : 3.5, 0.7)
+          this.burst(f.x, 1, f.z, f.big ? 20 : 5, 0x6a78c9, 3, 0.7)
+          this.smoke(f.x, 0.6, f.z, f.big ? 10 : 3, 0xd8e8c8, f.big ? 2.4 : 0.8, 0.8)
           if (f.big) this.shake = Math.max(this.shake, 0.5)
           break
         case 'spawn':
@@ -841,6 +492,13 @@ export class View {
 
   // ───────────────────────────── fotograma ─────────────────────────────
 
+  /** Cambia el material de las pieles de un personaje (solo si cambia: no cuesta nada fotograma a fotograma). */
+  private skin(a: Actor, m: THREE.Material): void {
+    if (!a.skins || a.look === m) return
+    a.look = m
+    for (const s of a.skins) s.material = m
+  }
+
   private bar(a: Actor, f: number, show: boolean): void {
     if (!a.bar) return
     a.bar.bg.visible = a.bar.fill.visible = show
@@ -879,10 +537,10 @@ export class View {
       p.head.rotation.y = t * 0.8
       if (p.ring) p.ring.scale.setScalar(1 + Math.sin(t * 2.5) * 0.02)
     }
-    if (g.kind === 'hongo' && p.body) {
+    if (g.kind === 'hongo' && p.cap) {
       const armed = g.fuse > 0
-      p.body.scale.setScalar(armed ? 1 + ((t * 14) % 1) * 0.5 : 1 + Math.sin(t * 3 + g.id) * 0.04)
-      p.body.scale.y *= 0.6
+      p.cap.scale.setScalar(armed ? 1 + ((t * 14) % 1) * 0.35 : 1 + Math.sin(t * 3 + g.id) * 0.04)
+      this.skin(a, armed && Math.floor(t * 14) % 2 === 0 ? FLASH : TOON)
     }
     if (g.kind === 'raiz' && p.body) p.body.scale.setScalar(1 + Math.sin(t * 4 + g.id) * 0.12)
     if (g.kind === 'brote' && p.body) p.body.rotation.z = Math.sin(t * 3 + g.id) * 0.05
@@ -921,16 +579,12 @@ export class View {
     p.armL!.rotation.x = -1.35 + w * 0.15 - atk * 0.5
     p.armR!.rotation.x = -1.35 - w * 0.15 + atk * 0.5
     p.body!.rotation.z = w * 0.05
-    const base = u.kind === 'coloso' ? 2.1 : u.kind === 'titan' ? 3.6 : 1
     const spawn = Math.min(1, (t - a.born) / 0.3)
-    a.root.scale.setScalar(base * (t - u.hitAt < 0.1 ? 1.12 : 1) * (0.3 + 0.7 * spawn))
-    if (a.tint) {
-      const hot = t - u.hitAt < 0.08
-      for (const m of a.tint) {
-        m.emissive.setHex(hot ? 0xffffff : u.slowed ? 0x2a6aa0 : 0x000000)
-        m.emissiveIntensity = hot ? 0.6 : u.slowed ? 0.6 : 0
-      }
-    }
+    // aparece con un pequeño rebote y se estira al recibir un golpe
+    const squash = t - u.hitAt < 0.12 ? 1 + 0.15 * Math.sin(((t - u.hitAt) / 0.12) * Math.PI) : 1
+    a.root.scale.set((a.scale ?? 1) * squash, (a.scale ?? 1) / squash, (a.scale ?? 1) * squash).multiplyScalar(0.3 + 0.7 * spawn)
+    p.head!.rotation.z = Math.sin(t * 2 + u.id) * 0.12
+    this.skin(a, t - u.hitAt < 0.07 ? FLASH : u.slowed ? FROZEN : TOON)
     this.bar(a, u.hp / u.maxHp, mode === 'defensa' && (u.hp < u.maxHp || u.kind === 'titan' || u.kind === 'coloso'))
   }
 
@@ -969,7 +623,8 @@ export class View {
       p.body!.rotation.x = -kick * 0.05
       p.cape!.rotation.x = h.moving ? 0.4 + Math.sin(t * 9) * 0.1 : 0.1
     }
-    H.root.scale.setScalar(h.hurt ? 1.08 : 1)
+    H.root.scale.setScalar((H.scale ?? 1) * (h.hurt ? 1.08 : 1))
+    this.skin(H, h.hurt && Math.floor(t * 20) % 2 === 0 ? FLASH : TOON)
     if (h.dashing && Math.random() < 0.8) this.burst(h.x, 0.3, h.z, 2, 0xe8e2c8, 1.5, 0.35, 0.4)
     if (h.confused && Math.random() < 0.3) this.burst(h.x, 3.2, h.z, 1, 0xc77dff, 1, 0.5, 0.3, 0)
     if (h.slowed && Math.random() < 0.3) this.burst(h.x, 0.4, h.z, 1, 0xa8e6ff, 1, 0.5, 0.6, 1)
@@ -1062,8 +717,15 @@ export class View {
         p.m.position.y = Math.max(0.05, p.m.position.y + p.vy * dt)
         p.m.position.z += p.vz * dt
         p.m.scale.setScalar(Math.max(0.05, f))
-        p.m.rotation.x += dt * 6
-        p.m.rotation.y += dt * 4
+        p.m.scale.y *= 1 + Math.min(1.5, Math.abs(p.vy) * 0.08) // se estiran al volar (chispas)
+      } else if (p.kind === 'smoke') {
+        p.m.position.x += p.vx * dt
+        p.m.position.y += p.vy * dt
+        p.m.position.z += p.vz * dt
+        p.vx *= 1 - dt * 2
+        p.vz *= 1 - dt * 2
+        p.m.scale.setScalar(p.r * (0.5 + (1 - f) * 1.1))
+        ;(p.m.material as THREE.MeshToonMaterial).opacity = Math.min(0.85, f * 1.4)
       } else if (p.kind === 'ring') {
         p.m.scale.setScalar(Math.max(0.01, p.r * (1 - f)))
         ;(p.m.material as THREE.MeshBasicMaterial).opacity = f
@@ -1148,7 +810,7 @@ export class View {
       l.el.style.opacity = String(Math.min(1, l.life / 0.4))
     }
     this.flash = Math.max(0, this.flash - dt)
-    this.renderer.render(this.scene, this.camera)
+    this.composer.render(dt)
   }
 
   /** 0..1: cuánto queda del destello rojo de daño (lo pinta el HUD). */

@@ -83,6 +83,18 @@ piloto automático) y ajustar el equilibrio (fase 3).
   y los modelos 3D/música por ForgeGUI no se pudieron hacer: el plan actual no incluye 3D, música ni sonido, y los
   créditos de imagen se agotaron.
 
+### v2 de los gráficos (estilo dibujo animado)
+- `models.ts`: todos los personajes rehechos con formas redondeadas (esferas, cápsulas, cajas de cantos redondos,
+  piezas torneadas), sombreado por escalones (toon), contorno oscuro y ojos grandes con brillo. Cada pieza móvil funde
+  sus formas en una sola geometría con color por vértice: un personaje son ~6 piezas y todas las copias comparten
+  geometría y material (300 zombis siguen siendo baratos).
+- `scenery.ts`: césped a cuadros con briznas, setos redondeados, valla blanca, árboles de copa en racimo, arbustos con
+  flores, farolas, buzón, caminito de piedras y la casa con tejas, chimenea, porche y jardineras. Todo lo estático va
+  fundido en un par de mallas.
+- Resplandor (bloom) para ojos, núcleos, ventanas de noche y explosiones; partículas redondas, chispas que se estiran,
+  humo que crece y sube, fogonazos.
+- `?galeria=1`: todos los modelos quietos delante de la cámara, para revisar el arte.
+
 ## Fase 5 · Sonido ✅
 - `audio.ts`: todos los efectos sintetizados (brotar, disparo, golpe, explosión, rugido, rayo, oleada, asalto,
   victoria/derrota) con límite por tipo para que no sature. Música generativa en La menor que sube de tempo y de capas
