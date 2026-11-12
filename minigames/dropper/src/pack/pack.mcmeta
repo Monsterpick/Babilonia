@@ -1,0 +1,13 @@
+{
+ "pack": {
+  "description": "Dropper LIVE \u00b7 interfaz y sonidos (LiveArena)",
+  "min_format": [
+   84,
+   0
+  ],
+  "max_format": [
+   200,
+   0
+  ]
+ }
+}

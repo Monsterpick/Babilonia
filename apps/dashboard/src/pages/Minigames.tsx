@@ -6,6 +6,7 @@ import {
   Crown,
   Download,
   Gamepad2,
+  ArrowDownToLine,
   Gift,
   Heart,
   Loader2,
@@ -29,6 +30,7 @@ import { useApp } from "../App";
 import { PageHeader } from "../components/ui";
 import { toast } from "../components/Toast";
 import { ParkourPanel } from "./ParkourPanel";
+import { DropperPanel } from "./DropperPanel";
 import { LastHousePanel } from "./LastHousePanel";
 
 interface Game {
@@ -341,15 +343,15 @@ export function MinigamesPage() {
   const [draft, setDraft] = useState<Settings>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [showGuide, setShowGuide] = useState(false);
-  const [tab, setTab] = useState<"bd" | "parkour" | "lasthouse">(() => {
+  const [tab, setTab] = useState<"bd" | "parkour" | "dropper" | "lasthouse">(() => {
     try {
       const t = localStorage.getItem("minijuego");
-      return t === "parkour" || t === "lasthouse" ? t : "bd";
+      return t === "parkour" || t === "dropper" || t === "lasthouse" ? t : "bd";
     } catch {
       return "bd";
     }
   });
-  const pickTab = (t: "bd" | "parkour" | "lasthouse") => {
+  const pickTab = (t: "bd" | "parkour" | "dropper" | "lasthouse") => {
     setTab(t);
     try {
       localStorage.setItem("minijuego", t);
@@ -526,7 +528,7 @@ export function MinigamesPage() {
     <div className="pb-10">
       <PageHeader
         title="Minijuegos"
-        subtitle="Juegos completos para tu directo: los regalos de TikTok se convierten en hordas y jefes, o te suben y bajan por una torre de parkour."
+        subtitle="Juegos completos para tu directo: los regalos de TikTok se convierten en hordas y jefes, te suben y bajan por una torre de parkour o te empujan en un dropper."
       >
         <button className="btn" onClick={() => void refresh()}>
           <RefreshCw size={15} /> Actualizar
@@ -538,6 +540,7 @@ export function MinigamesPage() {
           [
             ["bd", "Base Defense", <Shield key="i" size={15} />],
             ["parkour", "Parkour LIVE", <Gamepad2 key="i" size={15} />],
+            ["dropper", "Dropper LIVE", <ArrowDownToLine key="i" size={15} />],
             ["lasthouse", "LAST HOUSE", <Crown key="i" size={15} />],
           ] as const
         ).map(([id, label, icon]) => (
@@ -549,7 +552,7 @@ export function MinigamesPage() {
             {icon} {label}
             {(id === "bd"
               ? g?.running
-              : id === "parkour" && (live as any)?.parkour?.game?.running) && (
+              : (id === "parkour" || id === "dropper") && (live as any)?.[id]?.game?.running) && (
               <span className="ml-1 h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
             )}
           </button>
@@ -559,6 +562,8 @@ export function MinigamesPage() {
         <LastHousePanel />
       ) : tab === "parkour" ? (
         <ParkourPanel />
+      ) : tab === "dropper" ? (
+        <DropperPanel />
       ) : (
         <div className="space-y-5 px-8">
           {/* Portada */}

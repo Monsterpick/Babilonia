@@ -46,10 +46,17 @@ function useDemo(): Game {
   return { running: true, level, levels: 50, progress: (level - 1 + 0.4) / 50, levelProgress: (t % 3) / 3, falls: 7 + Math.floor(t / 9), time: 754 + t, limit: 0, ganadas: 2, perdidas: 1, shield: t % 12 < 4, protected: false, won: false, theme: level === 14 ? 'Isla de Champiñones' : level === 25 ? 'Cuevas Frondosas' : level === 24 ? 'Cueva de Estalactitas' : level === 15 ? 'Bosque de Calabazas' : 'Monte de Piedra', color: DEMO_COLORS[level - 1]!, colors: DEMO_COLORS }
 }
 
-export function ParkourOverlay() {
-  const st = useLiveState<{ parkour?: { game: Game | null } }>('minigames')
+/** Textos de cada juego que usa este overlay (Parkour LIVE y Dropper LIVE comparten diseño). */
+const TEXTS = {
+  parkour: { title: 'TORRE PARKOUR', top: '¡CIMA!', whole: 'Torre', falls: 'CAÍDAS' },
+  dropper: { title: 'DROPPER', top: '¡VICTORIA!', whole: 'Mapa', falls: 'CHOQUES' },
+}
+
+export function ParkourOverlay({ source = 'parkour' }: { source?: 'parkour' | 'dropper' }) {
+  const st = useLiveState<Record<string, { game: Game | null } | undefined>>('minigames')
   const demo = useDemo()
-  const g: Game | null = DEMO ? demo : (st?.parkour?.game ?? null)
+  const g: Game | null = DEMO ? demo : (st?.[source]?.game ?? null)
+  const T = TEXTS[source]
   useTick(1000)
   const prev = useRef<number | null>(null)
   const [jump, setJump] = useState<{ n: number; key: number } | null>(null)
@@ -111,10 +118,10 @@ export function ParkourOverlay() {
         </div>
         {/* datos */}
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', height: tower }}>
-          <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: 3, color: '#ffd45a' }}>TORRE PARKOUR</div>
+          <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: 3, color: '#ffd45a' }}>{T.title}</div>
           <div style={{ marginTop: 6, display: 'flex', alignItems: 'baseline', gap: 6 }}>
             {top ? (
-              <span style={{ fontSize: 46, fontWeight: 900, color: '#ffd700', textShadow: '0 0 20px #ffb800' }}>¡CIMA!</span>
+              <span style={{ fontSize: 46, fontWeight: 900, color: '#ffd700', textShadow: '0 0 20px #ffb800' }}>{T.top}</span>
             ) : (
               <>
                 <span style={{ fontSize: 64, lineHeight: 1, fontWeight: 900, color: g.color, textShadow: `0 3px 0 #0008, 0 0 24px ${g.color}88`, fontVariantNumeric: 'tabular-nums' }}>{g.level}</span>
@@ -127,7 +134,7 @@ export function ParkourOverlay() {
             <div style={{ height: '100%', width: `${Math.round((top ? 1 : g.levelProgress) * 100)}%`, background: `linear-gradient(90deg, ${g.color}, #fff)`, borderRadius: 99, transition: 'width .6s' }} />
           </div>
           <div style={{ fontSize: 11, opacity: 0.6, marginTop: 4, fontWeight: 700 }}>
-            Nivel {Math.round((top ? 1 : g.levelProgress) * 100)}% · Torre {Math.round(g.progress * 100)}%
+            Nivel {Math.round((top ? 1 : g.levelProgress) * 100)}% · {T.whole} {Math.round(g.progress * 100)}%
           </div>
           <div style={{ flex: 1 }} />
           {(g.shield || g.protected) && (
@@ -138,7 +145,7 @@ export function ParkourOverlay() {
           )}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             <Box label={g.limit > 0 ? 'QUEDA' : 'TIEMPO'} value={mmss(g.limit > 0 ? g.limit - g.time : g.time)} tone={g.limit > 0 && g.limit - g.time < 60 ? '#ff5a6a' : '#fff'} />
-            <Box label="CAÍDAS" value={String(g.falls)} tone="#ffb4b4" />
+            <Box label={T.falls} value={String(g.falls)} tone="#ffb4b4" />
             <Box label="GANADAS" value={String(g.ganadas)} tone="#7cff9e" />
             <Box label="PERDIDAS" value={String(g.perdidas)} tone="#ff7a7a" />
           </div>

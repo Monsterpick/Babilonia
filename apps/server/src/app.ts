@@ -1,6 +1,6 @@
 import { CineModService } from './cine-mod.js'
 import { MinigamesService } from './minigames.js'
-import { ParkourService } from './parkour.js'
+import { DropperService, ParkourService } from './parkour.js'
 import { LastHouseService } from './lasthouse.js'
 import { TextureService } from './textures.js'
 import { TtsService } from './tts.js'
@@ -93,6 +93,7 @@ export class App {
     this.cine = new CineModService(this.cfg, this.mc, this.log, () => void this.cine.status().then((st) => this.hub.setState('cinemod', st)))
     this.minigames = new MinigamesService(this.cfg, this.mc, this.log, () => this.engine.totalRoomLikes, () => void this.minigames.status().then((st) => this.hub.setState('minigames', st)))
     this.minigames.parkour = new ParkourService(this.cfg, this.mc, this.log, () => void this.minigames.status().then((st) => this.hub.setState('minigames', st)))
+    this.minigames.dropper = new DropperService(this.cfg, this.mc, this.log, () => void this.minigames.status().then((st) => this.hub.setState('minigames', st)))
     this.textures = new TextureService(this.log)
     this.textures.on('status', (s) => this.hub.setState('textures', s))
     this.mc.on('serverLog', (line: string) => this.hub.log({ level: 'info', scope: 'consola', msg: line, ts: Date.now() }))

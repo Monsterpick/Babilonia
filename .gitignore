@@ -26,3 +26,6 @@ minigames/base-defense/run/
 minigames/parkour/build/
 minigames/parkour/.gradle/
 minigames/parkour/run/
+minigames/dropper/build/
+minigames/dropper/.gradle/
+minigames/dropper/run/

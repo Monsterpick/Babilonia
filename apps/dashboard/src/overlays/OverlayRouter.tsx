@@ -73,6 +73,8 @@ export function OverlayRouter({ name }: { name: string }) {
         return <SceneView id={params.get('s') ?? undefined} />
       case 'parkour':
         return <ParkourOverlay />
+      case 'dropper':
+        return <ParkourOverlay source="dropper" />
       case 'lasthouse':
         return <LastHouseOverlay />
       case 'lasthouse-regalos':

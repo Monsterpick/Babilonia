@@ -464,3 +464,58 @@ export function parkourProfile(): Profile {
 export function lastHouseProfile(): Profile {
   return ProfileSchema.parse({ id: 'lasthouse', name: 'LAST HOUSE', mode: 'lasthouse', actions: [], events: [] })
 }
+
+/**
+ * Perfil del minijuego Dropper LIVE: los regalos le saltan niveles al streamer, le devuelven arriba, le empujan
+ * durante la caída o le ayudan (caída lenta, escudo, marcar huecos). /ttdr <efecto> [n] {user}.
+ */
+export function dropperProfile(): Profile {
+  const fn = (id: string, name: string, color: string, commands: string[], alignment: 'good' | 'bad' = 'bad'): ActionInput => ({
+    id,
+    name,
+    color,
+    alignment,
+    steps: [{ type: 'minecraft.command' as const, commands, mode: 'all' as const }],
+  })
+  const gift = (id: string, name: string, diamonds: number, action: string) => ({ id, trigger: { type: 'gift' as const, gifts: [{ name, diamonds }] }, actionIds: [action] })
+  return ProfileSchema.parse({
+    id: 'dropper',
+    name: 'Dropper LIVE',
+    mode: 'parkour',
+    actions: [
+      fn('dr-empujar', 'EMPUJAR', '#f59e0b', ['ttdr empujar {user}']),
+      fn('dr-viento', 'VIENTO', '#38bdf8', ['ttdr viento {user}']),
+      fn('dr-niebla', 'APAGAR LUCES', '#334155', ['ttdr niebla {user}']),
+      fn('dr-acelerar', 'ACELERAR CAÍDA', '#ef4444', ['ttdr acelerar {user}']),
+      fn('dr-terremoto', 'TERREMOTO', '#a16207', ['ttdr terremoto {user}']),
+      fn('dr-reiniciar', 'VOLVER ARRIBA', '#b91c1c', ['ttdr reiniciar {user}']),
+      fn('dr-bajar1', 'ATRÁS 1 NIVEL', '#dc2626', ['ttdr bajar 1 {user}']),
+      fn('dr-bajar5', 'ATRÁS 5 NIVELES', '#991b1b', ['ttdr bajar 5 {user}']),
+      fn('dr-subir1', 'SALTAR 1 NIVEL', '#22c55e', ['ttdr subir 1 {user}'], 'good'),
+      fn('dr-subir5', 'SALTAR 5 NIVELES', '#16a34a', ['ttdr subir 5 {user}'], 'good'),
+      fn('dr-lento', 'CAÍDA LENTA', '#6366f1', ['ttdr lento {user}'], 'good'),
+      fn('dr-escudo', 'ESCUDO ANTICHOQUE', '#f472b6', ['ttdr escudo {user}'], 'good'),
+      fn('dr-guia', 'MARCAR HUECOS', '#facc15', ['ttdr guia {user}'], 'good'),
+    ],
+    events: [
+      gift('dr-ev-rose', 'Rose', 1, 'dr-empujar'),
+      gift('dr-ev-tiktok', 'TikTok', 1, 'dr-empujar'),
+      gift('dr-ev-gg', 'GG', 1, 'dr-viento'),
+      gift('dr-ev-heartme', 'Heart Me', 1, 'dr-guia'),
+      gift('dr-ev-finger', 'Finger Heart', 5, 'dr-lento'),
+      gift('dr-ev-perfume', 'Perfume', 20, 'dr-reiniciar'),
+      gift('dr-ev-donut', 'Doughnut', 30, 'dr-niebla'),
+      gift('dr-ev-cap', 'Cap', 99, 'dr-escudo'),
+      gift('dr-ev-hearts', 'Hand Hearts', 100, 'dr-terremoto'),
+      gift('dr-ev-confetti', 'Confetti', 100, 'dr-acelerar'),
+      gift('dr-ev-sunglasses', 'Sunglasses', 199, 'dr-subir1'),
+      gift('dr-ev-corgi', 'Corgi', 299, 'dr-bajar1'),
+      gift('dr-ev-moneygun', 'Money Gun', 500, 'dr-subir5'),
+      gift('dr-ev-galaxy', 'Galaxy', 1000, 'dr-bajar5'),
+      { id: 'dr-ev-likes', trigger: { type: 'likes', every: 200 }, actionIds: ['dr-empujar'] },
+      { id: 'dr-ev-follow', trigger: { type: 'follow', oncePerUser: true }, actionIds: ['dr-guia'] },
+      { id: 'dr-ev-share', trigger: { type: 'share' }, actionIds: ['dr-lento'], cooldown: { perUserMs: 60000 } },
+    ],
+    notes: 'Ayudas: saltar niveles, caída lenta, escudo antichoque y marcar huecos. Sabotajes: empujar, viento, apagar luces, acelerar, terremoto, volver arriba y atrás niveles.',
+  })
+}

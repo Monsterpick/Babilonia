@@ -47,3 +47,17 @@ describe('parkour', () => {
     expect(p.events.length).toBeGreaterThan(10)
   })
 })
+
+describe('Dropper LIVE: estado', () => {
+  it('lee la línea DRSTATUS con el mismo formato', async () => {
+    const { parsePkStatus } = await import('../src/parkour.js')
+    const g = parsePkStatus('DRSTATUS running=1 built=7 building=0 level=4 levels=100 progress=0.030 levelProgress=0.500 falls=3 levelFalls=1 time=19 limit=0 ganadas=2 perdidas=1 queue=0 shield=1 protected=0 won=0 theme=Prados_en_Flor color=A5E86A streamer=Streamer colors=7CD957,E8D27A', 'DRSTATUS')
+    expect(g?.level).toBe(4)
+    expect(g?.levels).toBe(100)
+    expect(g?.falls).toBe(3)
+    expect(g?.shield).toBe(true)
+    expect(g?.theme).toBe('Prados en Flor')
+    expect(g?.colors).toEqual(['#7CD957', '#E8D27A'])
+    expect(parsePkStatus('PKSTATUS running=1', 'DRSTATUS')).toBeNull()
+  })
+})

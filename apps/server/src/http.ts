@@ -15,7 +15,7 @@ import { SceneSchema } from '@livearena/shared'
 import { ASSETS_DIR, DASHBOARD_DIST } from './resources.js'
 import { SimRequestSchema, Simulator } from './simulator.js'
 import { VERSION, type App } from './app.js'
-import { baseDefenseProfile, lastHouseProfile, parkourProfile } from './default-profiles.js'
+import { baseDefenseProfile, dropperProfile, lastHouseProfile, parkourProfile } from './default-profiles.js'
 import { LastHouseResultSchema, LastHouseSettingsSchema } from './lasthouse.js'
 
 
@@ -448,6 +448,7 @@ export async function buildHttp(app: App): Promise<FastifyInstance> {
     if (/^bd start\b/.test(command.trim())) {
       // un solo minijuego a la vez
       if (app.minigames.parkour?.running) await app.mc.link.enqueue('pk stop', 900).catch(() => '')
+      if (app.minigames.dropper?.running) await app.mc.link.enqueue('dr stop', 900).catch(() => '')
       const bd = app.profiles.get('base-defense') ?? (await app.profiles.save(baseDefenseProfile(), false))
       if (app.activeProfile.id !== bd.id) {
         app.minigames.previousProfile = app.activeProfile.id
@@ -483,6 +484,7 @@ export async function buildHttp(app: App): Promise<FastifyInstance> {
     if (/^pk start\b/.test(c)) {
       const bdGame = (await app.minigames.status()).baseDefense.game
       if (bdGame?.running) await app.mc.link.enqueue('bd stop', 900).catch(() => '')
+      if (app.minigames.dropper?.running) await app.mc.link.enqueue('dr stop', 900).catch(() => '')
     }
     const response = await pk().command(command)
     if (/^pk start\b/.test(c)) {
@@ -506,6 +508,45 @@ export async function buildHttp(app: App): Promise<FastifyInstance> {
   })
   f.post('/api/minigames/parkour/profile', async () => {
     const p = app.profiles.get('parkour') ?? (await app.profiles.save(parkourProfile(), false))
+    app.setProfile(p)
+    return { id: p.id, name: p.name }
+  })
+  /* ---------------- minijuegos (Dropper LIVE) ---------------- */
+  const dr = () => {
+    if (!app.minigames.dropper) throw new HttpError(503, 'Dropper no disponible')
+    return app.minigames.dropper
+  }
+  f.post('/api/minigames/dropper/install', async () => dr().install())
+  f.post('/api/minigames/dropper/command', async (req) => {
+    const { command } = parse(z.object({ command: z.string().min(1).max(120) }), req.body)
+    const c = command.trim()
+    // un solo minijuego a la vez
+    if (/^dr start\b/.test(c)) {
+      const bdGame = (await app.minigames.status()).baseDefense.game
+      if (bdGame?.running) await app.mc.link.enqueue('bd stop', 900).catch(() => '')
+      if (app.minigames.parkour?.running) await app.mc.link.enqueue('pk stop', 900).catch(() => '')
+    }
+    const response = await dr().command(command)
+    if (/^dr start\b/.test(c)) {
+      const p = app.profiles.get('dropper') ?? (await app.profiles.save(dropperProfile(), false))
+      if (app.activeProfile.id !== p.id) {
+        if (!['base-defense', 'parkour'].includes(app.activeProfile.id)) dr().previousProfile = app.activeProfile.id
+        app.setProfile(p)
+      }
+    } else if (/^dr stop\b/.test(c) && dr().previousProfile) {
+      const prev = app.profiles.get(dr().previousProfile!)
+      dr().previousProfile = null
+      if (prev) app.setProfile(prev)
+    }
+    return { response }
+  })
+  f.get('/api/minigames/dropper/settings', async () => dr().getSettings())
+  f.put('/api/minigames/dropper/settings', async (req) => {
+    const values = parse(z.record(z.union([z.string().max(120), z.number()])), req.body)
+    return dr().saveSettings(values)
+  })
+  f.post('/api/minigames/dropper/profile', async () => {
+    const p = app.profiles.get('dropper') ?? (await app.profiles.save(dropperProfile(), false))
     app.setProfile(p)
     return { id: p.id, name: p.name }
   })

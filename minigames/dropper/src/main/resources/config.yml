@@ -1,0 +1,58 @@
+# ─────────────────────────────────────────────────────────────
+#  Dropper LIVE · 100 niveles de caída para TikTok LIVE
+#  Caes por un tubo y tienes que llegar al agua sin tocar ningún bloque.
+#  Todo se puede cambiar aquí o desde la app (Minijuegos → Dropper).
+#  Tras editar a mano: /dr reload
+# ─────────────────────────────────────────────────────────────
+version: 1
+
+mundo:
+  nombre: dropper_mundo
+
+mapa:
+  semilla: 2026
+  niveles: 100           # 5–100
+  dificultad: 1.0        # 0.5 = huecos grandes y pocos obstáculos, 1.5 = huecos pequeños y muchos
+
+partida:
+  # Minutos para terminar los niveles (0 = sin límite). Si se acaba el tiempo cuenta como perdida.
+  tiempoLimite: 0
+  # Al pasar el último nivel: suma una victoria y vuelve al nivel 1 tras unos segundos.
+  reiniciarAlGanar: true
+  segundosCelebracion: 10
+  # Cuenta atrás (segundos) con el suelo de cristal antes de cada caída.
+  cuentaAtras: 2
+
+# Efectos que mandan los espectadores (cola: uno detrás de otro para que se entiendan).
+efectos:
+  separacionSegundos: 1.5
+  empujeFuerza: 0.9
+  vientoSegundos: 5
+  vientoFuerza: 0.07
+  nieblaSegundos: 6
+  lentoSegundos: 5
+  terremotoSegundos: 4
+  escudoSegundos: 30
+  guiaSegundos: 15
+  # Protección: tras X choques seguidos en el mismo nivel, unos segundos sin sabotajes.
+  choquesParaProteger: 5
+  segundosProteccion: 15
+
+paquete:
+  activo: true
+  obligatorio: false
+  puerto: 25592
+  url: "http://127.0.0.1:{puerto}/dropper.zip"
+
+mensajes:
+  subir: "&a⬇ {usuario} &fte salta &a{n} nivel{s}"
+  bajar: "&c⬆ {usuario} &fte devuelve &c{n} nivel{s}"
+  reiniciar: "&c↺ {usuario} &fte manda arriba"
+  empujar: "&e➹ {usuario} &fte empuja"
+  viento: "&b〰 {usuario} &fmanda viento"
+  niebla: "&8☁ {usuario} &fapaga las luces"
+  lento: "&9🪶 {usuario} &fte da caída lenta"
+  acelerar: "&c⇩ {usuario} &fte acelera la caída"
+  terremoto: "&6☄ {usuario} &fsacude el tubo"
+  escudo: "&d🛡 {usuario} &fte protege de un choque"
+  guia: "&e✦ {usuario} &fte marca los huecos"

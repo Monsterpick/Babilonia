@@ -1,0 +1,14 @@
+name: DropperLive
+version: '${version}'
+main: dev.livearena.dropper.DropperLive
+api-version: '26.1.2'
+load: POSTWORLD
+description: Dropper de 100 niveles para TikTok LIVE (cae por el tubo hasta el agua sin tocar nada).
+authors: [LiveArena]
+permissions:
+  dropperlive.admin:
+    description: /dr (iniciar, mapa, ajustes, pruebas)
+    default: op
+  dropperlive.tiktok:
+    description: Comando /ttdr que envía la app de TikTok (la consola y RCON siempre pueden)
+    default: false

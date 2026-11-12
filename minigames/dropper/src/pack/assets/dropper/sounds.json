@@ -1,0 +1,128 @@
+{
+ "checkpoint": {
+  "sounds": [
+   {
+    "name": "dropper:checkpoint"
+   }
+  ]
+ },
+ "nivel": {
+  "sounds": [
+   {
+    "name": "dropper:nivel"
+   }
+  ]
+ },
+ "subir": {
+  "sounds": [
+   {
+    "name": "dropper:subir"
+   }
+  ]
+ },
+ "llegada": {
+  "sounds": [
+   {
+    "name": "dropper:llegada"
+   }
+  ]
+ },
+ "bajar": {
+  "sounds": [
+   {
+    "name": "dropper:bajar"
+   }
+  ]
+ },
+ "impacto": {
+  "sounds": [
+   {
+    "name": "dropper:impacto"
+   }
+  ]
+ },
+ "empujon": {
+  "sounds": [
+   {
+    "name": "dropper:empujon"
+   }
+  ]
+ },
+ "viento": {
+  "sounds": [
+   {
+    "name": "dropper:viento"
+   }
+  ]
+ },
+ "niebla": {
+  "sounds": [
+   {
+    "name": "dropper:niebla"
+   }
+  ]
+ },
+ "hielo": {
+  "sounds": [
+   {
+    "name": "dropper:hielo"
+   }
+  ]
+ },
+ "fantasma": {
+  "sounds": [
+   {
+    "name": "dropper:fantasma"
+   }
+  ]
+ },
+ "terremoto": {
+  "sounds": [
+   {
+    "name": "dropper:terremoto"
+   }
+  ]
+ },
+ "lento": {
+  "sounds": [
+   {
+    "name": "dropper:lento"
+   }
+  ]
+ },
+ "ayuda": {
+  "sounds": [
+   {
+    "name": "dropper:ayuda"
+   }
+  ]
+ },
+ "escudo": {
+  "sounds": [
+   {
+    "name": "dropper:escudo"
+   }
+  ]
+ },
+ "caida": {
+  "sounds": [
+   {
+    "name": "dropper:caida"
+   }
+  ]
+ },
+ "cima": {
+  "sounds": [
+   {
+    "name": "dropper:cima"
+   }
+  ]
+ },
+ "perder": {
+  "sounds": [
+   {
+    "name": "dropper:perder"
+   }
+  ]
+ }
+}
