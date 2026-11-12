@@ -234,9 +234,13 @@ final class CineEngine implements Listener, TabExecutor {
             return new CineNet.Shot();
         }
 
+        /** Tick en que se mandó el plano actual (para resincronizar la cámara del cliente). */
+        int shotAt = -1;
+
         void cam(CineNet.Shot s) {
             if (!cameraOn) return;
             net.send(target, s.encode());
+            shotAt = t;
         }
 
         /** Sacudida para el jugador cinemático y, más suave, para los que estén cerca. */
@@ -477,6 +481,11 @@ final class CineEngine implements Listener, TabExecutor {
 
     static {
         String[][] s = {
+            {"ignea.inicio", "livearena:sfx.aura|item.firecharge.use,block.fire.ambient"}, {"ignea.columna", "item.firecharge.use,block.fire.extinguish"},
+            {"ignea.meteoro", "livearena:sfx.whoosh|entity.blaze.shoot"}, {"ignea.impacto", "entity.generic.explode,entity.blaze.hurt"},
+            {"ignea.sol", "livearena:sfx.rugido_esfera|block.respawn_anchor.charge,block.fire.ambient"}, {"ignea.carga", "livearena:sfx.energia_carga|block.beacon.power_select"},
+            {"ignea.compresion", "livearena:sfx.destello|block.respawn_anchor.deplete"}, {"ignea.caida", "livearena:sfx.whoosh|entity.ghast.shoot"},
+            {"ignea.explosion", "livearena:sfx.explosion_grave,livearena:sfx.onda_choque|entity.generic.explode,entity.dragon_fireball.explode,entity.lightning_bolt.thunder"},
             {"escudo.activar", "block.beacon.activate"}, {"escudo.impacto", "block.amethyst_block.hit"}, {"escudo.romper", "block.glass.break"},
             {"onda.carga", "block.beacon.power_select"}, {"onda.liberar", "entity.warden.sonic_boom"},
             {"corona.aparecer", "item.trident.return,block.amethyst_block.chime"}, {"corona.disparo", "item.trident.throw,entity.arrow.shoot"},
@@ -676,6 +685,10 @@ final class CineEngine implements Listener, TabExecutor {
         }
         c.t++;
         if (c.cameraOn && c.t % 40 == 0) net.send(c.target, CineNet.keepAlive());
+        // La cámara del cliente va a su ritmo: si el servidor o el cliente dan un tirón, el plano se adelanta o se
+        // retrasa respecto a lo que pasa (p. ej. el rayo del satélite aún no ha salido). Cada 2 ticks se le recuerda
+        // cuánto lleva el plano en el servidor y lo corrige.
+        if (c.cameraOn && c.shotAt >= 0 && c.t % 2 == 0) net.send(c.target, CineNet.sync(c.t - c.shotAt));
         // Fin de la fase cinemática: se devuelve la cámara y la habilidad puede seguir (efecto persistente).
         if (c.t == c.ab.duracionCamara && running.get(c.target.getUniqueId()) == c) {
             endCamera(c);

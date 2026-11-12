@@ -119,6 +119,9 @@ final class CineEspeciales {
 
     /* ===================================== SANGRE PERFORANTE ===================================== */
 
+    /** Tick del disparo, adelanto de la voz (la flecha sale al decir «¡…Perforante!») y pausa antes del empujón final. */
+    private static final int FIRE = 100, VOICE_LEAD = 20, PUSH_DELAY = 8;
+
     private void sangrePerforante() {
         e.register(new CineEngine.Ability("sangre_perforante", "SANGRE PERFORANTE", "#c0101c", 320, 320,
                 "Un hechicero de sangre surge del suelo, comprime su sangre entre las manos y dispara un haz perforante que atraviesa al objetivo y todo lo que hay detrás") {
@@ -148,10 +151,10 @@ final class CineEspeciales {
                 // 71–92: 3/4 de las manos y la cara: la flecha de sangre toma forma entre las palmas.
                 Location hands = hands(at, yaw, 0.7);
                 s.key(71, at.clone().add(face.clone().multiply(2.4)).add(lat.clone().multiply(1.5)).add(0, 1.35, 0), hands.clone().add(0, 0.12, 0), 50, CUT);
-                s.key(92, at.clone().add(face.clone().multiply(1.9)).add(lat.clone().multiply(1.1)).add(0, 1.4, 0), hands.clone().add(0, 0.15, 0), 44, EASE_IN_OUT);
-                // 93–102: plano detalle de los ojos con el fogonazo rojo (justo antes del disparo).
-                s.key(93, eyes.clone().add(face.clone().multiply(1.45)).add(0, -0.05, 0), eyes.clone().add(0, -0.08, 0), 38, CUT);
-                s.key(102, eyes.clone().add(face.clone().multiply(1.25)).add(0, -0.05, 0), eyes.clone().add(0, -0.08, 0), 34, LINEAR);
+                s.key(81, at.clone().add(face.clone().multiply(1.9)).add(lat.clone().multiply(1.1)).add(0, 1.4, 0), hands.clone().add(0, 0.15, 0), 44, EASE_IN_OUT);
+                // 82–99: grita «¡Sangre Perforante!» en primer plano (ojos con el fogonazo rojo); dispara en «¡…Perforante!».
+                s.key(82, eyes.clone().add(face.clone().multiply(1.6)).add(0, -0.12, 0), eyes.clone().add(0, -0.12, 0), 42, CUT);
+                s.key(99, eyes.clone().add(face.clone().multiply(1.3)).add(0, -0.08, 0), eyes.clone().add(0, -0.08, 0), 36, LINEAR);
                 c.cam(s);
             }
 
@@ -171,7 +174,7 @@ final class CineEspeciales {
                 Location at = get(c, "at");
                 float yaw = (float) c.data.get("yaw");
                 boolean plain = !CineNet.hasMod(c.target);
-                if (t < 104) c.target.setVelocity(new Vector(0, Math.min(0, c.target.getVelocity().getY()), 0));
+                if (t < FIRE + 1) c.target.setVelocity(new Vector(0, Math.min(0, c.target.getVelocity().getY()), 0));
                 if (t == 24) {
                     c.data.put("aura", k.vfx(c, at, CineCharacters.FX_AURA, 2.3f, "ffb0101c"));
                     c.sound(at, "aura.vibrar", 1.5f, 0.8f);
@@ -191,11 +194,11 @@ final class CineEspeciales {
                     c.attach(ojos, ch, "ojos", 0, 0, 0);
                     c.data.put("ojos", ojos);
                 }
-                if (t == 58 || t == 94) {
+                if (t == 58 || t == FIRE - 6) {
                     c.anim(get(c, "ojos"), "destello");
                     c.sound(at, "choso.destello", 1.4f, t == 58 ? 1.2f : 1.5f);
                     c.shake(t == 58 ? 0.25 : 0.45, 6, 0.85);
-                    if (t == 94) c.screenFx(CineNet.SPEEDLINES, 0xff2a0006, 0, 9, 4);
+                    if (t > 58) c.screenFx(CineNet.SPEEDLINES, 0xff2a0006, 0, 9, 4);
                 }
                 if (t == 52) c.anim(ch, "cargar");
                 if (t == 60) {
@@ -212,19 +215,19 @@ final class CineEspeciales {
                 }
                 if (plain && t > 60 && t < 104 && t % 2 == 0)
                     CineFx.part(c.w, Particle.DUST, hands(at, yaw, 0.7), 6, 0.25, 0.25, 0.25, 0, CineFx.dust(0x8a0010, 1.2f));
-                if (t >= 80 && t < 100 && t % 4 == 0) {
+                if (t >= 76 && t < FIRE && t % 4 == 0) {
                     // Compresión: la sangre late y tiembla todo.
                     c.shake(0.2 + (t - 80) / 20.0 * 0.4, 5, 0.9);
                     if (t % 8 == 0) c.sound(at, "choso.compresion", 1.2f, 0.9f + (t - 80) / 30f);
                 }
-                if (t == 72) {
-                    // Voz (1,6 s): la frase «¡Sangre Perforante!» termina justo en el disparo (tick 103). El subtítulo sale
-                    // con la voz y la flecha cuando la frase acaba; el destello rojo y el daño solo llegan con el impacto.
+                if (t == FIRE - VOICE_LEAD) {
+                    // Voz (1,6 s): la flecha sale en mitad de la frase, al gritar «¡…Perforante!» (1 s después de empezar),
+                    // con el subtítulo en pantalla. Antes salía al terminarla y parecía que la frase no hacía nada.
                     c.data.put("voiced", c.voice("choso"));
-                    c.say("choso_perforante", "¡Sangre Perforante!", 0xff2a3a, 40);
+                    c.say("choso_perforante", "¡Sangre Perforante!", 0xff2a3a, 44);
                 }
-                if (t == 101) c.anim(ch, "perforar");
-                if (t == 103) {
+                if (t == FIRE - 2) c.anim(ch, "perforar");
+                if (t == FIRE) {
                     fire(c, at, yaw);
                     c.screenFx(CineNet.SPEEDLINES, 0xff000000, 0, 12, 6);
                     c.shake(0.4, 6, 0.85);
@@ -238,7 +241,7 @@ final class CineEspeciales {
                     int hold = holdTicks(c);
                     Location impAt = get(c, "impAt");
                     boolean pinned = Boolean.TRUE.equals(c.data.get("pinned"));
-                    if (since < hold && pinned) {
+                    if (since < hold + PUSH_DELAY && pinned) {
                         // Clavado por la flecha: no se mueve y la sangre gotea por el haz.
                         c.target.setVelocity(new Vector(0, Math.min(0, c.target.getVelocity().getY()), 0));
                         if (since % 3 == 0) CineFx.part(c.w, Particle.DUST, impAt, 8, 0.15, 0.25, 0.15, 0, CineFx.dust(0x8a0010, 1.3f));
@@ -258,7 +261,9 @@ final class CineEspeciales {
                         c.shake(0.3, 10, 0.9);
                     }
                     if (since == hold) release(c, t);
-                    if (since == hold + 30) {
+                    // El empujón llega cuando el haz ya ha salido por la espalda (se ve primero la sangre y luego el golpe).
+                    if (since == hold + PUSH_DELAY) push(c);
+                    if (since == hold + 30 + PUSH_DELAY) {
                         c.anim(ch, "pose_final");
                         Vector face = forward(yaw);
                         CineNet.Shot s = c.shot();
@@ -266,9 +271,9 @@ final class CineEspeciales {
                         s.key(50, at.clone().add(face.clone().multiply(2.6)).add(0, 1.65, 0), at.clone().add(0, 1.5, 0), 52, LINEAR);
                         c.cam(s);
                     }
-                    if (since == hold + 54) k.vanish(c, CHOSO, ch, 0xc0101c, 28, (Entity) get(c, "aura"), (Entity) get(c, "ojos"));
-                    if (since == hold + 66) c.skyReset();
-                    if (since >= hold + 88) e.finish(c, false);
+                    if (since == hold + 54 + PUSH_DELAY) k.vanish(c, CHOSO, ch, 0xc0101c, 28, (Entity) get(c, "aura"), (Entity) get(c, "ojos"));
+                    if (since == hold + 66 + PUSH_DELAY) c.skyReset();
+                    if (since >= hold + 88 + PUSH_DELAY) e.finish(c, false);
                 }
             }
 
@@ -323,12 +328,6 @@ final class CineEspeciales {
                 Location p = get(c, "impAt");
                 Vector dir = get(c, "dir");
                 if (p == null || dir == null) return;
-                boolean pinned = Boolean.TRUE.equals(c.data.get("pinned"));
-                if (pinned) {
-                    double push = c.cfg("empuje", 2.8);
-                    c.target.setVelocity(dir.clone().setY(0).normalize().multiply(push).setY(0.45));
-                    c.target.setFallDistance(0);
-                }
                 Location end = p.clone().add(dir.clone().multiply(c.cfg("distanciaDestruccion", 28.0)));
                 ItemDisplay through = axis(c, p, end, "fx_perforante", (float) c.cfg("grosor", 0.22) * 0.8f, null, "disparar");
                 setAxis(through, p, end, (float) c.cfg("grosor", 0.22) * 0.8f, (float) (2.4 * 20 / 100.0), 0);
@@ -358,12 +357,33 @@ final class CineEspeciales {
                         world.flyVisual(b.getLocation().add(0.5, 0.5, 0.5), b.getBlockData(), CineWorld.Path.LAUNCH, null, dir.clone().multiply(0.8).add(new Vector(0, 0.35, 0)), 30, 0);
                     }
                 }
-                // Cámara: tras el objetivo que sale despedido, de lado.
-                Vector lat = dir.clone().setY(0).normalize().crossProduct(new Vector(0, 1, 0)).normalize().multiply(6.5);
-                CineNet.Shot s = c.shot().followPos(c.target.getEntityId()).followLook(c.target.getEntityId());
-                Location off = lat.add(new Vector(0, 1.2, 0)).add(dir.clone().multiply(-1.5)).toLocation(c.w);
-                s.key(0, off, off, 66, CUT);
-                s.key(30, off.clone().add(dir.clone().multiply(-2)), off, 72, EASE_OUT_EXPO);
+                // Cámara fija de perfil: se ve al haz salir por la espalda del objetivo antes del empujón.
+                Vector lat = dir.clone().setY(0).normalize().crossProduct(new Vector(0, 1, 0)).normalize();
+                CineNet.Shot s = c.shot();
+                Location side = p.clone().add(lat.clone().multiply(5.5)).add(dir.clone().multiply(2.5)).add(0, 0.6, 0);
+                s.key(0, side, p.clone().add(dir.clone().multiply(2.5)), 70, CUT);
+                s.key(PUSH_DELAY, side.clone().add(dir.clone().multiply(0.6)), p.clone().add(dir.clone().multiply(4)), 66, LINEAR);
+                c.cam(s);
+            }
+
+            /** Tras ver salir el haz: el objetivo sale despedido y la cámara le sigue de lado. */
+            void push(CineEngine.Ctx c) {
+                Vector dir = get(c, "dir");
+                if (dir == null) return;
+                if (Boolean.TRUE.equals(c.data.get("pinned"))) {
+                    c.target.setVelocity(dir.clone().setY(0).normalize().multiply(c.cfg("empuje", 2.8)).setY(0.45));
+                    c.target.setFallDistance(0);
+                }
+                c.shake(0.9, 10, 0.88);
+                // Cámara fija y abierta de perfil que gira la vista siguiendo al objetivo por el aire (antes iba pegada a él
+                // y acababa dentro de su cuerpo o de una pared).
+                Location p = get(c, "impAt");
+                Vector lat = dir.clone().setY(0).normalize().crossProduct(new Vector(0, 1, 0)).normalize();
+                Vector flat = dir.clone().setY(0).normalize();
+                CineNet.Shot s = c.shot().followLook(c.target.getEntityId());
+                Location cam = p.clone().add(lat.clone().multiply(11)).add(flat.clone().multiply(6)).add(0, 2.5, 0);
+                s.key(0, cam, p, 70, CUT);
+                s.key(30, cam.clone().add(flat.clone().multiply(3)).add(0, 0.8, 0), p, 64, EASE_OUT_EXPO);
                 c.cam(s);
             }
 
@@ -406,7 +426,8 @@ final class CineEspeciales {
                 piercing(c, c.target, c.cfg("danio", 30.0), c.cfg("perforacion", 0.6));
                 int lvl = Math.max(1, c.cfgI("witherNivel", 2));
                 c.target.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, c.cfgI("witherSegundos", 4) * 20, lvl - 1, false, true));
-                c.target.setVelocity(dir.clone().setY(0).normalize().multiply(0.25).setY(0.05));
+                // Clavado en el sitio: nada de empujón al impactar (el empujón llega al final, tras el haz).
+                c.target.setVelocity(new Vector(0, 0, 0));
                 c.target.setFallDistance(0);
                 k.once(c, p, CineCharacters.FX_ONDA, 7, "ffff2030", 26);
                 CineFx.part(c.w, Particle.DUST, p, 50, 0.6, 0.6, 0.6, 0, CineFx.dust(0x8a0010, 1.8f));

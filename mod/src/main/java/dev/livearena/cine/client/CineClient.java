@@ -92,6 +92,8 @@ public final class CineClient {
         NeoForge.EVENT_BUS.addListener(CineClient::movement);
         NeoForge.EVENT_BUS.addListener(CineClient::interact);
         NeoForge.EVENT_BUS.addListener(CineClient::logout);
+        NeoForge.EVENT_BUS.addListener(CineClient::login);
+        NeoForge.EVENT_BUS.addListener(CineClient::screenEffect);
         NeoForge.EVENT_BUS.addListener(CineClient::hideHud);
         NeoForge.EVENT_BUS.addListener(CineClient::hideHand);
         CineModels.init(modBus);
@@ -124,6 +126,10 @@ public final class CineClient {
                     shotStart = ticks;
                     clipDist = -1;
                     if (!keys.isEmpty()) begin();
+                }
+                case 14 -> { // SYNC: el plano lleva `el` ticks en el servidor
+                    long want = ticks - in.readInt();
+                    if (active && Math.abs(want - shotStart) >= 2) shotStart = want;
                 }
                 case 2 -> end(); // END
                 case 3 -> { // SHAKE
@@ -187,6 +193,11 @@ public final class CineClient {
         if (active && !LAYER.equals(e.getName())) e.setCanceled(true);
     }
 
+    /** Fuego, agua o bloque «en la cara»: no se dibujan con la cámara de cine (taparían el plano). */
+    private static void screenEffect(net.neoforged.neoforge.client.event.RenderBlockScreenEffectEvent e) {
+        if (active) e.setCanceled(true);
+    }
+
     private static void hideHand(RenderHandEvent e) {
         if (active) e.setCanceled(true);
     }
@@ -211,10 +222,30 @@ public final class CineClient {
 
     /* ----------------------------------- eventos ----------------------------------- */
 
+    /** Último tiempo de mundo visto: el reloj de la cinemática sigue al del servidor (ver tick). */
+    private static long lastGameTime = -1;
+    /** Texturas grandes que faltan por precargar (una por tick tras entrar al servidor). */
+    private static final java.util.ArrayDeque<Identifier> preload = new java.util.ArrayDeque<>();
+
     private static void tick(ClientTickEvent.Post e) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.isPaused()) return;
-        ticks++;
+        // Reloj sincronizado con el servidor: si el cliente se congela un momento (p. ej. al cargar una textura
+        // enorme) pierde ticks y la cámara se quedaba retrasada respecto a lo que pasa en el mundo. El tiempo del
+        // mundo lo corrige el servidor cada segundo: avanzamos lo mismo que él (y nunca hacia atrás).
+        long gt = mc.level != null ? mc.level.getGameTime() : -1;
+        if (gt >= 0 && lastGameTime >= 0) {
+            long d = gt - lastGameTime;
+            ticks += d >= 1 && d <= 60 ? d : d > 60 ? 1 : 0;
+        } else ticks++;
+        lastGameTime = gt;
+        if (!preload.isEmpty() && mc.level != null) {
+            Identifier id = preload.poll();
+            try {
+                mc.getTextureManager().getTexture(id);
+            } catch (RuntimeException ignored) {
+            }
+        }
         // Salvavidas: sin noticias del servidor en 10 s → se devuelve todo.
         if (active && ticks - lastPacket > 200) end();
         if (skyUntil > 0 && ticks > skyUntil) skyMode = 0;
@@ -229,6 +260,21 @@ public final class CineClient {
 
     private static void logout(ClientPlayerNetworkEvent.LoggingOut e) {
         resetAll();
+        lastGameTime = -1;
+    }
+
+    /**
+     * Al entrar al servidor se cargan ya las texturas de las cinemáticas (la Tierra pesa 13 MB): si se cargaban la
+     * primera vez que salían en pantalla, el juego se congelaba y la animación se veía mal solo esa vez.
+     */
+    private static void login(ClientPlayerNetworkEvent.LoggingIn e) {
+        lastGameTime = -1;
+        preload.clear();
+        var rm = Minecraft.getInstance().getResourceManager();
+        for (String dir : new String[] {"textures/espacio", "textures/fx", "textures/entity"})
+            rm.listResources(dir, id -> id.getPath().endsWith(".png")).keySet().stream()
+                    .filter(id -> LiveArenaMod.ID.equals(id.getNamespace()))
+                    .forEach(preload::add);
     }
 
     private static void movement(MovementInputUpdateEvent e) {

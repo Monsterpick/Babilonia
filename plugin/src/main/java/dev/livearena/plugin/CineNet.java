@@ -16,7 +16,7 @@ import org.bukkit.entity.Player;
 final class CineNet {
     static final String CHANNEL = "livearena:cine";
 
-    static final byte SHOT = 1, END = 2, SHAKE = 3, SCREEN = 4, SKY = 5, KEEPALIVE = 6, CAPTION = 7, MODEL = 8, MODEL_ANIM = 9, MODEL_REMOVE = 10, MODEL_ATTACH = 11, SUBTITLE = 12, SOUND = 13;
+    static final byte SHOT = 1, END = 2, SHAKE = 3, SCREEN = 4, SKY = 5, KEEPALIVE = 6, CAPTION = 7, MODEL = 8, MODEL_ANIM = 9, MODEL_REMOVE = 10, MODEL_ATTACH = 11, SUBTITLE = 12, SOUND = 13, SYNC = 14;
 
     /** Curvas de interpolación de la cámara (mismos valores en el mod). */
     static final byte LINEAR = 0, EASE_IN_OUT = 1, EASE_IN_EXPO = 2, EASE_OUT_EXPO = 3, CUT = 4;
@@ -147,6 +147,11 @@ final class CineNet {
 
     static byte[] end() {
         return new Msg(END).bytes();
+    }
+
+    /** Ticks que han pasado en el servidor desde el último plano: el cliente ajusta su reloj de cámara. */
+    static byte[] sync(int elapsed) {
+        return new Msg(SYNC).i(elapsed).bytes();
     }
 
     static byte[] keepAlive() {

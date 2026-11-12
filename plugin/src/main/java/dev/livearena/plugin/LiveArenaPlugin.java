@@ -28,6 +28,7 @@ public final class LiveArenaPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(abilities, this);
         CineCharacters chars = new CineCharacters(cine);
         chars.register();
+        abilities.k = chars;
         new CineEspeciales(cine, chars).register();
         cine.enable();
         for (CineEngine.Ability a : cine.all().values()) {

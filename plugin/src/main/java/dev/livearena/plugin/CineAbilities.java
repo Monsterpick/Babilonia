@@ -53,6 +53,8 @@ final class CineAbilities implements Listener {
     private final CineEngine e;
     private final CineFx fx;
     private final CineWorld world;
+    /** Efectos de energía del mod (los asigna LiveArenaPlugin al crear los personajes). */
+    CineCharacters k;
 
     CineAbilities(CineEngine engine) {
         this.e = engine;
@@ -124,11 +126,18 @@ final class CineAbilities implements Listener {
                 double hp = c.cfg("vidaCorazones", 50.0) * 2;
                 c.data.put("hp", hp);
                 c.data.put("hpMax", hp);
-                double r = c.cfg("radio", 4.0);
+                // Coraza ceñida al cuerpo: el modelo (cúpula de 3 bloques de radio) se escala a un óvalo de
+                // `radio` de ancho y `altura` de alto, y va montado sobre el jugador para seguirle sin retraso.
+                double r = shieldR(c), h = shieldH(c);
                 ItemDisplay holder = c.actor(fx.itemDisplay(c.feet(), new ItemStack(Material.AIR), 1f, 0));
-                holder.setTeleportDuration(2);
+                holder.setTeleportDuration(1);
+                holder.setDisplayWidth(4f);
+                holder.setDisplayHeight(4f);
+                c.model(holder, "escudo", "aparicion", 1f);
+                holder.setTransformation(new org.bukkit.util.Transformation(new org.joml.Vector3f(0, (float) -RIDE_Y, 0), new org.joml.Quaternionf(),
+                        new org.joml.Vector3f((float) (r / 3.0), (float) (h / 3.0), (float) (r / 3.0)), new org.joml.Quaternionf()));
+                c.target.addPassenger(holder);
                 c.data.put("holder", holder);
-                c.model(holder, "escudo", "aparicion", (float) (r / 3.0));
                 c.anim(holder, "color:ff5ce1ff");
                 BossBar bar = org.bukkit.Bukkit.createBossBar("§b🛡 ESCUDO §f" + hearts(hp) + " ❤", BarColor.BLUE, BarStyle.SEGMENTED_10);
                 for (Player p : c.w.getPlayers()) if (p.getLocation().distanceSquared(c.feet()) < 120 * 120) bar.addPlayer(p);
@@ -143,10 +152,13 @@ final class CineAbilities implements Listener {
             }
 
             void tick(CineEngine.Ctx c, int t) {
-                double r = c.cfg("radio", 4.0);
+                double r = shieldR(c), h = shieldH(c);
                 Location center = c.feet();
                 ItemDisplay holder = get(c, "holder");
-                if (holder != null && holder.isValid() && holder.getLocation().distanceSquared(center) > 0.01) holder.teleport(center);
+                if (holder != null && holder.isValid() && !c.target.getPassengers().contains(holder)) {
+                    holder.teleport(center);
+                    c.target.addPassenger(holder);
+                }
                 int dur = duracion(c);
                 Integer brokeAt = get(c, "brokeAt");
                 if (brokeAt != null) {
@@ -155,13 +167,13 @@ final class CineAbilities implements Listener {
                 }
                 if (t < 20) {
                     // Formación: chispas que suben a la cúpula (también lo ven los que no tienen el mod).
-                    if (t % 2 == 0) CineFx.domeHex(c.w, center, r, t / 20.0, 0x5ce1ff, 0xffffff, t);
+                    if (t % 2 == 0) CineFx.part(c.w, Particle.DUST, center.clone().add(0, h * t / 20.0, 0), 6, r * 0.6, 0.1, r * 0.6, 0, CineFx.dust(0x5ce1ff, 0.8f));
                     return;
                 }
                 if (t == 20) {
                     c.flash(0x5ce1ff, 1, 2, 8);
                     c.sound(center, "escudo.activar", 1.2f, 1.3f);
-                    CineFx.sphereShell(c.w, center.clone().add(0, 0.2, 0), r, 160, 0xffffff, 1.4f);
+                    CineFx.part(c.w, Particle.END_ROD, center.clone().add(0, h * 0.5, 0), 18, r * 0.5, h * 0.35, r * 0.5, 0.02, null);
                 }
                 if (t >= dur - 18) {
                     if (t == dur - 18) {
@@ -171,28 +183,29 @@ final class CineAbilities implements Listener {
                     return;
                 }
                 // Brillo sutil del borde para todos (con el mod se ve además la cúpula de paneles).
-                if (t % 10 == 0) CineFx.ring(c.w, center.clone().add(0, 0.15, 0), r, 0x5ce1ff, 1.2f, t * 0.05);
+                if (t % 10 == 0) CineFx.ring(c.w, center.clone().add(0, 0.1, 0), r, 0x5ce1ff, 0.7f, t * 0.05);
                 if (t % 20 == 0) updateBar(c);
                 // Proyectiles desde fuera: rebotan en la cúpula y le restan vida.
-                for (Entity en : c.w.getNearbyEntities(center, r + 2, r + 2, r + 2)) {
+                for (Entity en : c.w.getNearbyEntities(center.clone().add(0, h / 2, 0), r + 2, h / 2 + 2, r + 2)) {
                     if (en instanceof Projectile pr) {
                         if (pr.getShooter() == c.target) continue;
-                        Vector rel = pr.getLocation().toVector().subtract(center.toVector().add(new Vector(0, 1, 0)));
-                        double d = rel.length();
+                        // Distancia «elíptica» a la coraza (1 = sobre la superficie).
+                        Vector rel = pr.getLocation().toVector().subtract(center.toVector().add(new Vector(0, h * 0.45, 0)));
+                        double d = Math.sqrt(sq(rel.getX() / r) + sq(rel.getY() / (h * 0.55)) + sq(rel.getZ() / r));
                         Vector v = pr.getVelocity();
-                        if (d < r + 0.8 && d > r - 1.2 && v.dot(rel) < 0) {
+                        if (d < 1.6 && v.dot(rel) < 0) {
                             Vector n = rel.normalize();
                             if (c.cfgB("reflejarProyectiles", true)) pr.setVelocity(v.subtract(n.clone().multiply(2 * v.dot(n))));
                             else pr.remove();
                             impact(c, pr.getLocation(), 2.0);
                         }
                     } else if (en instanceof Monster m && c.cfgB("empujarMobs", true)) {
-                        if (m.getLocation().distance(center) < r) {
+                        if (m.getLocation().distance(center) < r + 0.9) {
                             Vector out = m.getLocation().toVector().subtract(center.toVector()).setY(0);
                             if (out.lengthSquared() < 0.01) out = new Vector(1, 0, 0);
                             m.setVelocity(out.normalize().multiply(0.8).setY(0.3));
                             if (t % 10 == 0) {
-                                CineFx.domeImpact(c.w, center.clone().add(0, 0.5, 0), r, m.getLocation().add(0, 1, 0), 0xffffff);
+                                CineFx.part(c.w, Particle.ELECTRIC_SPARK, center.clone().add(m.getLocation().toVector().subtract(center.toVector()).setY(0).normalize().multiply(r)).add(0, 1, 0), 8, 0.1, 0.3, 0.1, 0.1, null);
                                 c.sound(m.getLocation(), "escudo.impacto", 0.6f, 1.6f);
                             }
                         }
@@ -206,6 +219,21 @@ final class CineAbilities implements Listener {
                 if (bar != null) bar.removeAll();
             }
         });
+    }
+
+    /** Pasajero de un jugador: el display queda a esta altura sobre los pies (se compensa con la traslación). */
+    private static final double RIDE_Y = 1.8;
+
+    private static double shieldR(CineEngine.Ctx c) {
+        return Math.max(0.6, Math.min(3.0, c.cfg("radioCoraza", 0.95)));
+    }
+
+    private static double shieldH(CineEngine.Ctx c) {
+        return Math.max(1.6, Math.min(4.0, c.cfg("alturaCoraza", 2.35)));
+    }
+
+    private static double sq(double v) {
+        return v * v;
     }
 
     private static String hearts(double hp) {
@@ -233,9 +261,9 @@ final class CineAbilities implements Listener {
 
     /** Impacto en la cúpula: onda visual, sonido y resta vida (si se agota, se rompe en pedazos). */
     private void impact(CineEngine.Ctx c, Location at, double dmg) {
-        double r = c.cfg("radio", 4.0);
+        double r = shieldR(c), h = shieldH(c);
         Location center = c.feet();
-        CineFx.domeImpact(c.w, center.clone().add(0, 0.5, 0), r, at, 0xffffff);
+        CineFx.part(c.w, Particle.ELECTRIC_SPARK, at, 10, 0.15, 0.15, 0.15, 0.15, null);
         c.sound(at, "escudo.impacto", 1f, 1.2f);
         double hp = (double) c.data.get("hp") - dmg;
         c.data.put("hp", hp);
@@ -251,10 +279,10 @@ final class CineAbilities implements Listener {
             c.sound(center, "escudo.romper", 1.6f, 0.7f);
             c.flash(0xffffff, 0, 2, 10);
             c.shake(0.8, 10, 0.8);
-            CineFx.part(c.w, Particle.FLASH, center.clone().add(0, r * 0.6, 0), 1, 0, 0);
-            for (int i = 0; i < 60; i++) {
-                double a = Math.random() * Math.PI * 2, y = Math.random() * r;
-                Location l = center.clone().add(Math.cos(a) * r * 0.9, y, Math.sin(a) * r * 0.9);
+            CineFx.part(c.w, Particle.FLASH, center.clone().add(0, h * 0.5, 0), 1, 0, 0);
+            for (int i = 0; i < 24; i++) {
+                double a = Math.random() * Math.PI * 2, y = Math.random() * h;
+                Location l = center.clone().add(Math.cos(a) * r, y, Math.sin(a) * r);
                 world.flyVisual(l, (i % 3 == 0 ? Material.LIGHT_BLUE_STAINED_GLASS : i % 3 == 1 ? Material.CYAN_STAINED_GLASS : Material.WHITE_STAINED_GLASS).createBlockData(), CineWorld.Path.LAUNCH, null,
                         new Vector(Math.cos(a) * 0.35, 0.2 + Math.random() * 0.3, Math.sin(a) * 0.35), 30, 0);
             }
@@ -1214,169 +1242,211 @@ final class CineAbilities implements Listener {
 
     private record Strike(Location at, int impact) {}
 
+    /**
+     * «Juicio ígneo» (id juicio_arcano, para no romper las reglas de regalos): magia de fuego. Un sello de llamas se
+     * abre bajo el objetivo, columnas de fuego lo rodean, cae una lluvia de meteoros, en el cielo se forma un sol que
+     * absorbe el fuego, se comprime y baja sobre el objetivo: SUPER EXPLOSIÓN con cúpula, onda, hongo de humo y cráter.
+     */
     private void juicioArcano() {
-        e.register(new CineEngine.Ability("juicio_arcano", "JUICIO ARCANO", "#ffd34d", 260, 260, "Círculos mágicos en el cielo desatan una lluvia de rayos y un pilar final") {
+        e.register(new CineEngine.Ability("juicio_arcano", "JUICIO ÍGNEO", "#ff6a1a", 270, 270, "Un sello de fuego, columnas de llamas y lluvia de meteoros; un sol se comprime sobre el objetivo y estalla en una explosión colosal") {
+            static final String FUEGO = "ffff6a1a", ORO = "ffffc04a", BLANCO = "fffff2d0";
+
             void start(CineEngine.Ctx c) {
-                Location main = c.feet().add(0, 30, 0);
-                c.data.put("main", main);
-                List<Location> minors = new ArrayList<>();
-                for (int i = 0; i < 6; i++) minors.add(c.around(c.feet(), i * 60, 10, 22 + (i % 3) * 3));
-                c.data.put("minors", minors);
-                // Lluvia con semilla: 30% de los rayos cerca del objetivo.
-                List<Strike> strikes = new ArrayList<>();
-                int n = c.cfgI("numeroRayos", 33);
-                double zone = c.cfg("radioZona", 15.0);
+                Location g = c.ground(c.feet().add(0, 2, 0));
+                c.data.put("g", g);
+                Location sun = g.clone().add(0, 22, 0);
+                c.data.put("sun", sun);
+                c.target.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 200, 9, false, false));
+                c.sound(g, "ignea.inicio", 2f, 0.8f);
+                c.sky(CineNet.SKY_TINT, 0x3a0c00, 270);
+                c.vignette(0x80401000, 10, 230, 20);
+                // Sello de fuego en el suelo (onda lenta) y aura de llamas en el objetivo.
+                k.once(c, g.clone().add(0, 0.1, 0), CineCharacters.FX_ONDA, 9, FUEGO, 40);
+                c.data.put("aura", k.vfx(c, g.clone().add(0, 0.2, 0), CineCharacters.FX_AURA, 2.6f, FUEGO));
+                // Lluvia de meteoros: 14 impactos alrededor (la mitad cerca del objetivo).
+                List<Object[]> met = new ArrayList<>();
+                int n = Math.max(4, c.cfgI("numeroRayos", 14));
+                n = Math.min(n, 24);
                 for (int i = 0; i < n; i++) {
-                    int impact = 100 + (int) Math.round(i * (90.0 / Math.max(1, n - 1)));
-                    strikes.add(new Strike(null, impact));
+                    double rr = i % 2 == 0 ? 2 + c.rnd.nextDouble() * 4 : 5 + c.rnd.nextDouble() * (c.cfg("radioZona", 15.0) - 5);
+                    double ang = c.rnd.nextDouble() * Math.PI * 2;
+                    Location at = c.ground(g.clone().add(Math.cos(ang) * rr, 6, Math.sin(ang) * rr));
+                    met.add(new Object[] {at, 62 + i * 70 / n, null});
                 }
-                c.data.put("strikes", strikes);
-                c.data.put("zone", zone);
-                // Círculos arcanos (modelo con el mod; sin el mod se ven los glifos de partículas).
-                ItemDisplay mh = c.actor(fx.itemDisplay(main, new ItemStack(Material.AIR), 1f, 0));
-                c.model(mh, "circulo_arcano", "aparicion", 8f);
-                c.data.put("mh", mh);
-                List<ItemDisplay> mhs = new ArrayList<>();
-                for (Location m : minors) {
-                    ItemDisplay d = c.actor(fx.itemDisplay(m, new ItemStack(Material.AIR), 1f, 0));
-                    d.setTeleportDuration(10);
-                    c.model(d, "circulo_arcano", "aparicion", 2.2f);
-                    mhs.add(d);
-                }
-                c.data.put("mhs", mhs);
-                c.sound(c.feet(), "juicio.inicio", 2f, 0.8f);
-                c.vignette(0x70402000, 10, 230, 20);
+                c.data.put("met", met);
+                // Cámara: 0–40 contrapicado lento con el sello; 41–60 plano cenital del círculo de columnas.
                 CineNet.Shot s = c.shot();
-                s.key(0, c.around(c.feet(), 200, 4, 0.5), main, 72, LINEAR);
-                s.key(90, c.around(c.feet(), 210, 8, 35), main.clone().add(0, -5, 0), 72, EASE_IN_OUT);
-                s.key(91, c.around(c.feet(), 135, 18, 25), c.feet(), 70, CUT);
-                s.key(190, c.around(c.feet(), 150, 18, 25), c.feet(), 70, LINEAR);
-                s.key(200, c.around(c.feet(), 180, 2.5, 0.3), main, 80, CUT);
-                s.key(219, c.around(c.feet(), 185, 2.6, 0.3), main, 80, LINEAR);
-                s.key(220, c.around(c.feet(), 120, 35, 8), c.feet().add(0, 10, 0), 70, CUT);
-                s.key(260, c.around(c.feet(), 125, 36, 9), c.feet().add(0, 10, 0), 70, LINEAR);
+                s.key(0, c.around(g, 200, 5, 0.6), c.eye(), 70, LINEAR);
+                s.key(40, c.around(g, 230, 4, 0.9), c.eye().add(0, 0.6, 0), 62, EASE_IN_OUT);
+                s.key(41, c.around(g, 150, 9, 16), g, 70, CUT);
+                s.key(60, c.around(g, 175, 10, 18), g, 66, EASE_IN_OUT);
+                // 61–130: plano general amplio con la lluvia de meteoros.
+                s.key(61, c.around(g, 120, 26, 11), g.clone().add(0, 4, 0), 72, CUT);
+                s.key(130, c.around(g, 160, 24, 10), g.clone().add(0, 5, 0), 70, LINEAR);
+                // 131–175: contrapicado hacia el sol que crece y absorbe el fuego.
+                s.key(131, c.around(g, 100, 9, 1.2), sun, 74, CUT);
+                s.key(175, c.around(g, 130, 7, 1.0), sun.clone().add(0, -3, 0), 62, EASE_IN_OUT);
                 c.cam(s);
             }
 
             void tick(CineEngine.Ctx c, int t) {
-                Location main = get(c, "main");
-                List<Location> minors = get(c, "minors");
-                double draw = Math.min(1, t / 60.0);
-                double fade = t > 220 ? Math.max(0, (250 - t) / 30.0) : 1;
-                if (t == 30) c.sound(c.feet(), "juicio.carga", 1.5f, 0.5f);
-                if (t == 200) {
-                    List<ItemDisplay> mhs = get(c, "mhs");
-                    for (int i = 0; i < mhs.size(); i++) mhs.get(i).teleport(c.feet().add(0, 8 + i * 3.5, 0));
+                Location g = get(c, "g");
+                Location sun = get(c, "sun");
+                boolean plain = !CineNet.hasMod(c.target);
+                if (t < 190) c.target.setVelocity(new Vector(0, Math.min(0, c.target.getVelocity().getY()), 0));
+                // Sin llamas en pantalla durante la cinemática (el fuego de primera persona taparía la cámara).
+                c.target.setFireTicks(0);
+                // Ascuas y humo en el aire todo el tiempo.
+                if (t < 240 && t % 3 == 0) {
+                    CineFx.part(c.w, Particle.FLAME, g.clone().add(0, 0.3, 0), 10, 4, 0.2, 4, 0.02, null);
+                    CineFx.part(c.w, Particle.LAVA, g.clone().add(0, 0.5, 0), 2, 3, 0.2, 3, 0, null);
                 }
-                if (t == 222) {
-                    c.anim(get(c, "mh"), "desaparecer");
-                    for (ItemDisplay d : (List<ItemDisplay>) get(c, "mhs")) c.anim(d, "desaparecer");
+                // 20–60: seis columnas de fuego brotan en círculo, una tras otra.
+                if (t >= 20 && t < 50 && (t - 20) % 5 == 0) {
+                    int i = (t - 20) / 5;
+                    double a = i * Math.PI / 3 + c.seed % 7;
+                    Location p = c.ground(g.clone().add(Math.cos(a) * 7, 4, Math.sin(a) * 7));
+                    k.once(c, p, CineCharacters.FX_PILAR, 0.55f, FUEGO, 90);
+                    k.once(c, p.clone().add(0, 0.2, 0), CineCharacters.FX_GOLPE, 0.8f, ORO, 14);
+                    CineFx.part(c.w, Particle.FLAME, p.clone().add(0, 1, 0), 40, 0.4, 2.5, 0.4, 0.05, null);
+                    c.sound(p, "ignea.columna", 1.4f, 0.8f + i * 0.08f);
+                    c.shake(0.3, 6, 0.85);
                 }
-                if (t < 250 && t % 2 == 0) {
-                    CineFx.glyph(c.w, main, 16, 3, c.seed, draw * fade, t * 0.02, 0xffd34d, 0xb15cff);
-                    for (int i = 0; i < minors.size(); i++) {
-                        Location m = minors.get(i);
-                        if (t >= 200) m = c.feet().add(0, 8 + i * 3.5, 0); // se alinean en columna
-                        CineFx.glyph(c.w, m, 4, 2, c.seed + i, Math.min(1, t / 40.0) * fade, t * 0.05 * (i % 2 == 0 ? 1 : -1), i % 2 == 0 ? 0xb15cff : 0xffd34d, 0xffffff);
+                if (t == 40) c.say("ignea_frase", "¡Arde!", 0xff8a2a, 30);
+                // Meteoros: aparecen en lo alto y caen en 10 ticks con estela de fuego.
+                List<Object[]> met = get(c, "met");
+                for (Object[] m : met) {
+                    Location at = (Location) m[0];
+                    int hit = (int) m[1];
+                    if (t == hit - 10) {
+                        Location from = at.clone().add(c.rnd.nextDouble() * 10 - 5, 30, c.rnd.nextDouble() * 10 - 5);
+                        ItemDisplay cm = c.actor(fx.itemDisplay(from, new ItemStack(Material.AIR), 1f, 14));
+                        cm.setTeleportDuration(10);
+                        cm.setDisplayWidth(60f);
+                        cm.setDisplayHeight(60f);
+                        c.model(cm, CineCharacters.FX_COMETA, "idle", 1f);
+                        c.anim(cm, "color:" + FUEGO);
+                        CineCharacters.size(cm, 1.1f, 0);
+                        m[2] = cm;
+                        c.sound(from, "ignea.meteoro", 1.2f, 0.7f + c.rnd.nextFloat() * 0.4f);
+                    }
+                    if (t == hit - 9 && m[2] instanceof ItemDisplay cm && cm.isValid()) cm.teleport(at.clone().add(0, 0.5, 0));
+                    if (plain && t >= hit - 10 && t < hit) CineFx.part(c.w, Particle.FLAME, at.clone().add(0, (hit - t) * 3, 0), 12, 0.3, 0.3, 0.3, 0.02, null);
+                    if (t == hit) {
+                        k.once(c, at.clone().add(0, 0.3, 0), CineCharacters.FX_GOLPE, 1.3f, FUEGO, 16);
+                        k.once(c, at.clone().add(0, 0.15, 0), CineCharacters.FX_ONDA, 3.5f, ORO, 18);
+                        CineFx.part(c.w, Particle.EXPLOSION, at.clone().add(0, 0.6, 0), 2, 0.4, 0.2, 0.4, 0, null);
+                        CineFx.part(c.w, Particle.FLAME, at.clone().add(0, 0.5, 0), 40, 0.6, 0.3, 0.6, 0.15, null);
+                        CineFx.part(c.w, Particle.LARGE_SMOKE, at.clone().add(0, 1, 0), 12, 0.6, 0.6, 0.6, 0.03, null);
+                        c.sound(at, "ignea.impacto", 1.4f, 0.8f + c.rnd.nextFloat() * 0.3f);
+                        world.areaDamage(at, 2.5, c.cfg("danioRayo", 8.0), c.launcher, null);
+                        world.bowlCrater(at.clone().add(0, -1, 0), 2, 2, false, 0.04, 0.08, 0, c.rnd);
+                        if (c.target.getLocation().distance(at) < 3.5) c.shake(0.8, 8, 0.85);
+                        else c.shake(0.35, 5, 0.85);
                     }
                 }
-                if (t >= 60 && t < 90) {
-                    if (t == 60) c.sound(c.feet(), "juicio.carga", 2f, 0.6f);
-                    for (int k = 0; k < 5; k++) {
-                        Location l = c.feet().add(c.rnd.nextDouble() * 24 - 12, 0.2, c.rnd.nextDouble() * 24 - 12);
-                        CineFx.shoot(c.w, Particle.END_ROD, l, new Vector(0, 1, 0), 0.6);
+                // 120–178: el sol se forma en el cielo y absorbe el fuego del suelo.
+                if (t == 120) {
+                    ItemDisplay sol = k.vfx(c, sun, CineCharacters.FX_ROJO, 0.6f, FUEGO);
+                    CineCharacters.size(sol, 5.5f, 50);
+                    c.data.put("sol", sol);
+                    ItemDisplay halo = k.vfx(c, sun, CineCharacters.FX_AURA, 3f, ORO);
+                    CineCharacters.size(halo, 9f, 50);
+                    c.data.put("halo", halo);
+                    c.sound(sun, "ignea.sol", 2.5f, 0.6f);
+                    c.caption("JUICIO ÍGNEO", "Un sol desciende sobre " + c.target.getName(), 0xff8a2a, 60);
+                }
+                if (t >= 120 && t < 178) {
+                    for (int i = 0; i < 4; i++) {
+                        Location from = g.clone().add(c.rnd.nextGaussian() * 8, 0.3, c.rnd.nextGaussian() * 8);
+                        CineFx.stream(c.w, from, sun, Particle.FLAME, 1);
                     }
+                    if (t % 6 == 0) c.sound(sun, "ignea.carga", 1.6f, 0.5f + (t - 120) / 60f);
+                    if (t % 4 == 0) c.shake(0.15 + (t - 120) / 58.0 * 0.6, 5, 0.92);
+                    if (plain && t % 2 == 0) CineFx.part(c.w, Particle.FLAME, sun, 30, 2.5, 2.5, 2.5, 0.05, null);
                 }
-                List<Strike> strikes = get(c, "strikes");
-                double zone = get(c, "zone");
-                for (int i = 0; i < strikes.size(); i++) {
-                    Strike s = strikes.get(i);
-                    int warn = s.impact() - 10;
-                    if (t == warn) {
-                        boolean near = c.rnd.nextDouble() < 0.5;
-                        double rr = near ? c.rnd.nextDouble() * 4 : c.rnd.nextDouble() * zone;
-                        double a = c.rnd.nextDouble() * Math.PI * 2;
-                        Location at = c.ground(c.feet().add(Math.cos(a) * rr, 3, Math.sin(a) * rr));
-                        strikes.set(i, s = new Strike(at, s.impact()));
+                // 178–192: el sol se comprime (más brillante) y cae sobre el objetivo.
+                if (t == 178) {
+                    CineCharacters.size(get(c, "sol"), 2.2f, 8);
+                    CineCharacters.size(get(c, "halo"), 3.5f, 8);
+                    c.anim(get(c, "sol"), "color:" + BLANCO);
+                    c.sound(sun, "ignea.compresion", 2.5f, 1.4f);
+                    c.screenFx(CineNet.SPEEDLINES, 0xffff6a1a, 2, 12, 4);
+                    CineNet.Shot s = c.shot();
+                    Location side = c.around(g, 140, 16, 5);
+                    s.key(0, side, sun, 70, CUT);
+                    s.key(14, side.clone().add(0, -1, 0), g.clone().add(0, 2, 0), 64, EASE_IN_EXPO);
+                    c.cam(s);
+                }
+                if (t == 186) {
+                    ItemDisplay sol = get(c, "sol"), halo = get(c, "halo");
+                    if (sol != null && sol.isValid()) {
+                        sol.setTeleportDuration(6);
+                        sol.teleport(g.clone().add(0, 1.2, 0));
                     }
-                    if (s.at() == null) continue;
-                    if (t >= warn && t < s.impact()) CineFx.marker(c.w, s.at(), 2, 0xffd34d, (t - warn) / 10.0);
-                    if (t == s.impact()) {
-                        Location from = minors.get(0);
-                        for (Location m : minors) if (m.distanceSquared(s.at()) < from.distanceSquared(s.at())) from = m;
-                        fx.beam(s.at(), from, 0.3f, Material.WHITE_CONCRETE, 0xffffff, 5);
-                        fx.beam(s.at(), from, 0.7f, Material.YELLOW_STAINED_GLASS, 0xffe066, 6);
-                        CineFx.wave(c.w, s.at().clone().add(0, 0.2, 0), 3.5, 0xffd34d);
-                        CineFx.part(c.w, Particle.END_ROD, s.at().clone().add(0, 0.5, 0), 25, 0.8, 0.3);
-                        CineFx.part(c.w, Particle.WAX_OFF, s.at().clone().add(0, 0.5, 0), 15, 1, 0.5);
-                        for (int k = 0; k < 6; k++) {
-                            double ang = c.rnd.nextDouble() * Math.PI * 2;
-                            Block bb = s.at().clone().add(0, -1, 0).getBlock();
-                            if (bb.getType().isSolid())
-                                world.flyVisual(s.at().clone().add(0, 0.4, 0), bb.getBlockData(), CineWorld.Path.LAUNCH, null, new Vector(Math.cos(ang) * 0.3, 0.6 + c.rnd.nextDouble() * 0.4, Math.sin(ang) * 0.3), 30, 0);
-                        }
-                        if (c.target.getLocation().distance(s.at()) < 4) {
-                            CineWorld.radial(s.at(), 4, 0.9, 0.5, c.launcher, null);
-                            c.shake(0.7, 6, 0.85);
-                        }
-                        List<Location> ms = minors;
-                        int idx = ms.indexOf(from);
-                        List<ItemDisplay> mhs = get(c, "mhs");
-                        if (idx >= 0 && idx < mhs.size()) c.anim(mhs.get(idx), "disparo");
-                        CineFx.part(c.w, Particle.FLASH, s.at().clone().add(0, 1, 0), 1, 0, 0);
-                        c.sound(s.at(), "juicio.rayo", 1.2f, 1.2f);
-                        world.areaDamage(s.at(), 2, c.cfg("danioRayo", 8.0), c.launcher, null);
-                        world.bowlCrater(s.at().clone().add(0, -1, 0), 2, 2, false, 0.25, 0.05, 0, c.rnd);
+                    if (halo != null && halo.isValid()) {
+                        halo.setTeleportDuration(6);
+                        halo.teleport(g.clone().add(0, 1.2, 0));
                     }
+                    c.sound(g, "ignea.caida", 2.5f, 0.7f);
                 }
-                if (t >= 200 && t < 220) {
-                    // Carga final: los círculos alineados laten, la energía baja por la columna y el suelo se marca.
-                    CineFx.marker(c.w, c.feet(), 6, 0xffffff, (t - 200) / 20.0);
-                    List<ItemDisplay> mhs = get(c, "mhs");
-                    if (t % 4 == 0) for (ItemDisplay d : mhs) c.anim(d, "disparo");
-                    for (int k = 0; k < 3; k++) CineFx.stream(c.w, main.clone().add(c.rnd.nextGaussian() * 6, 0, c.rnd.nextGaussian() * 6), c.feet().add(0, 8, 0), Particle.END_ROD, 1);
-                    CineFx.part(c.w, Particle.ENCHANT, c.feet().add(0, 2, 0), 30, 3, 1);
-                    if (t == 200) c.sound(c.feet(), "juicio.final_carga", 3f, 0.6f);
-                    if (t % 5 == 0) c.shake(0.3 + (t - 200) * 0.05, 5, 0.9);
+                if (t == 192) explode(c, g);
+                if (t > 192 && t < 236) {
+                    // Hongo de humo y fuego que sube, ascuas que llueven, ondas de calor.
+                    int k2 = t - 192;
+                    Location col = g.clone().add(0, Math.min(18, k2 * 0.7), 0);
+                    CineFx.part(c.w, Particle.CAMPFIRE_SIGNAL_SMOKE, col, 6, 1.5 + k2 * 0.05, 0.6, 1.5 + k2 * 0.05, 0.02, null);
+                    CineFx.part(c.w, Particle.FLAME, col, 18, 1.2, 1, 1.2, 0.06, null);
+                    if (k2 > 14) CineFx.part(c.w, Particle.LARGE_SMOKE, g.clone().add(0, 18, 0), 12, 4 + k2 * 0.1, 1, 4 + k2 * 0.1, 0.02, null);
+                    CineFx.part(c.w, Particle.LAVA, g.clone().add(0, 3, 0), 3, 6, 1, 6, 0, null);
+                    if (t % 5 == 0) c.shake(0.8 - k2 * 0.015, 5, 0.95);
                 }
-                if (t == 220) {
-                    Location ground = c.ground(c.feet());
-                    BlockDisplay pillar = fx.beam(ground.clone().add(0, -2, 0), main, 3f, Material.YELLOW_CONCRETE, 0xfff2a0, 45);
-                    // Rayo final en capas: núcleo blanco, pilar dorado y aura de cristal.
-                    fx.beam(ground.clone().add(0, -2, 0), main, 1.6f, Material.WHITE_CONCRETE, 0xffffff, 40);
-                    fx.beam(ground.clone().add(0, -2, 0), main, 5f, Material.YELLOW_STAINED_GLASS, 0xffe066, 30);
-                    CineFx.part(c.w, Particle.FLASH, ground.clone().add(0, 2, 0), 3, 1, 0);
-                    CineFx.part(c.w, Particle.EXPLOSION_EMITTER, ground, 3, 2, 0);
-                    CineWorld.radial(ground, 16, 2.2, 1.0, c.launcher, null);
-                    world.bowlCrater(ground.clone().add(0, -1, 0), c.cfgI("radioCraterFinal", 5) + 3, 7, true, 0.2, 0.1, 0.05, c.rnd);
-                    for (int k = 0; k < 60; k++) {
-                        double ang = c.rnd.nextDouble() * Math.PI * 2;
-                        Vector vv = new Vector(Math.cos(ang) * (0.4 + c.rnd.nextDouble() * 0.8), 0.8 + c.rnd.nextDouble(), Math.sin(ang) * (0.4 + c.rnd.nextDouble() * 0.8));
-                        Material m = k % 3 == 0 ? Material.GOLD_BLOCK : k % 3 == 1 ? Material.STONE : Material.DIRT;
-                        world.flyVisual(ground.clone().add(0, 1, 0), m.createBlockData(), CineWorld.Path.LAUNCH, null, vv, 50, 0);
-                    }
-                    c.data.put("pillar", pillar);
-                    c.data.put("pg", ground);
-                    c.flash(0xfff8e0, 0, 5, 18);
-                    c.shake(2.0, 30, 0.9);
-                    c.sound(ground, "juicio.final", 3f, 0.8f);
-                    c.finalHit(c.target, c.cfg("danioFinal", 40.0));
-                    world.areaDamage(ground, 5, c.cfg("danioFinal", 40.0) * 0.6, c.launcher, c.target.getUniqueId());
-                    int rc = c.cfgI("radioCraterFinal", 5);
-                    world.enqueueSorted(world.cylinder(ground, rc, 6, 4), ground, true, Material.AIR);
+                if (t == 236) {
+                    c.anim(get(c, "domo"), "fin");
+                    CineCharacters.remove((Entity) get(c, "aura"));
                 }
-                if (t > 220 && t < 245) {
-                    // Anillos que bajan por la columna y ondas que barren el suelo.
-                    Location pg = get(c, "pg");
-                    double hh = 28 - (t - 220) * 1.1;
-                    if (hh > 0) CineFx.ring(c.w, pg.clone().add(0, hh, 0), 3.5, 0xffffff, 2f, t * 0.3);
-                    CineFx.wave(c.w, pg.clone().add(0, 0.3, 0), (t - 220) * 1.4, t % 2 == 0 ? 0xffd34d : 0xffffff);
-                    CineFx.part(c.w, Particle.END_ROD, pg.clone().add(0, c.rnd.nextDouble() * 20, 0), 8, 2, 0.1);
+                if (t == 248) c.skyReset();
+                if (t >= 268) e.finish(c, false);
+            }
+
+            void explode(CineEngine.Ctx c, Location g) {
+                CineCharacters.remove((Entity) get(c, "sol"), (Entity) get(c, "halo"));
+                c.flash(0xfff0c0, 0, 4, 16);
+                c.shake(2.8, 40, 0.94);
+                c.sound(g, "ignea.explosion", 4f, 0.6f);
+                c.tint(0x50ff6a1a, 0, 6, 20);
+                int r = Math.max(4, c.cfgI("radioCraterFinal", 9));
+                ItemDisplay domo = k.vfx(c, g.clone().add(0, 0.5, 0), "fx_domo", 1.5f, "c0ff6a1a");
+                CineCharacters.size(domo, r * 1.6f, 14);
+                c.data.put("domo", domo);
+                k.once(c, g.clone().add(0, 0.3, 0), CineCharacters.FX_ONDA, r * 3.2f, ORO, 30);
+                k.once(c, g.clone().add(0, 0.6, 0), CineCharacters.FX_ONDA, r * 2.2f, FUEGO, 24);
+                k.once(c, g.clone().add(0, 1.2, 0), CineCharacters.FX_GOLPE, 4.5f, BLANCO, 20);
+                k.once(c, g, CineCharacters.FX_PILAR, 1.6f, FUEGO, 50);
+                CineFx.part(c.w, Particle.EXPLOSION_EMITTER, g.clone().add(0, 1, 0), 6, 3, 1, 3, 0, null);
+                CineFx.part(c.w, Particle.FLASH, g.clone().add(0, 2, 0), 3, 1, 1, 1, 0, null);
+                CineFx.part(c.w, Particle.FLAME, g.clone().add(0, 1, 0), 300, r * 0.6, 1.5, r * 0.6, 0.35, null);
+                world.boost(c.cfgI("bloquesPorTick", 1200), 80);
+                world.bowlCrater(g.clone().add(0, -1, 0), r, Math.max(4, r * 2 / 3), true, 0.06, 0.16, 0.08, c.rnd);
+                for (int i = 0; i < 70; i++) {
+                    double a = c.rnd.nextDouble() * Math.PI * 2;
+                    Vector v = new Vector(Math.cos(a) * (0.5 + c.rnd.nextDouble() * 0.9), 0.9 + c.rnd.nextDouble() * 1.1, Math.sin(a) * (0.5 + c.rnd.nextDouble() * 0.9));
+                    Material m = i % 4 == 0 ? Material.MAGMA_BLOCK : i % 4 == 1 ? Material.NETHERRACK : i % 4 == 2 ? Material.BLACKSTONE : Material.DIRT;
+                    world.flyVisual(g.clone().add(0, 1, 0), m.createBlockData(), CineWorld.Path.LAUNCH, null, v, 50, 0);
                 }
-                if (t == 225) {
-                    BlockDisplay pillar = get(c, "pillar");
-                    if (pillar != null && pillar.isValid()) CineFx.beamRadius(pillar, ((Location) get(c, "pg")).clone().add(0, -2, 0), main, 0.05f, 35);
-                }
+                c.target.removePotionEffect(PotionEffectType.SLOWNESS);
+                c.finalHit(c.target, c.cfg("danioFinal", 40.0));
+                world.areaDamage(g, r + 3, c.cfg("danioFinal", 40.0) * 0.6, c.launcher, c.target.getUniqueId());
+                CineWorld.radial(g, r + 6, 2.4, 1.1, c.launcher, null);
+                c.target.setVelocity(new Vector(0, 1.3, 0));
+                // Plano general lejano: la cúpula de fuego y el hongo de humo; luego se acerca al cráter.
+                CineNet.Shot s = c.shot();
+                Location far = c.around(g, 135, 44, 12);
+                s.key(0, far, g.clone().add(0, 6, 0), 74, CUT);
+                s.key(40, c.around(g, 150, 36, 16), g.clone().add(0, 10, 0), 70, EASE_OUT_EXPO);
+                s.key(41, c.around(g, 160, r + 7, 6), g, 70, CUT);
+                s.key(76, c.around(g, 190, r + 6, 7), g, 66, LINEAR);
+                c.cam(s);
             }
         });
     }
