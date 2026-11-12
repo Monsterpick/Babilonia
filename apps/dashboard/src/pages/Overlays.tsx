@@ -12,6 +12,19 @@ import { OverlayCatalog } from './OverlayCatalog'
 
 
 export function OverlaysPage() {
+  return (
+    <div className="pb-10">
+      <PageHeader title="Overlays" subtitle="Pégalos como «Fuente de navegador» en OBS o como «Enlace» en TikTok LIVE Studio." />
+      <OverlayCatalog />
+    </div>
+  )
+}
+
+/**
+ * Superposición de las donaciones (tarjetas de plugins): enlace fijo, estilo y vista previa en vivo.
+ * Va en la página de Plugins, debajo de la lista de funciones.
+ */
+export function CardOverlaySettings() {
   const { profile } = useApp()
   const gifts = useGifts()
   const [style, setStyle] = useState<OverlayStyle | null>(null)
@@ -27,14 +40,34 @@ export function OverlaysPage() {
   }, [style, profile])
   if (!profile || !style) return null
   const set = (p: Partial<OverlayStyle>) => setStyle({ ...style, ...p })
+  const cardsUrl = overlayUrl('tarjetas')
 
   return (
     <div className="pb-10">
-      <PageHeader title="Overlays" subtitle="Pégalos como «Fuente de navegador» en OBS o como «Enlace» en TikTok LIVE Studio." />
-      <OverlayCatalog />
+      <div className="mx-8 mt-6 border-t border-white/5 pt-5">
+        <div className="text-[11px] font-bold tracking-wider text-muted">
+          SUPERPOSICIÓN PARA EL LIVE <span className="ml-2 font-normal normal-case tracking-normal">Salen las filas encendidas; para quitar una, marca «Ocultar en el overlay» en su función. Pulsa ▶ en una fila para ver el destello.</span>
+        </div>
+        <div className="mt-3 rounded-2xl border border-line bg-black/20 p-4">
+          <div className="text-[11px] font-bold tracking-wider text-muted">ENLACE PARA OBS O TIKTOK LIVE STUDIO</div>
+          <div className="mt-2 flex items-center gap-2">
+            <code className="min-w-0 flex-1 truncate rounded-xl border border-line bg-black/40 px-3 py-2 text-sm text-white">{cardsUrl}</code>
+            <button className="btn-accent" onClick={() => navigator.clipboard.writeText(cardsUrl).then(() => toast('Enlace copiado. Pégalo en una fuente de navegador.'), () => toast('No se pudo copiar', 'error'))}>
+              <Copy size={14} /> Copiar
+            </button>
+            <a className="btn" href={cardsUrl} target="_blank" rel="noreferrer">
+              <ExternalLink size={14} /> Abrir en el navegador
+            </a>
+          </div>
+          <p className="mt-2 text-xs text-muted">
+            Añádelo como <b className="text-white">fuente de navegador</b> (ancho 1280, alto 720) o como <b className="text-white">Enlace</b> en TikTok LIVE Studio. El fondo es
+            transparente, se actualiza solo al cambiar algo aquí y cada función destella cuando salta. El enlace es fijo.
+          </p>
+        </div>
+      </div>
 
-      <div className="mt-12 flex items-center px-8">
-        <h2 className="mr-auto text-xl font-extrabold tracking-tight">Estilo de las tarjetas de plugins</h2>
+      <div className="mt-6 flex flex-wrap items-center gap-y-2 px-8">
+        <h2 className="mr-auto text-[11px] font-bold tracking-wider text-muted">CÓMO SE VE</h2>
         <span className="mr-2 text-xs text-muted">Diseños rápidos:</span>
         <button className="btn mr-2" onClick={() => set({ layout: 'cards', cardStyle: 'solid', backdrop: 'none', glow: 0.2, border: 1, background: 1 })}>
           Tarjetas

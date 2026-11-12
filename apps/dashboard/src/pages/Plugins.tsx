@@ -10,6 +10,7 @@ import { toast } from '../components/Toast'
 import { askConfirm, askText } from '../components/Dialog'
 import { newRule } from '../components/RuleEditor'
 import { FunctionEditor } from '../components/FunctionEditor'
+import { CardOverlaySettings } from './Overlays'
 
 const uid = (p: string) => `${p}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`
 
@@ -257,6 +258,8 @@ export function PluginsPage() {
       )}
       <BackupsModal open={backups} onClose={() => setBackups(false)} profile={profile} />
       <ShareModal open={share} onClose={() => setShare(false)} profile={profile} onImported={reload} />
+      {/* superposición de las donaciones: enlace, estilo y vista previa, a mano junto a las funciones */}
+      <CardOverlaySettings />
     </div>
   )
 }
