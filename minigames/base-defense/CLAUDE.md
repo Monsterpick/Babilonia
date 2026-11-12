@@ -188,3 +188,9 @@ Decisiones:
 - Arena 46×9 (antes 55×13) para que todo quepa en el recorte vertical 9:16; FOV del mod ×0,74 (antes ×0,86).
 - Config v6 (la anterior queda en `config-v5.yml`): pistola 15 de daño, subfusil 8 con munición infinita y menos
   dispersión, mobs de las primeras fases con menos vida, base 1500, asedio cada 2,4 s, menos élites y amenaza más lenta.
+- v14 F5: dragón con vuelo propio (`Bosses.dragonStep`: rumbo continuo con giro máximo por tick, órbita alargada sobre el
+  carril, picado sobre la base cada 20 s con aliento) a ≥24 bloques sobre el suelo, por encima de las copas. Todos los
+  jefes llevan contorno morado (equipo `bd_jefe`): son casi negros y el escenario es oscuro. El wither vuela a ≤2,5 bloques
+  (más arriba quedaba entre las copas y detrás de la placa del jefe).
+- v14 F6: `tools/gen_infected.py` (lo llama gen_pack): texturas propias de husk, esqueleto, esqueleto wither y araña (+ojos)
+  «infectados», dibujadas por código sobre el desplegado UV estándar.

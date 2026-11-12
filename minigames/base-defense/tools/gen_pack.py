@@ -528,6 +528,8 @@ def main():
     gen_zombie.build()
     import gen_elite
     gen_elite.build()
+    import gen_infected
+    gen_infected.build()
 
 
 if __name__ == '__main__':
