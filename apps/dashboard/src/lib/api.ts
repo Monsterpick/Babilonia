@@ -19,9 +19,19 @@ export async function upload(url: string, file: File): Promise<any> {
   return data
 }
 
-/** URL base para overlays (lo que se pega en OBS / TikTok LIVE Studio). */
+/**
+ * Enlace fijo de un overlay para OBS y TikTok LIVE Studio: http://127.0.0.1:<puerto>/<overlay>.html
+ * (LIVE Studio rechaza «localhost»; con 127.0.0.1 y .html lo acepta). No cambia nunca: mismo overlay, mismo enlace.
+ * Una escena va como /escena-<id>.html. Los parámetros extra (p. ej. demo=1, solo para vistas previas) van detrás.
+ */
 export function overlayUrl(name: string, params: Record<string, string> = {}): string {
-  const origin = window.location.port === '5173' ? 'http://127.0.0.1:7420' : window.location.origin
-  const q = new URLSearchParams(params).toString()
-  return `${origin}/overlay/${name}${q ? `?${q}` : ''}`
+  const port = window.location.port && window.location.port !== '5173' ? window.location.port : '7420'
+  const rest = { ...params }
+  let file = name
+  if (name === 'escena' && rest.s) {
+    file = `escena-${rest.s}`
+    delete rest.s
+  }
+  const q = new URLSearchParams(rest).toString()
+  return `http://127.0.0.1:${port}/${file}.html${q ? `?${q}` : ''}`
 }

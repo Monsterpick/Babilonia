@@ -116,5 +116,6 @@ export function publicAllowed(method: string, url: string): boolean {
   const p = url.split('?')[0] ?? ''
   if (p === '/favicon.ico' || p === '/favicon.svg') return true
   if (/^\/(overlay|juego|o|assets|gifts|media|lasthouse|fonts|catalogo)\//.test(p)) return true
-  return ['/api/overlays/settings', '/api/profile/overlay', '/api/scoreboard', '/api/lasthouse/state', '/api/lasthouse/settings', '/api/lasthouse/progress'].includes(p)
+  if (/^\/[a-z0-9][a-z0-9_-]*\.html$/i.test(p) && p.toLowerCase() !== '/index.html') return true
+  return ['/api/gifts', '/api/overlays/settings', '/api/profile/overlay', '/api/scoreboard', '/api/lasthouse/state', '/api/lasthouse/settings', '/api/lasthouse/progress'].includes(p)
 }

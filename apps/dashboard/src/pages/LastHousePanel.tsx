@@ -36,7 +36,7 @@ interface Progress {
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
 
 export function LastHousePanel() {
-  const url = `${location.origin}/juego/lasthouse`
+  const url = `http://127.0.0.1:${location.port && location.port !== '5173' ? location.port : '7420'}/juego-lasthouse.html`
   const [st, setSt] = useState<Settings | null>(null)
   const [draft, setDraft] = useState<Settings | null>(null)
   const [pr, setPr] = useState<Progress | null>(null)

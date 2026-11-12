@@ -1,3 +1,4 @@
+import { overlayUrl as fixedOverlayUrl } from '../lib/api';
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   ArrowDown,
@@ -603,7 +604,7 @@ export function ParkourPanel() {
   const colors = g?.colors?.length
     ? g.colors
     : Array.from({ length: 50 }, (_, i) => `hsl(${(i * 37) % 360} 70% 55%)`);
-  const overlayUrl = `${location.origin}/overlay/parkour`;
+  const overlayUrl = fixedOverlayUrl('parkour');
 
   return (
     <div className="space-y-5 px-8">

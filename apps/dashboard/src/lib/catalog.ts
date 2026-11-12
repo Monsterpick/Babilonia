@@ -15,8 +15,20 @@ export function useGifts(): GiftInfo[] {
   const [g, setG] = useState<GiftInfo[]>(giftsCache ?? [])
   useEffect(() => {
     if (giftsCache) return
-    giftsPromise ??= api<GiftInfo[]>('GET', '/api/gifts').then((x) => (giftsCache = x))
-    giftsPromise.then(setG).catch(() => undefined)
+    // si falla (la app aún arrancando, red cortada), se reintenta: sin catálogo las tarjetas salen sin la imagen del regalo
+    let off = false
+    let wait = 1500
+    const load = () => {
+      giftsPromise ??= api<GiftInfo[]>('GET', '/api/gifts').then((x) => (giftsCache = x))
+      giftsPromise.then((x) => !off && setG(x)).catch(() => {
+        giftsPromise = null
+        if (!off) setTimeout(load, (wait = Math.min(wait * 2, 30000)))
+      })
+    }
+    load()
+    return () => {
+      off = true
+    }
   }, [])
   return g
 }

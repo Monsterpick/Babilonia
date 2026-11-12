@@ -33,6 +33,10 @@ describe('enlace público de overlays', () => {
   it('sirve overlays y sus datos de solo lectura', async () => {
     expect((await get('/api/overlays/settings', PUB)).statusCode).toBe(200)
     expect((await get('/api/scoreboard', PUB)).statusCode).not.toBe(403)
+    // catálogo de regalos (imágenes de las tarjetas) y enlaces fijos /<overlay>.html
+    expect((await get('/api/gifts', PUB)).statusCode).toBe(200)
+    expect((await get('/tarjetas.html', PUB)).statusCode).not.toBe(403)
+    expect((await get('/index.html', PUB)).statusCode).toBe(403)
   })
 
   it('bloquea el panel, la API privada y cualquier cambio', async () => {
