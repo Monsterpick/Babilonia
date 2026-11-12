@@ -281,5 +281,14 @@ export class TikTokSource extends EventEmitter implements LiveSource {
 
 function describe(err: unknown): string {
   const e = err as AnyData
-  return String(e?.exception?.message ?? e?.message ?? e ?? 'error desconocido').slice(0, 300)
+  const ex = e?.exception ?? e
+  // «no se encontró el live»: la librería prueba 3 vías y solo dice «all sources»; se explica cuál falló
+  const subs: AnyData[] = ex?.config?.requestErrs ?? ex?.requestErrs ?? ex?.errors ?? []
+  const text = subs.map((s) => String(s?.message ?? s)).join(' | ')
+  if (/Room ID/i.test(String(ex?.message)) || subs.length) {
+    const euler = /lack of permission/i.test(text) ? ' Euler Stream (la vía de respaldo) pide una API key: ponla en Ajustes → TikTok.' : ''
+    const tiktok = /\b(403|405|429|captcha)\b/i.test(text) ? ' TikTok está bloqueando la consulta desde este PC.' : ''
+    return `No se encontró tu live en TikTok.${tiktok}${euler}`.replace(/\.$/, '').slice(0, 300)
+  }
+  return String(ex?.message ?? e ?? 'error desconocido').slice(0, 300)
 }

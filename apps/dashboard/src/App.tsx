@@ -178,7 +178,9 @@ function TopBar() {
           className="ml-1 w-40 bg-transparent font-semibold outline-none placeholder:font-normal placeholder:text-muted/70"
           title={source?.message}
         />
-        <span className="px-2 text-xs text-muted">{SOURCE_TEXT[st]}</span>
+        <span className={`max-w-[260px] truncate px-2 text-xs ${st === 'error' || st === 'backoff' ? 'text-warn' : 'text-muted'}`} title={source?.message}>
+          {(st === 'error' || st === 'backoff' || st === 'offline') && source?.message ? source.message : SOURCE_TEXT[st]}
+        </span>
         <button className={active ? 'btn' : 'btn-accent'} onClick={toggle} disabled={busy}>
           {busy ? <Loader2 size={14} className="animate-spin" /> : null}
           {active ? 'Desconectar' : 'Conectar'}
