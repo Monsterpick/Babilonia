@@ -331,6 +331,18 @@ public final class ArenaGenerator {
         c.set(x1, top + 1, z1, "packed_mud");
         c.set(x0, top + 2, z1, "lantern[hanging=false]");
         c.set(x1, top + 2, z1, "lantern[hanging=false]");
+        if (bh <= 1) {
+            // A ras de suelo: barricada baja de sacos terreros y tablones por delante (se dispara por encima, los
+            // zombis llegan cara a cara). Postes de valla cada 4 para que se lea como una defensa improvisada.
+            for (int x = x0; x <= x1; x++) {
+                boolean post = Math.floorMod(x, 4) == 2 && Math.abs(x) > 2; // el centro queda despejado (es donde se apunta)
+                String b = post ? "stripped_spruce_log[axis=y]" : Math.floorMod(x * 7 + 3, 5) < 2 ? "mud_bricks" : Math.floorMod(x, 3) == 0 ? "spruce_planks" : "packed_mud";
+                c.set(x, top + 1, z1, b);
+                if (post) c.set(x, top + 2, z1, "spruce_fence");
+            }
+            c.set(x0, top + 2, z1, "lantern[hanging=false]");
+            c.set(x1, top + 2, z1, "lantern[hanging=false]");
+        }
         watchtower(x0 + 1, z0 + 1);
         // hogueras con humo alto (fardo de heno debajo)
         campfire(x1 - 2, z0 + 2);

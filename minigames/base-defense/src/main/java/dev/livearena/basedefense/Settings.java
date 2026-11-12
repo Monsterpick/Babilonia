@@ -120,7 +120,7 @@ public final class Settings {
         width = clamp(c.getInt("arena.ancho", 15), 7, 41);
         forest = clamp(c.getInt("arena.bosque", 13), 5, 30);
         groundY = clamp(c.getInt("arena.altura", 64), -40, 250);
-        baseHeight = clamp(c.getInt("arena.alturaBase", 5), 2, 12);
+        baseHeight = clamp(c.getInt("arena.alturaBase", 0), 0, 12);
         decoDensity = Math.max(0, Math.min(2, c.getDouble("arena.densidadDecorado", 1.0)));
         laneLight = clamp(c.getInt("arena.luzCarril", 12), 0, 15);
         blocksPerTick = clamp(c.getInt("arena.bloquesPorTick", 12000), 500, 100000);

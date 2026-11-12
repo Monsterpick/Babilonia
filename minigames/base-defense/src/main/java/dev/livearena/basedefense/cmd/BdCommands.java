@@ -428,6 +428,7 @@ public final class BdCommands {
         plugin.placer.rebuild(w, old, gen.canvas(), plugin.biome(), plugin.settings.blocksPerTick, () -> {
             plugin.saveArena(data);
             plugin.data().set("arenaLargo", plugin.settings.length);
+            plugin.data().set("arenaAltura", plugin.settings.baseHeight);
             plugin.data().set("arenaAncho", plugin.settings.width);
             plugin.saveData();
             sender.sendMessage(Component.text("[BaseDefense] OK arena lista (semilla " + fseed + "). /bd tp para verla, /bd start para jugar.", NamedTextColor.GREEN));

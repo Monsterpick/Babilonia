@@ -17,11 +17,11 @@ mundo:
 
 arena:
   semilla: 1337
-  largo: 55          # bloques de carril (de la base al portal) · más corto = llegan antes
-  ancho: 13          # bloques de ancho del carril
+  largo: 46          # bloques de carril (de la base al portal) · más corto = se ven antes y más grandes
+  ancho: 9           # bloques de ancho del carril (estrecho: todo cabe en el recorte vertical 9:16)
   bosque: 13         # grosor del bosque a cada lado del carril
   altura: 64         # Y del suelo del carril
-  alturaBase: 5      # bloques que la plataforma está por encima del carril
+  alturaBase: 0      # 0 = a ras de suelo tras una barricada baja (cara a cara con los zombis)
   # 0.0 – 2.0 · cantidad de árboles, ruinas y restos
   densidadDecorado: 1.0
   # luz invisible del carril (0-15). Sube si en el stream los mobs se ven oscuros.
@@ -31,7 +31,7 @@ arena:
 
 # ── Base ─────────────────────────────────────────────────────────────
 base:
-  vida: 1000
+  vida: 1500
   # Al caer: segundos de pausa antes de reiniciar la ronda
   pausaAlCaer: 6
   # Vaciar la cola de mobs pendientes cuando cae la base
@@ -59,12 +59,12 @@ mobs:
   # fase = desde qué fase sale en las oleadas automáticas · peso = lo frecuente que es.
   # Añadir uno nuevo = añadir una entrada (entidad = cualquier mob de Minecraft que camine).
   tipos:
-    zombie:          { entidad: zombie,          vida: 20,  velocidad: 0.27, danio: 4,  nombre: "Zombi",               fase: 1, peso: 10 }
-    skeleton:        { entidad: skeleton,        vida: 16,  velocidad: 0.29, danio: 3,  nombre: "Esqueleto",           fase: 1, peso: 7 }
-    spider:          { entidad: spider,          vida: 14,  velocidad: 0.38, danio: 3,  nombre: "Araña",               fase: 1, peso: 5 }
-    zombie_villager: { entidad: zombie_villager, vida: 24,  velocidad: 0.27, danio: 4,  nombre: "Aldeano zombi",       fase: 2, peso: 4 }
-    husk:            { entidad: husk,            vida: 28,  velocidad: 0.26, danio: 6,  nombre: "Momia",               fase: 2, peso: 4 }
-    piglin:          { entidad: piglin,          vida: 26,  velocidad: 0.34, danio: 6,  nombre: "Piglin",              fase: 2, peso: 6 }
+    zombie:          { entidad: zombie,          vida: 14,  velocidad: 0.27, danio: 4,  nombre: "Zombi",               fase: 1, peso: 10 }
+    skeleton:        { entidad: skeleton,        vida: 12,  velocidad: 0.29, danio: 3,  nombre: "Esqueleto",           fase: 1, peso: 7 }
+    spider:          { entidad: spider,          vida: 11,  velocidad: 0.38, danio: 3,  nombre: "Araña",               fase: 1, peso: 5 }
+    zombie_villager: { entidad: zombie_villager, vida: 18,  velocidad: 0.27, danio: 4,  nombre: "Aldeano zombi",       fase: 2, peso: 4 }
+    husk:            { entidad: husk,            vida: 22,  velocidad: 0.26, danio: 6,  nombre: "Momia",               fase: 2, peso: 4 }
+    piglin:          { entidad: piglin,          vida: 20,  velocidad: 0.34, danio: 6,  nombre: "Piglin",              fase: 2, peso: 6 }
     stray:           { entidad: stray,           vida: 22,  velocidad: 0.29, danio: 5,  nombre: "Esqueleto glacial",   fase: 3, peso: 4 }
     cave_spider:     { entidad: cave_spider,     vida: 12,  velocidad: 0.42, danio: 4,  nombre: "Araña venenosa",      fase: 3, peso: 4 }
     wither_skeleton: { entidad: wither_skeleton, vida: 36,  velocidad: 0.30, danio: 9,  nombre: "Esqueleto wither",    fase: 3, peso: 5 }
@@ -80,9 +80,9 @@ oleadas:
   activadas: true
   fases: 5
   cada: 26             # segundos entre oleadas automáticas
-  tamano: 6            # mobs por oleada en la fase 1
-  crecimiento: 4       # mobs más por oleada en cada fase
-  vidaPorFase: 0.15    # +25 % de vida de los mobs por fase
+  tamano: 5            # mobs por oleada en la fase 1
+  crecimiento: 3       # mobs más por oleada en cada fase
+  vidaPorFase: 0.10    # +25 % de vida de los mobs por fase
   velocidadPorFase: 0.04
 
 # ── Dificultad ───────────────────────────────────────────────────────
@@ -98,14 +98,14 @@ zombis:
   segundosPiezas: 4
 
 dificultad:
-  version: 5
+  version: 6
   # Asedio: los mobs que llegan a la base se quedan golpeándola (cada X s) hasta que los matas.
   asedio: true
-  golpeCada: 1.8
+  golpeCada: 2.4
   # Élites: más vida, más rápidos, con armadura. Probabilidad = base + porFase × (fase − 1) (+ la de la amenaza).
-  eliteBase: 0.03
-  elitePorFase: 0.025
-  eliteVida: 2.0
+  eliteBase: 0.02
+  elitePorFase: 0.02
+  eliteVida: 1.6
   eliteVelocidad: 1.15
   # Cada ronda superada: +X de vida a los mobs y de tamaño de las oleadas (0.35 = +35 %).
   porRonda: 0.2
@@ -114,13 +114,13 @@ dificultad:
   amenaza:
     porMob: 1            # puntos por cada mob donado
     porJefe: 30          # puntos por cada jefe donado
-    porNivel: 50         # puntos para subir un nivel
+    porNivel: 80         # puntos para subir un nivel
     niveles: 5
-    bajadaPorSegundo: 0.8
-    vida: 0.1           # +18 % de vida de los mobs por nivel
+    bajadaPorSegundo: 1.5
+    vida: 0.06          # +18 % de vida de los mobs por nivel
     velocidad: 0.04      # +6 % de velocidad por nivel
-    oleada: 0.2          # +30 % de mobs por oleada por nivel
-    elite: 0.03          # +5 % de élites por nivel
+    oleada: 0.12         # +30 % de mobs por oleada por nivel
+    elite: 0.02          # +5 % de élites por nivel
 
 # ── Jefes ────────────────────────────────────────────────────────────
 # No desaparecen al llegar: se colocan frente a la base y la atacan hasta que los matas.
@@ -180,8 +180,8 @@ likes:
 # sonido: "sonido del pack|sonido vanilla" (el segundo se usa si no aceptas el pack)
 armas:
   # desbloqueo = fase de la ronda en la que se consigue (hasta entonces sale con candado). Al caer la base se pierden.
-  pistola:       { slot: 0, item: crossbow,        modelo: "basedefense:pistola",       nombre: "&ePistola",        desbloqueo: 1, tipo: hitscan, automatica: false, danio: 12,  cadencia: 5,   alcance: 110, dispersion: 0.6, cargador: 12,  reserva: -1,  recarga: 1.3, sonido: "basedefense:arma.pistola|entity.firework_rocket.blast" }
-  subfusil:      { slot: 1, item: iron_hoe,        modelo: "basedefense:subfusil",      nombre: "&bSubfusil",       desbloqueo: 1, tipo: hitscan, automatica: true,  danio: 6,  cadencia: 11,  alcance: 80,  dispersion: 2.8, cargador: 30,  reserva: 150,  recarga: 1.8, sonido: "basedefense:arma.subfusil|entity.firework_rocket.blast" }
+  pistola:       { slot: 0, item: crossbow,        modelo: "basedefense:pistola",       nombre: "&ePistola",        desbloqueo: 1, tipo: hitscan, automatica: false, danio: 15,  cadencia: 6,   alcance: 110, dispersion: 0.5, cargador: 15,  reserva: -1,  recarga: 1.3, sonido: "basedefense:arma.pistola|entity.firework_rocket.blast" }
+  subfusil:      { slot: 1, item: iron_hoe,        modelo: "basedefense:subfusil",      nombre: "&bSubfusil",       desbloqueo: 1, tipo: hitscan, automatica: true,  danio: 8,  cadencia: 12,  alcance: 90,  dispersion: 1.6, cargador: 40,  reserva: -1,  recarga: 1.8, sonido: "basedefense:arma.subfusil|entity.firework_rocket.blast" }
   ametralladora: { slot: 2, item: netherite_hoe,   modelo: "basedefense:ametralladora", nombre: "&cAmetralladora",  desbloqueo: 2, tipo: hitscan, automatica: true,  danio: 9,  cadencia: 13,  alcance: 120, dispersion: 1.8, cargador: 60,  reserva: 240, recarga: 3.6, sonido: "basedefense:arma.ametralladora|entity.firework_rocket.large_blast" }
   lanzagranadas: { slot: 3, item: fire_charge,     modelo: "basedefense:lanzagranadas", nombre: "&aLanzagranadas",  desbloqueo: 3, tipo: granada, automatica: false, danio: 60, cadencia: 1.5, alcance: 80,  dispersion: 0,   cargador: 4,   reserva: 12,   recarga: 2.8, radio: 4.5, velocidad: 1.35, rebotes: 2, mecha: 2.0, sonido: "basedefense:arma.granada|entity.snowball.throw" }
   lanzacohetes:  { slot: 4, item: firework_rocket, modelo: "basedefense:lanzacohetes",  nombre: "&6Lanzacohetes",   desbloqueo: 4, tipo: cohete,  automatica: false, danio: 110, cadencia: 1.0, alcance: 140, dispersion: 0,   cargador: 2,   reserva: 6,   recarga: 3.2, radio: 5.0, velocidad: 2.2, sonido: "basedefense:arma.cohete|entity.firework_rocket.launch" }
@@ -189,9 +189,9 @@ armas:
 
 # ── Munición y suministros ──────────────────────────────────────────
 municion:
-  probabilidadCaja: 0.09      # un mob suelta una caja de munición (vuela sola hasta ti)
+  probabilidadCaja: 0.15      # un mob suelta una caja de munición (vuela sola hasta ti)
   probabilidadCajaJefe: 1.0
-  cajaCargadores: 0.5        # una caja pequeña da esta fracción de cargador del arma que más lo necesita
+  cajaCargadores: 0.8        # una caja pequeña da esta fracción de cargador del arma que más lo necesita
   suministroAlEmpezarFase: true   # caja de suministros en cada fase
   suministroCada: 150         # segundos entre cajas automáticas (0 = solo por fase y regalos)
   suministroCargadores: 1.5   # cargadores que da un suministro a cada arma desbloqueada

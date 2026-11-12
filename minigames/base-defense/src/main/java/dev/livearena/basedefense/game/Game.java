@@ -142,7 +142,8 @@ public final class Game implements Listener {
         if (plugin.arena == null || !plugin.arena.valid()) return "no hay arena: usa /bd arena generate";
         if (who == null) return "no hay ningún jugador conectado para defender la base";
         // la arena es de otro tamaño que el de la config (p. ej. de la versión anterior): se reconstruye sola
-        if (plugin.data().getInt("arenaLargo", -1) != plugin.settings.length || plugin.data().getInt("arenaAncho", -1) != plugin.settings.width) {
+        if (plugin.data().getInt("arenaLargo", -1) != plugin.settings.length || plugin.data().getInt("arenaAncho", -1) != plugin.settings.width
+            || plugin.data().getInt("arenaAltura", 5) != plugin.settings.baseHeight) {
             Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "bd arena regen");
             return "la arena se está reconstruyendo con el tamaño nuevo (" + plugin.settings.length + " bloques); espera unos segundos y vuelve a pulsar Iniciar";
         }

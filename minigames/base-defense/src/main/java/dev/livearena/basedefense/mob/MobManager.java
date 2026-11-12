@@ -553,6 +553,11 @@ public final class MobManager implements Listener {
     void steer(GameMob gm) {
         Mob m = gm.entity;
         Location l = m.getLocation();
+        // Con la base a ras de suelo, nadie salta la barricada: se les devuelve al carril.
+        if (plugin.arena != null && l.getZ() < 0.15 && l.getY() < plugin.arena.groundY + 4) {
+            m.teleport(new Location(l.getWorld(), l.getX(), l.getY(), 0.6, l.getYaw(), l.getPitch()));
+            m.setVelocity(new Vector(0, 0, 0.15));
+        }
         boolean repath = false;
         while (reached(gm, l)) {
             gm.waypoint++;

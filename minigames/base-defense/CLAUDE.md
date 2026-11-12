@@ -180,3 +180,11 @@ Decisiones:
 - **Élites**: armadura completa con `equippable.asset_id = basedefense:elite` (`tools/gen_elite.py`); los que no llevan
   armadura (arañas, devastador) van con contorno rojo (equipo `bd_elite`). Sueltan brasas.
 - Arreglo: `MobManager.tick` recorre una copia (un golpe de asedio que tumbaba la base vaciaba la colección a mitad).
+
+## v14 · a ras de suelo y dificultad más suave
+- `arena.alturaBase: 0` (antes 5): el streamer defiende a la altura del carril tras una barricada baja de sacos y
+  tablones (centro despejado); los mobs que la crucen se devuelven al carril (`MobManager.steer`). Cambiar la altura
+  regenera la arena al pulsar Iniciar (`arenaAltura` en datos.yml).
+- Arena 46×9 (antes 55×13) para que todo quepa en el recorte vertical 9:16; FOV del mod ×0,74 (antes ×0,86).
+- Config v6 (la anterior queda en `config-v5.yml`): pistola 15 de daño, subfusil 8 con munición infinita y menos
+  dispersión, mobs de las primeras fases con menos vida, base 1500, asedio cada 2,4 s, menos élites y amenaza más lenta.

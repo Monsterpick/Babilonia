@@ -120,6 +120,15 @@ public final class BaseDefense extends JavaPlugin {
                 getLogger().info("config.yml actualizada a la v5 (dificultad nivelada; la anterior queda en config-v4.yml)");
             }
         }
+        // v6 (base a ras de suelo, arena estrecha para el directo vertical y dificultad más suave)
+        if (getConfig().getInt("dificultad.version", 6) < 6) {
+            File cfg = new File(getDataFolder(), "config.yml");
+            if (cfg.renameTo(new File(getDataFolder(), "config-v5.yml"))) {
+                saveDefaultConfig();
+                reloadConfig();
+                getLogger().info("config.yml actualizada a la v6 (base a ras de suelo y dificultad más suave; la anterior queda en config-v5.yml)");
+            }
+        }
         // añade al config.yml del servidor las claves nuevas de esta versión (conserva lo que el usuario cambió)
         getConfig().options().copyDefaults(true);
         saveConfig();
