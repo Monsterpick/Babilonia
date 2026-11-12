@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 
 /** Diálogos propios (sustituyen a confirm/prompt del navegador, que en Electron bloquean el teclado). */
 interface Req {
@@ -37,7 +38,7 @@ export function Dialogs() {
     req.resolve(v)
     setReq(null)
   }
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4 backdrop-blur-sm" onMouseDown={() => done(null)}>
       <div
         className="fx-in card w-full max-w-md space-y-4 p-5"
@@ -58,6 +59,7 @@ export function Dialogs() {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

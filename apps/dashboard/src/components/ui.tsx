@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { X, Gift, Heart, UserPlus, Share2, MessageSquare, Star, Gem, Users, LogIn } from 'lucide-react'
 import type { TriggerLabel } from '../lib/catalog'
 
@@ -22,8 +23,19 @@ export function Modal({ open, onClose, title, children, wide }: { open: boolean;
     window.addEventListener('keydown', k)
     return () => window.removeEventListener('keydown', k)
   }, [onClose])
+  // bloquea el desplazamiento de la página mientras está abierta
+  useEffect(() => {
+    if (!open) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [open])
   if (!open) return null
-  return (
+  // Se dibuja en <body> (portal): si se abre desde una tarjeta con transform/filtro, «fixed» quedaría atrapado en ella
+  // y la ventana saldría fuera de la pantalla, bajo un fondo difuminado.
+  return createPortal(
     <div className="fixed inset-0 z-40 grid place-items-center bg-[#05050a]/75 p-4 backdrop-blur-md" onMouseDown={onClose}>
       <div className={`fx-in card flex max-h-[90vh] w-full flex-col ${wide ? 'max-w-4xl' : 'max-w-xl'}`} onMouseDown={(e) => e.stopPropagation()}>
         <div className="flex items-center border-b border-white/5 px-6 py-4">
@@ -34,7 +46,8 @@ export function Modal({ open, onClose, title, children, wide }: { open: boolean;
         </div>
         <div className="overflow-y-auto p-5">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 

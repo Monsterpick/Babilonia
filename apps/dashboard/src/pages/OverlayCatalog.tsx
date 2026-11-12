@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { Copy, ExternalLink, FlaskConical, Minus, Pause, Play, Plus, RotateCcw, Search, Sparkles, Trash2, X } from 'lucide-react'
 import { api, overlayUrl } from '../lib/api'
 import { useLiveState } from '../lib/live'
@@ -598,7 +599,7 @@ function Tester({ d, cfg, set, onClose, bg, setBg }: { d: Def; cfg: Cfg; set: (p
     window.addEventListener('keydown', k)
     return () => window.removeEventListener('keydown', k)
   }, [onClose])
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex bg-black/80 p-4 backdrop-blur-sm md:p-6" onClick={onClose}>
       <div className="mx-auto grid h-full w-full max-w-[1600px] gap-4 overflow-hidden rounded-2xl border border-line bg-bg p-4 lg:grid-cols-[minmax(0,1fr)_400px]" onClick={(e) => e.stopPropagation()}>
         <div className="flex min-h-0 flex-col gap-3">
@@ -685,7 +686,8 @@ function Tester({ d, cfg, set, onClose, bg, setBg }: { d: Def; cfg: Cfg; set: (p
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
