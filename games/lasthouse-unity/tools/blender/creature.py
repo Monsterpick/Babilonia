@@ -267,7 +267,7 @@ def prim(kind, name, m, loc=(0, 0, 0), scale=(1, 1, 1), rot=(0, 0, 0), **kw):
     o.name = name
     o.scale = scale
     o.data.materials.append(m)
-    if kind in ('uv_sphere', 'cylinder', 'cone', 'torus'):
+    if kind in ('uv_sphere', 'ico_sphere', 'cylinder', 'cone', 'torus'):
         bpy.ops.object.shade_smooth()
     return o
 

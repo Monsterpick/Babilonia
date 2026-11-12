@@ -37,8 +37,8 @@ N = [
 ]
 ob, arm = C.body('Zombi', N, subdiv=2)
 
-piel = C.mat('Zombi_Piel', '#8C7AA0', 0.8)
-manchas = C.mat('Zombi_Piel2', '#B5E37A', 0.8)
+piel = C.mat('Zombi_Piel', '#93A07E', 0.8)
+manchas = C.mat('Zombi_Piel2', '#6E7D5C', 0.8)
 peto = C.mat('Zombi_Peto', '#3F6E9E', 0.9)
 camisa = C.mat('Zombi_Camisa', '#C9A15A', 0.9)
 zapato = C.mat('Zombi_Zapato', '#4A3528', 0.7)
