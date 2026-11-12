@@ -199,8 +199,8 @@ function splashHtml(icon: string): string {
   .skip{background:none;color:#8d88a6;font-weight:500;font-size:12.5px;padding:8px;margin-top:4px}.hide{display:none}
   </style></head><body><img src="${icon}"><h1>LiveArena</h1><div class="sub" id="sub">Buscando actualizaciones…</div>
   <div class="box hide" id="st"></div><div class="box hide" id="info"></div>
-  <button id="go" class="hide" onclick="location.hash='#instalar-'+Date.now()">Actualizar ahora</button>
-  <button id="skip" class="skip hide" onclick="location.hash='#saltar-'+Date.now()">Ahora no</button></body></html>`
+  <button id="go" class="hide" onclick="window.__eleccion='instalar'">Actualizar ahora</button>
+  <button id="skip" class="skip hide" onclick="window.__eleccion='saltar'">Ahora no</button></body></html>`
 }
 
 /**
@@ -281,13 +281,19 @@ async function startupUpdate(): Promise<boolean> {
         await js(`(()=>{const b=document.getElementById('go');b.disabled=false;b.textContent='Reintentar';document.getElementById('skip').classList.remove('hide');document.getElementById('skip').textContent='Continuar sin actualizar'})()`)
       }
     }
-    splash.webContents.on('did-navigate-in-page', (_e, url) => {
-      const h = url.slice(url.indexOf('#'))
-      if (h.startsWith('#instalar')) void install()
-      else if (h.startsWith('#saltar') && !started) cont()
-    })
+    // los botones dejan la elección en la página y aquí se lee (los cambios de #hash en una página data: no avisan)
+    const poll = setInterval(() => {
+      if (splash.isDestroyed()) return clearInterval(poll)
+      splash.webContents
+        .executeJavaScript(`(()=>{const c=window.__eleccion||'';window.__eleccion='';return c})()`)
+        .then((c: string) => {
+          if (c === 'instalar') void install()
+          else if (c === 'saltar' && !started) cont()
+        }, () => undefined)
+    }, 200)
     // cerrar la ventana sin actualizar = seguir con la versión actual (mientras no se esté instalando)
     splash.on('closed', () => {
+      clearInterval(poll)
       if (!started) resolve(false)
     })
   })

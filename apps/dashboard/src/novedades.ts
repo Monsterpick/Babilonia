@@ -17,6 +17,7 @@ export const NOVEDADES: Novedad[] = [
     titulo: 'Tops a la izquierda o a la derecha',
     fecha: 'noviembre 2026',
     mejorado: ['Top regalos y Top likes: ahora puedes elegir si van alineados a la izquierda o a la derecha desde sus ajustes en Overlays.'],
+    corregido: ['El botón «Actualizar ahora» de la ventana de actualización no hacía nada: ahora descarga e instala la versión nueva.'],
   },
   {
     id: 3,
