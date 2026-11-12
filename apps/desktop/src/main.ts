@@ -10,12 +10,27 @@ import { pathToFileURL } from 'node:url'
 const PORT = Number(process.env.PORT ?? 7420)
 let win: BrowserWindow | null = null
 let server: { url: string; close: () => Promise<void> } | null = null
+let quitting = false
 
 if (!app.requestSingleInstanceLock()) {
-  app.quit()
+  // Ya hay otro LiveArena en marcha (o cerrándose / instalando una actualización): avisamos en vez de no hacer nada.
+  void app.whenReady().then(() => {
+    dialog.showMessageBoxSync({
+      type: 'info',
+      title: 'LiveArena',
+      message: 'LiveArena ya está abierto o se está cerrando para actualizarse.',
+      detail: 'Espera unos segundos y vuelve a abrirlo. Si sigue sin abrir, cierra «LiveArena» en el Administrador de tareas.',
+    })
+    app.quit()
+  })
 } else {
   app.on('second-instance', () => {
-    if (win) {
+    // si esta copia se está cerrando (p. ej. apagando el servidor de Minecraft), se termina ya para dejar paso a la nueva
+    if (quitting) {
+      app.exit(0)
+      return
+    }
+    if (win && !win.isDestroyed()) {
       if (win.isMinimized()) win.restore()
       win.focus()
     }
@@ -133,11 +148,31 @@ async function check(): Promise<UpdateState> {
   return updateState
 }
 
-let quitting = false
 app.on('before-quit', (e) => {
   if (quitting || !server) return
   e.preventDefault()
   quitting = true
-  void server.close().finally(() => app.quit())
+  // el cierre ordenado (servidor, Minecraft) nunca puede dejar la app colgada en segundo plano: como mucho 12 s
+  const force = setTimeout(() => app.exit(0), 12_000)
+  void server.close().finally(() => {
+    clearTimeout(force)
+    app.quit()
+  })
 })
-app.on('window-all-closed', () => app.quit())
+app.on('window-all-closed', () => {
+  // con una actualización ya descargada: se instala en silencio y la app vuelve a abrirse sola
+  // (antes se instalaba al salir sin reabrirse y, si la abrías mientras tanto, parecía que no arrancaba)
+  if (updateState.state === 'ready' && app.isPackaged && !process.env.PORTABLE_EXECUTABLE_DIR) {
+    const done = () => autoUpdater.quitAndInstall(true, true)
+    if (server && !quitting) {
+      quitting = true
+      const force = setTimeout(done, 12_000)
+      void server.close().finally(() => {
+        clearTimeout(force)
+        done()
+      })
+    } else done()
+    return
+  }
+  app.quit()
+})
