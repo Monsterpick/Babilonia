@@ -124,7 +124,7 @@ public final class Bosses implements Listener {
         to.add(cb.vx + out.getX() * cb.kick, 0, cb.vz + out.getZ() * cb.kick);
         cb.kick *= 0.78;
         if (flying) {
-            cb.lift += ((cb.chargeAt > 0 || cb.burstLeft > 0 ? 1.8 : 0) - cb.lift) * 0.1;
+            cb.lift += ((cb.chargeAt > 0 || cb.burstLeft > 0 ? 0.7 : 0) - cb.lift) * 0.1;
             y += Math.sin((now + gm.entity.getEntityId() * 7) * 0.06) * 0.8 + cb.lift;
         }
         to.setY(to.getY() + (y - to.getY()) * (flying ? 0.1 : 0.3));

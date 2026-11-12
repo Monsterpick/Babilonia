@@ -322,9 +322,6 @@ public final class MobManager implements Listener {
                     set(d, Attribute.MAX_HEALTH, realHp);
                     d.setHealth(realHp);
                     if (def.scale() != 1.0) set(d, Attribute.SCALE, def.scale());
-                    // el modelo es casi negro y el escenario oscuro: contorno morado para que se lea en el directo
-                    d.setGlowing(true);
-                    bossTeam().addEntity(d);
                     done.accept(finishBoss(d, def, donor, at));
                     return;
                 }
@@ -350,6 +347,9 @@ public final class MobManager implements Listener {
             if (m instanceof org.bukkit.entity.EnderDragon d) d.setPhase(org.bukkit.entity.EnderDragon.Phase.HOVER);
             else m.setAI(false);
         } else attachBrain(gm, def.speed());
+        // wither y dragón son casi negros y el escenario es oscuro: contorno morado para que se lean en el directo
+        m.setGlowing(true);
+        bossTeam().addEntity(m);
         addLabel(gm, 1.6f);
         updateBar(gm);
         spawnFx(at, true);
@@ -630,7 +630,9 @@ public final class MobManager implements Listener {
             t = gm.waypoint >= wp.size() - 1 ? plugin.arena.baseCenter().clone().setY(wp.get(wp.size() - 1).getY()) : target(gm);
             sp = gm.speed * (gm.furious ? plugin.settings.furySpeed : 1.0);
         }
-        double y = plugin.arena.groundY + 1 + (gm.isBoss() && gm.boss.flying() ? gm.boss.height() : 0);
+        // el wither vuela a la altura de los ojos (más arriba quedaba entre las copas y tapado por la barra del jefe)
+        double fh = gm.isBoss() && gm.boss.flying() ? (gm.entity.getType() == EntityType.WITHER ? Math.min(gm.boss.height(), 2.5) : gm.boss.height()) : 0;
+        double y = plugin.arena.groundY + 1 + fh;
         if (gm.isBoss() && gm.entity.getType() != EntityType.ENDER_DRAGON) {
             // wither y warden: movimiento con aceleración, giro progresivo y pausas de ataque (Bosses.step)
             Location next = plugin.bosses.step(gm, l, t, sp, y);

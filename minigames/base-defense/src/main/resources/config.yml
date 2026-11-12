@@ -133,7 +133,7 @@ jefes:
       vida: 1000
       velocidad: 0.34      # bloques por tick
       escala: 1.6
-      altura: 9            # altura de vuelo sobre el carril
+      altura: 2.5          # altura de vuelo sobre el carril
       distanciaAtaque: 20  # se queda a esta distancia de la base y dispara
       ataqueCada: 1.8      # segundos entre ráfagas de calaveras
       danioAtaque: 30      # daño a la base por calavera (dispárales para destruirlas)
