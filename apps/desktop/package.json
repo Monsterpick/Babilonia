@@ -64,10 +64,21 @@
     },
     "portable": {
       "artifactName": "LiveArena-Portable-${version}.${ext}"
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Monsterpick",
+        "repo": "Babilonia",
+        "releaseType": "release"
+      }
+    ]
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/Monsterpick/babilonia.git"
+  },
+  "dependencies": {
+    "electron-updater": "6.6.2"
   }
 }

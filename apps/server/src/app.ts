@@ -17,7 +17,8 @@ import { ProfileStore } from './profiles.js'
 import { StatsStore } from './stats.js'
 import { GiftCatalog } from './gifts.js'
 
-export const VERSION = '0.6.0'
+/** Versión: la de la app de escritorio si corre dentro de ella (se actualiza sola); si no, la del código. */
+export const VERSION = process.env.LIVEARENA_VERSION ?? '0.7.0'
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 

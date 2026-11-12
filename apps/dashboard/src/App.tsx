@@ -16,6 +16,7 @@ import { ActivityPage } from './pages/Activity'
 import { SettingsPage } from './pages/Settings'
 import { Dialogs } from './components/Dialog'
 import { Toasts, toast } from './components/Toast'
+import { UpdateBanner } from './components/UpdateBanner'
 
 export interface AppState {
   config: any
@@ -108,6 +109,7 @@ export function App() {
         </main>
       </div>
       <Toasts />
+      <UpdateBanner />
       <Dialogs />
     </AppCtx.Provider>
   )

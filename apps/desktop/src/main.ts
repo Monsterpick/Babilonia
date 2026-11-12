@@ -3,6 +3,7 @@
  * y muestra el panel en una ventana. Al cerrar, apaga todo (y el servidor de Minecraft si así se configuró).
  */
 import { app, BrowserWindow, dialog, ipcMain, shell, Menu } from 'electron'
+import { autoUpdater } from 'electron-updater'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 
@@ -27,6 +28,7 @@ async function boot(): Promise<void> {
   Menu.setApplicationMenu(null)
   process.env.LIVEARENA_RESOURCES = app.isPackaged ? path.join(process.resourcesPath, 'res') : path.join(__dirname, 'res')
   process.env.LIVEARENA_DATA ??= path.join(app.getPath('userData'), 'datos')
+  process.env.LIVEARENA_VERSION = app.getVersion()
 
   // En Windows, tras un diálogo nativo la página puede quedarse sin foco de teclado: lo devolvemos.
   const refocus = () => {
@@ -74,6 +76,61 @@ async function boot(): Promise<void> {
   })
   win.on("focus", () => win?.webContents.focus())
   await win.loadURL(server.url)
+  setupUpdates()
+}
+
+/**
+ * Actualizaciones automáticas desde las releases de GitHub (el repositorio es público: no hace falta ninguna clave).
+ * Versión instalada: se descarga sola y el panel ofrece «Reiniciar y actualizar».
+ * Versión portable: no se puede reemplazar a sí misma; el panel avisa y ofrece descargarla.
+ */
+type UpdateState =
+  | { state: 'checking' | 'none' }
+  | { state: 'available'; version: string; portable: boolean; url: string }
+  | { state: 'downloading'; version: string; percent: number }
+  | { state: 'ready'; version: string }
+  | { state: 'error'; message: string }
+
+let updateState: UpdateState = { state: 'none' }
+const RELEASES = 'https://github.com/Monsterpick/Babilonia/releases/latest'
+
+function sendUpdate(s: UpdateState): void {
+  updateState = s
+  if (win && !win.isDestroyed()) win.webContents.send('update-state', s)
+}
+
+function setupUpdates(): void {
+  ipcMain.handle('update-get', () => ({ ...updateState, current: app.getVersion() }))
+  ipcMain.handle('update-check', () => check())
+  ipcMain.handle('update-install', () => {
+    if (updateState.state !== 'ready') return false
+    // instalación silenciosa y la app vuelve a abrirse sola (los datos del usuario no se tocan)
+    setImmediate(() => autoUpdater.quitAndInstall(true, true))
+    return true
+  })
+  if (!app.isPackaged) return
+  const portable = Boolean(process.env.PORTABLE_EXECUTABLE_DIR)
+  autoUpdater.autoDownload = !portable
+  autoUpdater.autoInstallOnAppQuit = !portable
+  autoUpdater.on('update-available', (i) => sendUpdate(portable ? { state: 'available', version: i.version, portable: true, url: RELEASES } : { state: 'downloading', version: i.version, percent: 0 }))
+  autoUpdater.on('download-progress', (p) => updateState.state === 'downloading' && sendUpdate({ ...updateState, percent: Math.round(p.percent) }))
+  autoUpdater.on('update-downloaded', (i) => sendUpdate({ state: 'ready', version: i.version }))
+  autoUpdater.on('update-not-available', () => sendUpdate({ state: 'none' }))
+  autoUpdater.on('error', (e) => sendUpdate({ state: 'error', message: String(e?.message ?? e).slice(0, 200) }))
+  // primera comprobación al poco de abrir y luego cada 30 minutos
+  setTimeout(() => void check(), 8_000)
+  setInterval(() => void check(), 30 * 60_000)
+}
+
+async function check(): Promise<UpdateState> {
+  if (!app.isPackaged) return { state: 'none' }
+  if (updateState.state === 'downloading' || updateState.state === 'ready') return updateState
+  try {
+    await autoUpdater.checkForUpdates()
+  } catch (e) {
+    sendUpdate({ state: 'error', message: String((e as Error).message).slice(0, 200) })
+  }
+  return updateState
 }
 
 let quitting = false
