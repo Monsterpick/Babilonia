@@ -89,6 +89,11 @@ public final class Bosses implements Listener {
         long nextBurst;
         int spawnAnim;           // wither: animación de aparición (cuenta atrás de «invulnerable»)
         int rams;                // warden: embestidas dadas (ruge cada tres)
+        // dragón: vuelo propio (rumbo continuo, giro limitado, inclinación) y picado sobre la base
+        float pitch;
+        double fly = -1;         // velocidad actual de vuelo
+        long diveAt = -1, diveEnd = -1;
+        long nextDive;
     }
 
     private static float wrap(float a) {
@@ -132,6 +137,94 @@ public final class Bosses implements Listener {
         to.setYaw(cb.yaw);
         to.setPitch(0);
         return to;
+    }
+
+    /**
+     * Vuelo del dragón: siempre avanza (no se queda clavado en el aire), gira hacia su objetivo con un giro máximo por
+     * tick y se inclina al subir y bajar. Al llegar a su puesto traza órbitas amplias sobre el carril; cada cierto tiempo
+     * hace un picado sobre la base escupiendo fuego y vuelve a remontar. El cliente lo dibuja bien porque cada paso es un
+     * avance pequeño en la dirección a la que mira (con el /tp a saltos y giros de 180° se «bugeaba»).
+     */
+    Location dragonStep(GameMob gm, Location l, double sp) {
+        Combat cb = combat.get(gm.entity.getUniqueId());
+        Location to = l.clone();
+        if (cb == null) return to;
+        long now = plugin.tick();
+        Vector base = plugin.arena.baseCenter();
+        Vector out = toSpawn();
+        // por encima de las copas de los árboles muertos del borde (a su altura se perdía entre ellos)
+        double cruiseY = plugin.arena.groundY + 1 + Math.max(gm.boss.height(), 24);
+        Vector hold = base.clone().add(out.clone().multiply(gm.boss.attackDistance()));
+        double distHold = Math.hypot(l.getX() - hold.getX(), l.getZ() - hold.getZ());
+        // objetivo: llegar al puesto; allí, un punto por delante en una órbita amplia (se mueve en curva, sin parar)
+        Vector target;
+        double wantY = cruiseY + Math.sin((now + gm.entity.getEntityId() * 7) * 0.05) * 1.2;
+        boolean diving = cb.diveAt > 0 && now >= cb.diveAt && now < cb.diveEnd;
+        if (diving) {
+            target = base.clone().add(out.clone().multiply(2));
+            wantY = plugin.arena.groundY + 4.5;
+            if (now % 2 == 0) {
+                // aliento de fuego mientras pasa a ras
+                Location mouth = l.clone().add(dirOf(cb.yaw).multiply(5)).add(0, -1, 0);
+                plugin.fx.particle(mouth, Particle.DRAGON_BREATH, 30, 1.6, 0.4, 1.6, 0.03, 1f, true);
+                plugin.fx.particle(mouth, Particle.FLAME, 18, 1.2, 0.3, 1.2, 0.05, 1f, true);
+            }
+            if (Math.hypot(l.getX() - base.getX(), l.getZ() - base.getZ()) < 6 && now % 6 == 0) {
+                plugin.game.damageBase(gm.boss.attackDamage() * 0.25, gm);
+                plugin.fx.sound(l, Sound.ENTITY_ENDER_DRAGON_FLAP, 3f, 0.7f, true);
+            }
+        } else if (distHold > 14) {
+            target = hold;
+        } else {
+            // órbita alargada sobre el carril (estrecha a los lados para no irse sobre el bosque)
+            Vector side = new Vector(-out.getZ(), 0, out.getX());
+            Vector rel = new Vector(l.getX() - hold.getX(), 0, l.getZ() - hold.getZ());
+            double a = Math.atan2(rel.dot(out) / 12.0, rel.dot(side) / 7.0) + 0.5;
+            target = hold.clone().add(side.multiply(Math.cos(a) * 7)).add(out.clone().multiply(Math.sin(a) * 12));
+        }
+        if (cb.diveEnd > 0 && now >= cb.diveEnd) {
+            cb.diveAt = cb.diveEnd = -1;
+            plugin.fx.sound(l, Sound.ENTITY_ENDER_DRAGON_GROWL, 4f, 0.9f, true);
+        }
+        // giro limitado hacia el objetivo (más cerrado en el picado)
+        float goal = (float) Math.toDegrees(Math.atan2(-(target.getX() - l.getX()), target.getZ() - l.getZ()));
+        if (Float.isNaN(cb.yaw)) cb.yaw = goal;
+        float maxTurn = diving ? 4.5f : 3.2f;
+        cb.yaw = wrap(cb.yaw + Math.max(-maxTurn, Math.min(maxTurn, wrap(goal - cb.yaw))));
+        // velocidad: acelera y frena con suavidad; en el picado va más rápido
+        double want = sp * (diving ? 1.7 : 1.0);
+        if (cb.fly < 0) cb.fly = want;
+        cb.fly += (want - cb.fly) * 0.05;
+        Vector fwd = dirOf(cb.yaw).multiply(cb.fly);
+        double dy = Math.max(-0.45, Math.min(0.45, (wantY - l.getY()) * 0.08));
+        to.add(fwd.getX(), dy, fwd.getZ());
+        cb.pitch += ((float) Math.toDegrees(Math.atan2(-dy, Math.max(0.05, cb.fly))) - cb.pitch) * 0.2f;
+        to.setYaw(cb.yaw);
+        to.setPitch(cb.pitch);
+        if (now % 2 == 0) {
+            // estela de brasas en las puntas de las alas (se ve contra el cielo morado)
+            Vector sd = new Vector(Math.cos(Math.toRadians(cb.yaw)), 0, Math.sin(Math.toRadians(cb.yaw))).multiply(7.5);
+            for (int k = -1; k <= 1; k += 2) {
+                Location tip = to.clone().add(sd.clone().multiply(k)).add(0, 1.5, 0);
+                plugin.fx.particle(tip, Particle.SOUL_FIRE_FLAME, 2, 0.3, 0.2, 0.3, 0.01, 1f, true);
+                plugin.fx.particle(tip, Particle.REVERSE_PORTAL, 4, 0.4, 0.3, 0.4, 0.02, 1f, true);
+            }
+        }
+        return to;
+    }
+
+    /** Pide un picado del dragón (lo usa su ataque). */
+    private void dive(GameMob gm, Combat cb, long now) {
+        cb.diveAt = now + 20;
+        cb.diveEnd = now + 20 + 70;
+        cb.nextDive = now + (long) (gm.furious ? 260 : 400);
+        plugin.fx.sound(gm.entity.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 5f, 0.6f, true);
+        plugin.hud.notify("skull", "¡EL DRAGÓN SE LANZA EN PICADO!", net.kyori.adventure.text.format.TextColor.color(0xC84BFF));
+    }
+
+    private static Vector dirOf(float yaw) {
+        double r = Math.toRadians(yaw);
+        return new Vector(-Math.sin(r), 0, Math.cos(r));
     }
 
     private final Map<UUID, Combat> combat = new LinkedHashMap<>();
@@ -353,12 +446,6 @@ public final class Bosses implements Listener {
             Vector side = new Vector(-out.getZ(), 0, out.getX());
             return hold.clone().add(side.multiply(Math.sin(a) * 6.5)).add(out.clone().multiply(Math.sin(a * 2.3) * 2.5));
         }
-        if (gm.entity.getType() == EntityType.ENDER_DRAGON && near(gm, hold, 6)) {
-            // da vueltas sobre el carril frente a la base
-            double a = (plugin.tick() + gm.entity.getEntityId() * 31) * 0.035;
-            Vector side = new Vector(-out.getZ(), 0, out.getX());
-            return hold.clone().add(side.multiply(Math.cos(a) * 10)).add(out.clone().multiply(Math.sin(a) * 6));
-        }
         return hold;
     }
 
@@ -437,6 +524,13 @@ public final class Bosses implements Listener {
                 case WITHER -> wither(gm, cb, l, now, every);
                 case ENDER_DRAGON -> {
                     int orbs = gm.furious ? 3 : 2;
+                    boolean diving = cb.diveAt > 0;
+                    if (!diving && cb.chargeAt < 0 && cb.nextDive > 0 && now >= cb.nextDive && distToBase(gm) < gm.boss.attackDistance() + 16) {
+                        dive(gm, cb, now);
+                        break;
+                    }
+                    if (cb.nextDive == 0) cb.nextDive = now + 300;
+                    if (diving) break;
                     if (cb.chargeAt > 0) {
                         // carga: los orbes crecen junto a la boca mientras la energía converge
                         double k = 1 - (cb.chargeAt - now) / 26.0;

@@ -296,6 +296,16 @@ public final class MobManager implements Listener {
         return t;
     }
 
+    private org.bukkit.scoreboard.Team bossTeam() {
+        var sb = Bukkit.getScoreboardManager().getMainScoreboard();
+        var t = sb.getTeam("bd_jefe");
+        if (t == null) {
+            t = sb.registerNewTeam("bd_jefe");
+            t.color(net.kyori.adventure.text.format.NamedTextColor.LIGHT_PURPLE);
+        }
+        return t;
+    }
+
     /** Usado por los jefes. done recibe el jefe ya creado (el dragón llega un tick después). */
     boolean spawnBoss(World w, Settings.BossDef def, String donor, java.util.function.Consumer<GameMob> done) {
         Location at = spawnPoint(w);
@@ -312,6 +322,9 @@ public final class MobManager implements Listener {
                     set(d, Attribute.MAX_HEALTH, realHp);
                     d.setHealth(realHp);
                     if (def.scale() != 1.0) set(d, Attribute.SCALE, def.scale());
+                    // el modelo es casi negro y el escenario oscuro: contorno morado para que se lea en el directo
+                    d.setGlowing(true);
+                    bossTeam().addEntity(d);
                     done.accept(finishBoss(d, def, donor, at));
                     return;
                 }
@@ -625,6 +638,14 @@ public final class MobManager implements Listener {
                 gm.warned = true;
                 plugin.getLogger().warning("No se pudo mover " + gm.entity.getType() + " (teleport rechazado)");
             }
+            return;
+        }
+        if (gm.entity.getType() == EntityType.ENDER_DRAGON) {
+            // vuelo propio (Bosses.dragonStep): rumbo continuo, giro limitado, órbitas y picados
+            Location to = plugin.bosses.dragonStep(gm, l, sp);
+            // el cliente solo dibuja bien al dragón movido como lo hace /tp (historial de vuelo); el modelo mira al revés
+            Bukkit.dispatchCommand(silent, String.format(java.util.Locale.ROOT, "execute in %s as %s run tp @s %.3f %.3f %.3f %.1f %.1f",
+                to.getWorld().getKey().asString(), gm.entity.getUniqueId(), to.getX(), to.getY(), to.getZ(), to.getYaw() + 180f, 0f));
             return;
         }
         Vector d = new Vector(t.getX() - l.getX(), 0, t.getZ() - l.getZ());
