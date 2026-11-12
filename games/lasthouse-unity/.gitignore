@@ -1,0 +1,14 @@
+# Unity: carpetas generadas (se recrean al abrir el proyecto)
+LastHouse/[Ll]ibrary/
+LastHouse/[Tt]emp/
+LastHouse/[Oo]bj/
+LastHouse/[Bb]uild/
+LastHouse/[Bb]uilds/
+LastHouse/[Ll]ogs/
+LastHouse/[Uu]ser[Ss]ettings/
+LastHouse/MemoryCaptures/
+LastHouse/*.csproj
+LastHouse/*.sln
+LastHouse/.vs/
+LastHouse/.idea/
+__pycache__/
